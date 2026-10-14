@@ -197,7 +197,7 @@ export const list = query({
       const bal = await invoiceBalance(ctx, inv);
       if (a.openOnly && (inv.status !== "issued" || bal.due <= 0)) continue;
       const renter = await ctx.db.get(inv.renterId);
-      out.push({ ...inv, unitNumber: unit.number, renterName: renter?.name ?? "", ...bal, payStatus: inv.status === "draft" ? "draft" : bal.due <= 0 ? "paid" : bal.paid + bal.creditUsed > 0 ? "partial" : "outstanding" });
+      out.push({ ...inv, buildingId: unit.buildingId, unitNumber: unit.number, renterName: renter?.name ?? "", ...bal, payStatus: inv.status === "draft" ? "draft" : bal.due <= 0 ? "paid" : bal.paid + bal.creditUsed > 0 ? "partial" : "outstanding" });
     }
     return out;
   },

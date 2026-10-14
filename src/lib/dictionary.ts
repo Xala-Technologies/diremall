@@ -1,0 +1,102 @@
+// English is the source of truth. Amharic falls back to English for any missing key.
+// Amharic wording is a first draft and should be reviewed by Dire Mall staff before launch.
+export const EN: Record<string, string> = {
+  appName: "Dire Mall Rentals",
+  "nav.dashboard": "Overview", "nav.properties": "Buildings & units", "nav.renters": "Renters", "nav.agreements": "Agreements",
+  "nav.billing": "Bills", "nav.payments": "Payments", "nav.utilities": "Utilities", "nav.reports": "Reports", "nav.bank": "Bank matching",
+  "nav.messages": "SMS", "nav.users": "Staff access", "nav.audit": "History", "nav.settings": "Settings",
+  signIn: "Sign in", signUp: "Create account", signOut: "Sign out", email: "Email", password: "Password", name: "Full name",
+  pendingActivation: "Your account is waiting for an administrator to give you access.",
+  loading: "Loading…", save: "Save", cancel: "Cancel", add: "Add", create: "Create", search: "Search", export: "Export", print: "Print", close: "Close", back: "Back",
+  none: "None", yes: "Yes", no: "No", actions: "Actions", status: "Status", total: "Total", amount: "Amount", date: "Date", reason: "Reason", notes: "Notes",
+  language: "Language", calendar: "Calendar", gregorian: "Gregorian", ethiopian: "Ethiopian", period: "Period", building: "Building", allBuildings: "All buildings",
+  // dashboard
+  "dash.occupancy": "Occupancy", "dash.units": "Units", "dash.billed": "Billed this month", "dash.confirmed": "Confirmed payments", "dash.applied": "Applied to bills",
+  "dash.waiting": "Waiting to apply", "dash.outstanding": "Outstanding", "dash.overdue": "Overdue (all months)", "dash.deposits": "Deposits held (separate from rent)",
+  "dash.collection": "Collected vs billed", "dash.attention": "Needs attention today",
+  "att.draftInvoices": "Draft bills to review", "att.paymentsToConfirm": "Payments to confirm", "att.paymentsToApply": "Confirmed payments to apply",
+  "att.agreementsInReview": "Agreements in review", "att.expiringAgreements": "Agreements ending within 60 days",
+  // properties
+  "prop.addBuilding": "Add building", "prop.addFloor": "Add floor", "prop.addUnit": "Add unit", "prop.unitNumber": "Unit number", "prop.floor": "Floor",
+  "prop.area": "Area (m²)", "prop.category": "Category", "prop.rate": "Rate per m² (ETB)", "prop.address": "Address",
+  vacant: "Vacant", occupied: "Occupied", maintenance: "Under maintenance",
+  office: "Office", retail: "Retail", storage: "Storage", residential: "Residential",
+  // renters
+  "renter.add": "Add renter", "renter.kind": "Type", individual: "Individual", company: "Company", "renter.tin": "TIN", "renter.license": "Business licence no.",
+  "renter.phone": "Phone", "renter.rep": "Legal representative", "renter.documents": "Documents", "renter.upload": "Upload document", "renter.ledger": "Statement",
+  // agreements
+  "ag.new": "New agreement", "ag.unit": "Unit", "ag.renter": "Renter", "ag.start": "Starts", "ag.end": "Ends", "ag.rentBasis": "Rent basis", "ag.perM2": "Per m²", "ag.fixed": "Fixed monthly",
+  "ag.dueDay": "Due day of month", "ag.deposit": "Deposit (ETB)", "ag.signed": "Signed copy", "ag.attach": "Attach signed copy", "ag.submit": "Submit for review",
+  "ag.approve": "Approve & activate", "ag.return": "Return for correction", "ag.terminate": "Terminate", "ag.terms": "Terms history", "ag.renew": "Change rent / renew",
+  "ag.handover": "Handover", "ag.moveIn": "Move in", "ag.moveOut": "Move out", "ag.keys": "Keys", "ag.condition": "Condition",
+  draft: "Draft", inReview: "In review", active: "Active", expired: "Expired", terminated: "Terminated",
+  // billing
+  "bill.generate": "Prepare bills", "bill.issue": "Issue selected", "bill.issueAll": "Issue all drafts", "bill.number": "Bill", "bill.due": "Still due", "bill.paid": "Paid",
+  "bill.calc": "Calculation", "bill.adjust": "Request correction", "bill.adjustments": "Corrections", "bill.approve": "Approve", "bill.created": "bills prepared", "bill.skipped": "skipped",
+  outstanding: "Outstanding", partial: "Partly paid", paidFull: "Paid", issued: "Issued", rent: "Rent", electricity: "Electricity", water: "Water", generator: "Generator", security: "Security", cleaning: "Cleaning", other: "Other",
+  // payments
+  "pay.record": "Record payment", "pay.method": "Method", "pay.reference": "Reference", "pay.received": "Received on", "pay.confirm": "Confirm receipt", "pay.apply": "Apply to bills", "pay.void": "Void",
+  "pay.credit": "Credit kept", recorded: "Recorded", confirmed: "Confirmed", applied: "Applied", voided: "Voided",
+  bankDeposit: "Bank deposit", transfer: "Transfer", telebirr: "Telebirr", cbeBirr: "CBE Birr", cash: "Cash", "pay.evidence": "Evidence", "pay.useCredit": "Use credit",
+  // utilities
+  "util.meters": "Meters", "util.addMeter": "Add meter", "util.reading": "Enter reading", "util.value": "Reading", "util.approve": "Approve", "util.review": "Review flagged",
+  "util.accept": "Accept", "util.reset": "Meter was reset", "util.shared": "Shared costs", "util.newShared": "Add shared cost", "util.ownerShare": "Owner carries (vacant units)",
+  flagged: "Flagged", approved: "Approved", tariffs: "Tariffs",
+  // reports
+  "rep.rentRoll": "Rent roll", "rep.vacancy": "Vacancy", "rep.aging": "Arrears aging", "rep.revenue": "Revenue", "rep.ledger": "Renter statement",
+  "rep.collectedNote": "Collected is money received against bills. It is not profit.", current: "Current", "d1_30": "1–30 days", "d31_60": "31–60 days", "d61_90": "61–90 days", "d90plus": "90+ days",
+  // bank
+  "bank.import": "Import statement (CSV)", "bank.suggest": "Suggested match", "bank.confirm": "Confirm match", "bank.note": "Matching links evidence only. It never adds money to rent received.", "bank.diff": "Difference",
+  // sms
+  "sms.retry": "Retry", queued: "Queued", accepted: "Accepted", delivered: "Delivered", failed: "Failed", uncertain: "Uncertain", cancelled: "Cancelled",
+  // users
+  "users.roles": "Roles", "users.scope": "Buildings", "users.active": "Active",
+  superAdmin: "Super admin", propertyManager: "Property staff", financeOfficer: "Finance staff", approver: "Approver", auditor: "Management / auditor", accessAdmin: "Access admin",
+  // errors
+  "err.unauthenticated": "Please sign in.", "err.inactive": "Your account is not active.", "err.forbidden": "You do not have permission for this.",
+  "err.forbidden_building": "That building is outside your access.", "err.forbidden_renter": "That renter is outside your access.",
+  "err.same_person_cannot_approve": "A different person must approve this.", "err.signed_copy_required": "Attach the signed agreement first.",
+  "err.overlapping_active_agreement": "Another active agreement overlaps these dates for this unit.", "err.payment_not_confirmed": "Confirm the payment before applying it.",
+  "err.duplicate_payment_reference": "A payment with this method and reference already exists.", "err.invoice_already_issued": "Issued bills cannot be edited. Request a correction.",
+  "err.allocation_exceeds_balance": "That is more than the bill still owes.", "err.unit_number_exists": "That unit number already exists in this building.",
+  "err.generic": "Something went wrong. Nothing was saved.",
+  all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
+  saved: "Saved.",
+};
+
+export const AM: Record<string, string> = {
+  appName: "ድሬ ሞል የኪራይ አስተዳደር",
+  "nav.dashboard": "አጠቃላይ እይታ", "nav.properties": "ሕንፃዎችና ክፍሎች", "nav.renters": "ተከራዮች", "nav.agreements": "ውሎች", "nav.billing": "ደረሰኞች",
+  "nav.payments": "ክፍያዎች", "nav.utilities": "አገልግሎቶች", "nav.reports": "ሪፖርቶች", "nav.bank": "የባንክ ማመሳከሪያ", "nav.messages": "አጭር መልእክት", "nav.users": "የሠራተኛ መዳረሻ", "nav.audit": "ታሪክ", "nav.settings": "ቅንብሮች",
+  signIn: "ግባ", signUp: "መለያ ክፈት", signOut: "ውጣ", email: "ኢሜይል", password: "የይለፍ ቃል", name: "ሙሉ ስም",
+  pendingActivation: "መለያዎ በአስተዳዳሪ እስኪፈቀድ እየጠበቀ ነው።",
+  loading: "በመጫን ላይ…", save: "አስቀምጥ", cancel: "ሰርዝ", add: "ጨምር", create: "ፍጠር", search: "ፈልግ", export: "አውጣ", print: "አትም", close: "ዝጋ", back: "ተመለስ",
+  none: "የለም", yes: "አዎ", no: "አይ", actions: "እርምጃዎች", status: "ሁኔታ", total: "ድምር", amount: "መጠን", date: "ቀን", reason: "ምክንያት", notes: "ማስታወሻ",
+  language: "ቋንቋ", calendar: "ቀን አቆጣጠር", gregorian: "ግሪጎሪያን", ethiopian: "ኢትዮጵያዊ", period: "ወር", building: "ሕንፃ", allBuildings: "ሁሉም ሕንፃዎች",
+  "dash.occupancy": "የተያዙ ክፍሎች", "dash.units": "ክፍሎች", "dash.billed": "በዚህ ወር የተሰጠ ደረሰኝ", "dash.confirmed": "የተረጋገጡ ክፍያዎች", "dash.applied": "ደረሰኝ ላይ የተመዘገበ",
+  "dash.waiting": "ለመመዝገብ የሚጠብቅ", "dash.outstanding": "ያልተከፈለ", "dash.overdue": "ጊዜው ያለፈበት", "dash.deposits": "የተያዘ ዋስትና (ከኪራይ የተለየ)", "dash.collection": "የተሰበሰበ / የተሰጠ", "dash.attention": "ዛሬ ትኩረት የሚሹ",
+  "att.draftInvoices": "የሚገመገሙ ረቂቅ ደረሰኞች", "att.paymentsToConfirm": "የሚረጋገጡ ክፍያዎች", "att.paymentsToApply": "የሚመዘገቡ የተረጋገጡ ክፍያዎች", "att.agreementsInReview": "በግምገማ ላይ ያሉ ውሎች", "att.expiringAgreements": "በ60 ቀን ውስጥ የሚያበቁ ውሎች",
+  "prop.addBuilding": "ሕንፃ ጨምር", "prop.addFloor": "ፎቅ ጨምር", "prop.addUnit": "ክፍል ጨምር", "prop.unitNumber": "የክፍል ቁጥር", "prop.floor": "ፎቅ", "prop.area": "ስፋት (ካሬ ሜትር)", "prop.category": "ዓይነት", "prop.rate": "የአንድ ካሬ ሜትር ዋጋ (ብር)", "prop.address": "አድራሻ",
+  vacant: "ባዶ", occupied: "የተያዘ", maintenance: "በጥገና ላይ", office: "ቢሮ", retail: "ሱቅ", storage: "መጋዘን", residential: "መኖሪያ",
+  "renter.add": "ተከራይ ጨምር", "renter.kind": "ዓይነት", individual: "ግለሰብ", company: "ድርጅት", "renter.tin": "የግብር ከፋይ መለያ ቁጥር", "renter.license": "የንግድ ፈቃድ ቁጥር", "renter.phone": "ስልክ", "renter.rep": "ሕጋዊ ተወካይ", "renter.documents": "ሰነዶች", "renter.upload": "ሰነድ ጫን", "renter.ledger": "የሂሳብ መግለጫ",
+  "ag.new": "አዲስ ውል", "ag.unit": "ክፍል", "ag.renter": "ተከራይ", "ag.start": "የሚጀምረው", "ag.end": "የሚያበቃው", "ag.rentBasis": "የኪራይ መሠረት", "ag.perM2": "በካሬ ሜትር", "ag.fixed": "ቋሚ ወርሃዊ", "ag.dueDay": "የክፍያ ቀን", "ag.deposit": "ዋስትና (ብር)",
+  "ag.signed": "የተፈረመ ቅጂ", "ag.attach": "የተፈረመ ቅጂ አያይዝ", "ag.submit": "ለግምገማ አቅርብ", "ag.approve": "አጽድቅና አስጀምር", "ag.return": "ለማስተካከል መልስ", "ag.terminate": "ውል አቋርጥ", "ag.terms": "የውል ሁኔታዎች ታሪክ", "ag.renew": "ኪራይ ቀይር / አድስ",
+  "ag.handover": "ርክክብ", "ag.moveIn": "መግባት", "ag.moveOut": "መውጣት", "ag.keys": "ቁልፎች", "ag.condition": "ሁኔታ",
+  draft: "ረቂቅ", inReview: "በግምገማ ላይ", active: "ንቁ", expired: "ያበቃ", terminated: "የተቋረጠ",
+  "bill.generate": "ደረሰኞችን አዘጋጅ", "bill.issue": "የተመረጡትን ስጥ", "bill.issueAll": "ሁሉንም ረቂቆች ስጥ", "bill.number": "ደረሰኝ", "bill.due": "ቀሪ", "bill.paid": "የተከፈለ", "bill.calc": "ስሌት", "bill.adjust": "እርማት ጠይቅ", "bill.adjustments": "እርማቶች", "bill.approve": "አጽድቅ", "bill.created": "ደረሰኞች ተዘጋጅተዋል", "bill.skipped": "ተዘልለዋል",
+  outstanding: "ያልተከፈለ", partial: "በከፊል የተከፈለ", paidFull: "የተከፈለ", issued: "የተሰጠ", rent: "ኪራይ", electricity: "ኤሌክትሪክ", water: "ውሃ", generator: "ጄኔሬተር", security: "ጥበቃ", cleaning: "ጽዳት", other: "ሌላ",
+  "pay.record": "ክፍያ መዝግብ", "pay.method": "የመክፈያ መንገድ", "pay.reference": "ማጣቀሻ ቁጥር", "pay.received": "የደረሰበት ቀን", "pay.confirm": "ደረሰኝነቱን አረጋግጥ", "pay.apply": "ደረሰኝ ላይ መዝግብ", "pay.void": "ሰርዝ", "pay.credit": "የተያዘ ቀሪ ሂሳብ",
+  recorded: "የተመዘገበ", confirmed: "የተረጋገጠ", applied: "ደረሰኝ ላይ የተመዘገበ", voided: "የተሰረዘ", bankDeposit: "የባንክ ተቀማጭ", transfer: "ዝውውር", telebirr: "ቴሌብር", cbeBirr: "ሲቢኢ ብር", cash: "ጥሬ ገንዘብ", "pay.evidence": "ማስረጃ", "pay.useCredit": "ቀሪ ሂሳብ ተጠቀም",
+  "util.meters": "ቆጣሪዎች", "util.addMeter": "ቆጣሪ ጨምር", "util.reading": "ንባብ አስገባ", "util.value": "ንባብ", "util.approve": "አጽድቅ", "util.review": "የተጠቆሙትን ገምግም", "util.accept": "ተቀበል", "util.reset": "ቆጣሪው ዳግም ተጀምሯል", "util.shared": "የጋራ ወጪዎች", "util.newShared": "የጋራ ወጪ ጨምር", "util.ownerShare": "ባለቤቱ የሚሸከመው (ባዶ ክፍሎች)",
+  flagged: "የተጠቆመ", approved: "የጸደቀ", tariffs: "ታሪፍ",
+  "rep.rentRoll": "የኪራይ ዝርዝር", "rep.vacancy": "ባዶ ክፍሎች", "rep.aging": "የውዝፍ ዕዳ ዕድሜ", "rep.revenue": "ገቢ", "rep.ledger": "የተከራይ መግለጫ", "rep.collectedNote": "የተሰበሰበ ማለት ለደረሰኞች የተቀበልነው ገንዘብ ነው። ትርፍ አይደለም።",
+  current: "ያልደረሰ", d1_30: "1–30 ቀን", d31_60: "31–60 ቀን", d61_90: "61–90 ቀን", d90plus: "90+ ቀን",
+  "bank.import": "የባንክ መግለጫ አስገባ (CSV)", "bank.suggest": "የተጠቆመ ተዛማጅ", "bank.confirm": "ተዛማጅነቱን አረጋግጥ", "bank.note": "ማመሳከር ማስረጃን ብቻ ያገናኛል። ወደ ተቀበለ ኪራይ ገንዘብ አይጨምርም።", "bank.diff": "ልዩነት",
+  "sms.retry": "እንደገና ሞክር", queued: "ተራ የሚጠብቅ", accepted: "ተቀባይነት አግኝቷል", delivered: "ደርሷል", failed: "አልተሳካም", uncertain: "ያልተረጋገጠ", cancelled: "ተሰርዟል",
+  "users.roles": "ሚናዎች", "users.scope": "ሕንፃዎች", "users.active": "ንቁ",
+  superAdmin: "ዋና አስተዳዳሪ", propertyManager: "የንብረት ሠራተኛ", financeOfficer: "የፋይናንስ ሠራተኛ", approver: "አጽዳቂ", auditor: "አመራር / ኦዲተር", accessAdmin: "የመዳረሻ አስተዳዳሪ",
+  "err.unauthenticated": "እባክዎ ይግቡ።", "err.forbidden": "ለዚህ ፈቃድ የለዎትም።", "err.same_person_cannot_approve": "ሌላ ሰው ማጽደቅ አለበት።", "err.signed_copy_required": "መጀመሪያ የተፈረመውን ውል ያያይዙ።",
+  "err.overlapping_active_agreement": "ለዚህ ክፍል ሌላ ንቁ ውል በእነዚህ ቀናት ይደራረባል።", "err.payment_not_confirmed": "ከመመዝገብዎ በፊት ክፍያውን ያረጋግጡ።", "err.invoice_already_issued": "የተሰጠ ደረሰኝ አይስተካከልም። እርማት ይጠይቁ።", "err.generic": "ችግር ተፈጥሯል። ምንም አልተቀመጠም።",
+  all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
+  saved: "ተቀምጧል።",
+};

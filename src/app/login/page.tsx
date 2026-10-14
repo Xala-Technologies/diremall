@@ -1,0 +1,41 @@
+"use client";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Field, Message } from "@/components/ui";
+import { useI18n } from "@/lib/i18n";
+
+export default function Login() {
+  const { signIn } = useAuthActions();
+  const { isAuthenticated } = useConvexAuth();
+  const router = useRouter();
+  const { t, lang, setLang } = useI18n();
+  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (isAuthenticated) router.replace("/"); }, [isAuthenticated, router]);
+
+  return (
+    <div className="center">
+      <form className="card auth" onSubmit={async (e) => {
+        e.preventDefault(); setBusy(true); setError(null);
+        try { await signIn("password", new FormData(e.currentTarget)); } catch { setError(flow === "signIn" ? "Email or password is incorrect." : "Could not create the account. Use a password of at least 8 characters."); }
+        finally { setBusy(false); }
+      }}>
+        <h1>{t("appName")}</h1>
+        {flow === "signUp" && <Field label={t("name")}><input name="name" required autoComplete="name" /></Field>}
+        <Field label={t("email")}><input name="email" type="email" required autoComplete="email" /></Field>
+        <Field label={t("password")}><input name="password" type="password" required minLength={8} autoComplete={flow === "signIn" ? "current-password" : "new-password"} /></Field>
+        <input name="flow" type="hidden" value={flow} />
+        <Message error={error} />
+        <button className="btn primary" disabled={busy}>{flow === "signIn" ? t("signIn") : t("signUp")}</button>
+        <div className="row">
+          <button type="button" className="btn ghost sm" onClick={() => { setFlow(flow === "signIn" ? "signUp" : "signIn"); setError(null); }}>{flow === "signIn" ? t("signUp") : t("signIn")}</button>
+          <span className="grow" />
+          <select aria-label={t("language")} value={lang} onChange={(e) => setLang(e.target.value as "en" | "am")}><option value="en">English</option><option value="am">አማርኛ</option></select>
+        </div>
+      </form>
+    </div>
+  );
+}

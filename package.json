@@ -6,7 +6,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "dev": "next dev",
-    "convex:dev": "convex dev"
+    "convex:dev": "convex dev",
+    "build": "next build",
+    "start": "next start"
   },
   "keywords": [],
   "author": "",
