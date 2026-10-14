@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Card, DateField, DateText, Field, Message, Modal, MoneyInput, PageHeader, StatusBadge, Table, Tabs } from "@/components/ui";
@@ -13,12 +13,16 @@ import { failures, inRange, nonNegative } from "@/lib/validate";
 export default function Agreements() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
   const [tab, setTab] = useState<"" | "draft" | "inReview" | "active" | "expired" | "terminated">("");
-  const [adding, setAdding] = useState(false);
-  const list = useQuery(api.agreements.list, { status: tab || undefined });
+  const [adding, setAdding] = useState(false); const [preset, setPreset] = useState(""); const [q, setQ] = useState("");
+  // "New agreement" from a vacant unit card arrives as /agreements?new=<unit id>
+  useEffect(() => { const id = new URLSearchParams(window.location.search).get("new"); if (id) { setPreset(id); setAdding(true); window.history.replaceState(null, "", "/agreements"); } }, []);
+  const listAll = useQuery(api.agreements.list, { status: tab || undefined });
+  const needle = q.trim().toLowerCase();
+  const list = listAll?.filter((a) => !needle || `${a.unitNumber} ${a.renterName}`.toLowerCase().includes(needle));
   const expiring = useQuery(api.agreements.expiring, {});
   return (
     <div className="stack">
-      <PageHeader title={t("nav.agreements")}>{can("propertyManager") && <button className="btn primary" onClick={() => setAdding(true)}>{t("ag.new")}</button>}</PageHeader>
+      <PageHeader title={t("nav.agreements")}><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} />{can("propertyManager") && <button className="btn primary" onClick={() => setAdding(true)}>{t("ag.new")}</button>}</PageHeader>
       {expiring && expiring.length > 0 && <Card title={t("att.expiringAgreements")}><Table rows={expiring.map((e) => ({ ...e, _id: e.agreementId }))} onRow={(e) => router.push(`/agreements/${e.agreementId}`)} cols={[
         { head: t("ag.unit"), cell: (e) => e.unitNumber }, { head: t("ag.end"), cell: (e) => <DateText ms={e.endsAt} /> }]} /></Card>}
       <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} />
@@ -27,20 +31,21 @@ export default function Agreements() {
         { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} />, sort: (a) => a.startsAt }, { head: t("ag.end"), cell: (a) => <DateText ms={a.endsAt} />, sort: (a) => a.endsAt },
         { head: t("ag.signed"), cell: (a) => (a.signedFileId ? "✓" : "—") }, { head: t("status"), cell: (a) => <StatusBadge status={a.status} /> },
       ]} /></Card>
-      {adding && <NewAgreement onClose={() => setAdding(false)} onCreated={(id) => router.push(`/agreements/${id}`)} />}
+      {adding && <NewAgreement presetUnit={preset} onClose={() => setAdding(false)} onCreated={(id) => router.push(`/agreements/${id}`)} />}
     </div>
   );
 }
 
-function NewAgreement({ onClose, onCreated }: { onClose: () => void; onCreated: (id: Id<"agreements">) => void }) {
+function NewAgreement({ presetUnit, onClose, onCreated }: { presetUnit?: string; onClose: () => void; onCreated: (id: Id<"agreements">) => void }) {
   const { t } = useI18n(); const create = useMutation(api.agreements.createDraft); const { run, error, busy } = useRun();
   const vacant = useQuery(api.properties.listUnits, { status: "vacant" }); const renters = useQuery(api.renters.list, {});
-  const [unitId, setUnitId] = useState(""); const [renterId, setRenterId] = useState("");
+  const [unitId, setUnitId] = useState(presetUnit ?? ""); const [renterId, setRenterId] = useState("");
   const [start, setStart] = useState<number | null>(null); const [end, setEnd] = useState<number | null>(null);
   const [basis, setBasis] = useState<"perM2" | "fixed">("perM2"); const [amount, setAmount] = useState<number | null>(null);
   const [dueDay, setDueDay] = useState(5); const [deposit, setDeposit] = useState<number | null>(0);
   const [escPct, setEscPct] = useState(""); const [escEvery, setEscEvery] = useState("12");
   const unit = vacant?.find((u) => u._id === unitId);
+  useEffect(() => { if (presetUnit && unit && amount == null && basis === "perM2") setAmount(unit.ratePerM2); }, [presetUnit, unit, amount, basis]);
   const [errs, setErrs] = useState<Record<string, string>>({});
   const clear = (k: string) => errs[k] && setErrs({ ...errs, [k]: "" });
   return (

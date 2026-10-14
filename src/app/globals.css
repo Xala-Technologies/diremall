@@ -196,6 +196,7 @@ select { appearance: none; padding-inline-end: 2.4em; background-image: url("dat
 input[type="checkbox"] { min-height: 0; width: 18px; height: 18px; accent-color: var(--accent); padding: 0; } input[type="file"] { padding: 9px 12px; }
 .btn:focus-visible, a:focus-visible, .nav:focus-visible, tr.click:focus-visible, .tile:focus-visible { outline: 3px solid var(--ds-color-accent-border-default); outline-offset: 2px; }
 .field { display: grid; gap: 6px; min-width: 0; } .field > span { font-size: .875rem; font-weight: 500; } .field small { font-size: .8125rem; }
+.pw-wrap { position: relative; } .pw-wrap input { width: 100%; padding-inline-end: 48px; } .pw-toggle { position: absolute; inset-block: 0; inset-inline-end: 2px; margin: auto 0; }
 .field.invalid input, .field.invalid select, .field.invalid textarea { border-color: var(--ds-color-danger-base-default); } .field.invalid input:focus, .field.invalid select:focus { box-shadow: 0 0 0 3px var(--ds-color-danger-surface-tinted); }
 .field-error { display: flex; gap: 6px; align-items: center; color: var(--ds-color-danger-base-default); font-weight: 500; } [data-color-scheme="dark"] .field-error { color: #fca5a5; }
 .form { display: grid; align-items: start; gap: 16px 18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } .form .wide { grid-column: 1 / -1; } .eth-date input { width: 92px; }

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, ConfirmDialog, DateText, Message, Money, PageHeader, PeriodPicker, StatusBadge, Table, TableFoot } from "@/components/ui";
+import { BuildingSelect, Card, ConfirmDialog, DateText, Message, Money, PageHeader, PeriodPicker, StatusBadge, Table, TableFoot, Tabs } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { downloadCsv } from "@/lib/csv";
 import { usePeriod } from "@/lib/usePeriod";
@@ -20,8 +20,12 @@ export default function Billing() {
   const rows = useQuery(api.billing.list, { period });
   const generate = useMutation(api.billing.generate); const issue = useMutation(api.billing.issue);
   const { run, error, notice } = useRun(); const toast = useToast();
-  const shown = rows?.filter((r) => !building || r.buildingId === building);
-  const drafts = (shown ?? []).filter((r) => r.status === "draft");
+  const [tab, setTab] = useState(""); const [q, setQ] = useState("");
+  const inBuilding = rows?.filter((r) => !building || r.buildingId === building);
+  const count = (s: string) => (inBuilding ?? []).filter((r) => (s === "" ? true : r.payStatus === s)).length;
+  const needle = q.trim().toLowerCase();
+  const shown = inBuilding?.filter((r) => (tab === "" || r.payStatus === tab) && (!needle || `${r.unitNumber} ${r.renterName} ${r.number}`.toLowerCase().includes(needle)));
+  const drafts = (inBuilding ?? []).filter((r) => r.status === "draft");
   const totals = (shown ?? []).reduce((a, r) => ({ total: a.total + r.total + r.adjustments, paid: a.paid + r.paid + r.creditUsed, due: a.due + (r.status === "issued" ? r.due : 0) }), { total: 0, paid: 0, due: 0 });
   const toggle = (id: Id<"invoices">) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   return (
@@ -41,6 +45,10 @@ export default function Billing() {
         <button className="btn" onClick={() => shown && downloadCsv(`bills-${period}.csv`, shown.map((r) => ({ number: r.number, unit: r.unitNumber, renter: r.renterName, status: r.status, total: (r.total + r.adjustments) / 100, paid: (r.paid + r.creditUsed) / 100, due: r.due / 100 })))}>{t("export")}</button>
       </PageHeader>
       <Message error={error} notice={notice} />
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <Tabs value={tab} onChange={setTab} tabs={[["", `${t("all")} (${count("")})`], ["draft", `${t("draft")} (${count("draft")})`], ["outstanding", `${t("outstanding")} (${count("outstanding")})`], ["partial", `${t("partial")} (${count("partial")})`], ["paid", `${t("paidFull")} (${count("paid")})`]]} />
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} style={{ minWidth: 220 }} />
+      </div>
       {confirmIssue && <ConfirmDialog title={t("confirm.issueTitle")} message={t("confirm.issueBody").replace("{n}", String(confirmIssue.length))} confirmLabel={t("bill.issueN")} onClose={() => setConfirmIssue(null)} onConfirm={async () => { await run(async () => { await issue({ invoiceIds: confirmIssue }); setPicked(new Set()); }, t("saved")); }} />}
       <Card flush>
         <Table rows={shown} empty={t("empty.bills")} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[

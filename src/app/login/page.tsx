@@ -3,7 +3,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Mark } from "@/components/icons";
+import { Icon, Mark } from "@/components/icons";
 import { Field, Message } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 
@@ -14,7 +14,7 @@ export default function Login() {
   const { t, lang, setLang } = useI18n();
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
   useEffect(() => { if (isAuthenticated) router.replace("/"); }, [isAuthenticated, router]);
 
   return (
@@ -43,8 +43,10 @@ export default function Login() {
         }}>
           <div><h1>{flow === "signIn" ? t("signIn") : t("signUp")}</h1><p className="muted">{t("appName")}</p></div>
           {flow === "signUp" && <Field label={t("name")}><input name="name" required autoComplete="name" /></Field>}
-          <Field label={t("email")}><input name="email" type="email" required autoComplete="email" /></Field>
-          <Field label={t("password")} hint={flow === "signUp" ? "8+" : undefined}><input name="password" type="password" required minLength={8} autoComplete={flow === "signIn" ? "current-password" : "new-password"} /></Field>
+          <Field label={t("email")}><input name="email" type="email" required autoComplete="email" autoFocus /></Field>
+          <Field label={t("password")} hint={flow === "signUp" ? t("pw.hint") : undefined}>
+            <div className="pw-wrap"><input name="password" type={show ? "text" : "password"} required minLength={8} autoComplete={flow === "signIn" ? "current-password" : "new-password"} />
+              <button type="button" className="btn ghost sm icon-only pw-toggle" onClick={() => setShow(!show)} aria-label={show ? t("pw.hide") : t("pw.show")} aria-pressed={show}><Icon name={show ? "eyeOff" : "eye"} size={18} /></button></div></Field>
           <input name="flow" type="hidden" value={flow} />
           <Message error={error} />
           <button className="btn primary" disabled={busy}>{flow === "signIn" ? t("signIn") : t("signUp")}</button>

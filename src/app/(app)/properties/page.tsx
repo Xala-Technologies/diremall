@@ -53,6 +53,7 @@ export default function Properties() {
                   <div className="tile-m"><span>{t(u.category)}</span><span>·</span><span className="num">{u.areaM2} m²</span><span>·</span><span className="num">{(u.ratePerM2 / 100).toLocaleString()} /m²</span></div>
                   {can("propertyManager") && u.status !== "occupied" && (
                     <div className="row" onClick={(e) => e.stopPropagation()}>
+                      {u.status === "vacant" && !("reservedFrom" in u && u.reservedFrom) && <button className="btn sm primary" onClick={() => router.push(`/agreements?new=${u._id}`)}>{t("ag.new")}</button>}
                       <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>{u.status === "vacant" ? t("maintenance") : t("vacant")}</button>
                     </div>)}
                 </div>
