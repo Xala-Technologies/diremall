@@ -2,7 +2,9 @@
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
-import { Card, DateText, Message, Money, PageHeader, StatusBadge } from "@/components/ui";
+import { Card, DateText, Empty, Message, Money, PageHeader, StatusBadge } from "@/components/ui";
+import { FilterSelect } from "@/components/FilterSelect";
+import { Landmark } from "lucide-react";
 import { parseStatementCsv } from "@/lib/csv";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -28,7 +30,8 @@ export default function Bank() {
       </PageHeader>
       <p className="muted">{t("bank.note")} CSV: date, amount, reference.</p>
       <Message error={error} notice={notice} />
-      {batches.length > 1 && <select value={active} onChange={(e) => setBatch(e.target.value)}>{batches.map((b) => <option key={b} value={b}>{b}</option>)}</select>}
+      {batches.length > 1 && <FilterSelect label={t("nav.bank")} value={active} onChange={setBatch} options={batches.map((b) => ({ value: b, label: b, icon: <Landmark size={16} /> }))} />}
+      {unmatched && batches.length === 0 && <Card><Empty title={t("empty.bank")} /></Card>}
       {sugg?.map(({ entry, candidates }) => (
         <Card key={entry._id}>
           <div className="row"><DateText ms={entry.postedAt} /><Money v={entry.amount} strong /><span className="muted">{entry.reference}</span></div>

@@ -17,7 +17,7 @@ export default function Users() {
       <PageHeader title={t("nav.users")} />
       <Card flush><Table rows={users} onRow={setEdit} cols={[
         { head: t("name"), cell: (u) => <strong>{u.name || "—"}</strong> }, { head: t("email"), cell: (u) => u.email }, { head: t("users.roles"), cell: (u) => (u.roles as string[]).map((r) => t(r)).join(", ") || "—" },
-        { head: t("status"), cell: (u) => <StatusBadge status={u.active ? "active" : "draft"} /> }]} /></Card>
+        { head: t("status"), cell: (u) => <StatusBadge status={u.active ? "active" : "inactive"} /> }]} /></Card>
       {edit && <Edit user={edit} onClose={() => setEdit(null)} />}
     </div>
   );

@@ -28,7 +28,7 @@ export function Badge({ tone, children }: { tone?: "good" | "warn" | "bad" | "in
 }
 
 export const statusTone = (s: string) =>
-  (({ active: "good", paid: "good", approved: "good", applied: "good", delivered: "good", occupied: "info", issued: "info", confirmed: "info", accepted: "info", partial: "warn", inReview: "warn", draft: "warn", recorded: "warn", queued: "warn", maintenance: "warn", flagged: "bad", failed: "bad", outstanding: "bad", terminated: "bad", voided: "bad", expired: "muted", vacant: "muted", cancelled: "muted", uncertain: "warn" }) as Record<string, "good" | "warn" | "bad" | "info" | "muted">)[s] ?? "muted";
+  (({ active: "good", paid: "good", approved: "good", applied: "good", delivered: "good", occupied: "info", issued: "info", confirmed: "info", accepted: "info", partial: "warn", inReview: "warn", draft: "warn", recorded: "warn", queued: "warn", maintenance: "warn", flagged: "bad", failed: "bad", outstanding: "bad", terminated: "bad", voided: "bad", expired: "muted", inactive: "muted", vacant: "muted", cancelled: "muted", uncertain: "warn" }) as Record<string, "good" | "warn" | "bad" | "info" | "muted">)[s] ?? "muted";
 
 export function StatusBadge({ status }: { status: string }) {
   const { t } = useI18n();
@@ -43,15 +43,11 @@ export function Card({ title, children, actions, flush }: { title?: string; chil
   return <section className={`card ${flush ? "flush" : ""}`}>{(title || actions) && <header className="card-h"><h2>{title}</h2><div className="row">{actions}</div></header>}{children}</section>;
 }
 
-export function Stat({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "bad" | "good" }) {
-  return <div className={`stat ${tone ?? ""}`}><div className="stat-l">{label}</div><div className="stat-v">{value}</div>{sub && <div className="stat-s">{sub}</div>}</div>;
-}
-
 export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; money?: boolean; text?: boolean };
 export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: { cols: Col<T>[]; rows: T[] | undefined; onRow?: (r: T) => void; empty?: string }) {
   const { t } = useI18n();
   if (!rows) return <Skeleton lines={5} />;
-  if (rows.length === 0) return <Empty title={empty ?? t("none")} />;
+  if (rows.length === 0) return <Empty title={empty ?? t("empty.default")} />;
   return (
     <div className="table-wrap">
       <table>

@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, nextSeq, requireRole } from "./lib/access";
 import { applyPayment } from "./lib/billing";
+import { formatEtb } from "./lib/money";
 import { creditBalance, invoiceBalance } from "./lib/ledger";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 
@@ -109,7 +110,7 @@ export const apply = mutation({
     // Receipt acknowledgment by SMS (once per payment).
     const key = `ack:${paymentId}`;
     if (!(await ctx.db.query("smsMessages").withIndex("by_dedupe", (q) => q.eq("dedupeKey", key)).first())) {
-      await ctx.db.insert("smsMessages", { renterId: p.renterId, kind: "paymentAck", body: `Payment of ETB ${(p.amount / 100).toFixed(2)} received. Thank you.`, status: "queued", dedupeKey: key });
+      await ctx.db.insert("smsMessages", { renterId: p.renterId, kind: "paymentAck", body: `Payment of ${formatEtb(p.amount)} received. Thank you.`, status: "queued", dedupeKey: key });
     }
     return { applied: p.amount - credit, credit };
   },

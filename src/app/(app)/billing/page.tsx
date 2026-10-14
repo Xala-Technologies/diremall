@@ -37,7 +37,7 @@ export default function Billing() {
       </PageHeader>
       <Message error={error} notice={notice} />
       <Card flush>
-        <Table rows={shown} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[
+        <Table rows={shown} empty={t("empty.bills")} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[
           ...(can("financeOfficer") ? [{ head: "", cell: (r: NonNullable<typeof shown>[number]) => r.status === "draft" ? <input type="checkbox" aria-label={r.unitNumber} checked={picked.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} /> : null }] : []),
           { head: t("bill.number"), cell: (r) => r.number || t("draft") }, { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong> }, { head: t("ag.renter"), cell: (r) => r.renterName },
           { head: t("bill.dueDate"), cell: (r) => <DateText ms={r.dueAt} /> }, { head: t("total"), cell: (r) => <Money v={r.total + r.adjustments} />, right: true, money: true },

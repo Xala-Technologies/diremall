@@ -22,7 +22,7 @@ export default function Payments() {
       <PageHeader title={t("nav.payments")}>{can("financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button>}</PageHeader>
       <Message error={error} notice={notice} />
       <Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} />
-      <Card flush><Table rows={rows} cols={[
+      <Card flush><Table rows={rows} empty={t("empty.payments")} cols={[
         { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} /> }, { head: t("ag.renter"), cell: (p) => p.renterName }, { head: t("pay.method"), cell: (p) => t(p.method) },
         { head: t("pay.reference"), cell: (p) => p.reference }, { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true },
         { head: t("pay.evidence"), cell: (p) => (p.evidenceUrl ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer">✓</a> : "—") }, { head: t("status"), cell: (p) => <StatusBadge status={p.status} /> },

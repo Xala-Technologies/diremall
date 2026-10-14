@@ -70,6 +70,7 @@ export const EN: Record<string, string> = {
   "contract.title": "Lease contract", "contract.draft": "Draft template. Dire Mall's lawyer should check the wording against Proclamation No. 1320/2024 before it is signed.", "ag.escalation": "Yearly rent increase", "ag.escPct": "Increase (%)", "ag.escEvery": "Every (months)", "ag.reservedFrom": "Reserved from",
   "bill.dueDate": "Due date",
   theme: "Theme", "theme.auto": "Automatic", "theme.light": "Light", "theme.dark": "Dark",
+  "empty.default": "Nothing here yet", "empty.bills": "No bills for this period. Choose a month and click Prepare bills.", "empty.payments": "No payments yet. Record a payment when money arrives.", "empty.utilities": "No readings waiting for review.", "empty.bank": "No statement lines to match. Import the bank's CSV statement.", "empty.messages": "No messages yet. Reminders appear here once bills fall due.", "empty.agreements": "No agreements yet.", inactive: "Inactive",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -117,6 +118,7 @@ export const AM: Record<string, string> = {
   "contract.title": "የኪራይ ውል", "contract.draft": "ረቂቅ ቅጽ። ከመፈረሙ በፊት የድሬ ሞል ጠበቃ ጽሑፉን ከአዋጅ ቁጥር 1320/2024 ጋር ማመሳከር አለበት።", "ag.escalation": "ዓመታዊ የኪራይ ጭማሪ", "ag.escPct": "ጭማሪ (%)", "ag.escEvery": "በየ (ወር)", "ag.reservedFrom": "የተያዘው ከ",
   "bill.dueDate": "የመክፈያ ቀን",
   theme: "ገጽታ", "theme.auto": "ራስ-ሰር", "theme.light": "ብሩህ", "theme.dark": "ጨለማ",
+  "empty.default": "እስካሁን ምንም የለም", "empty.bills": "ለዚህ ወር ደረሰኝ የለም። ወር ይምረጡና «ደረሰኞችን አዘጋጅ» ይጫኑ።", "empty.payments": "እስካሁን ክፍያ የለም። ገንዘብ ሲደርስ ክፍያ ይመዝግቡ።", "empty.utilities": "ለግምገማ የሚጠብቅ ንባብ የለም።", "empty.bank": "የሚመሳከር የባንክ መስመር የለም። የባንኩን CSV መግለጫ ያስገቡ።", "empty.messages": "እስካሁን መልእክት የለም። ደረሰኞች ጊዜያቸው ሲደርስ ማስታወሻዎች እዚህ ይታያሉ።", "empty.agreements": "እስካሁን ውል የለም።", inactive: "የማይሰራ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

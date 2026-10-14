@@ -5,6 +5,8 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { BuildingSelect, Card, DateText, ExportMenu, Field, Money, PageHeader, StatusBadge, Table, Tabs } from "@/components/ui";
 import Link from "next/link";
+import { Users } from "lucide-react";
+import { FilterSelect } from "@/components/FilterSelect";
 import { currentPeriod } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
@@ -77,7 +79,7 @@ function Ledger() {
   return (
     <Card title={t("rep.ledger")} actions={<ExportMenu name={`statement-${name || "renter"}`} rows={d ? d.map((l) => ({ date: new Date(l.at).toISOString().slice(0, 10), type: l.kind, reference: l.ref, debit: l.debit / 100, credit: l.credit / 100, balance: l.balance / 100 })) : []} />}>
       <div className="row" style={{ marginBottom: 12 }}>
-        <select aria-label={t("ag.renter")} value={renterId} onChange={(e) => setRenterId(e.target.value)}><option value="">{t("ag.renter")}…</option>{renters?.map((r) => <option key={r._id} value={r._id}>{r.name}</option>)}</select>
+        <FilterSelect label={t("ag.renter")} value={renterId} onChange={setRenterId} options={[{ value: "", label: `${t("ag.renter")}…`, icon: <Users size={16} /> }, ...(renters ?? []).map((r) => ({ value: r._id, label: r.name, icon: <Users size={16} /> }))]} />
       </div>
       {renterId && <Table rows={d?.map((l, i) => ({ ...l, _id: String(i) }))} cols={[
         { head: t("date"), cell: (l) => <DateText ms={l.at} /> }, { head: t("status"), cell: (l) => l.kind }, { head: t("pay.reference"), cell: (l) => l.ref },

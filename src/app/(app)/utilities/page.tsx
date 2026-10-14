@@ -30,7 +30,7 @@ function Readings() {
     <div className="stack">
       <div className="row">{can("propertyManager", "financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("util.reading")}</button>}</div>
       <Message error={error} notice={notice} />
-      <Card title={`${t("draft")} / ${t("flagged")}`}><Table rows={pending} empty="—" cols={[
+      <Card title={`${t("draft")} / ${t("flagged")}`}><Table rows={pending} empty={t("empty.utilities")} cols={[
         { head: t("ag.unit"), cell: (r) => r.unitNumber }, { head: t("util.meters"), cell: (r) => t(r.meterKind) }, { head: t("date"), cell: (r) => <DateText ms={r.readAt} /> },
         { head: t("util.value"), cell: (r) => r.value, right: true }, { head: t("status"), cell: (r) => <StatusBadge status={r.status} /> },
         { head: "", cell: (r) => r.enteredBy === me?._id ? null : r.status === "draft" && can("financeOfficer", "approver")
