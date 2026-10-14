@@ -47,3 +47,25 @@ Set these on the Convex deployment to send messages (otherwise they stay queued)
 - A payment reduces a bill only after it is recorded, confirmed by someone else, then applied.
 - Re-running billing never creates a second original bill for the same agreement and period.
 - Deposits are a separate ledger. Bank matching links evidence and never adds money.
+
+## Going live
+
+Two pieces: the Convex production deployment (data and functions) and the website host (Vercel).
+
+1. **Convex production.** In the Convex dashboard open the project, switch to *Production*, and create a
+   production deploy key (Settings, URL & Deploy Key). Keep it secret; it can change production data.
+2. **Website.** In Vercel, import this GitHub repository. Add one environment variable,
+   `CONVEX_DEPLOY_KEY` (the production key). The included `vercel.json` makes each deploy push the Convex
+   functions and then build the site, and Convex fills in `NEXT_PUBLIC_CONVEX_URL` itself.
+3. **Sign-in keys and address.** Once the site has an address, run this yourself while signed in to Convex:
+
+   ```bash
+   node scripts/setup-prod-auth.mjs https://your-site-address first-admin@your-company.com
+   ```
+
+   It sets the signing keys, `SITE_URL`, and `BOOTSTRAP_ADMIN_EMAIL` so only that address can become
+   the first super admin. Use `--print` first to see what it would set.
+4. **SMS** (when a provider is chosen): set `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` and
+   `SMS_WEBHOOK_SECRET` on production with `npx convex env set --prod`.
+5. **Do not** run `seed:load` on production. It is demo data for the development deployment only.
+6. Sign up with the admin email, then add staff under Staff access.
