@@ -2,7 +2,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
-import { Card, DateText, Empty, Message, Money, PageHeader, StatusBadge } from "@/components/ui";
+import { Card, DateText, Empty, Message, Money, PageHeader, SearchInput, StatusBadge } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Landmark } from "lucide-react";
 import { parseStatementCsv } from "@/lib/csv";
@@ -16,12 +16,14 @@ export default function Bank() {
   const batches = [...new Set(unmatched?.map((e) => e.importBatch))];
   const [batch, setBatch] = useState("");
   const active = batch || batches[0] || "";
-  const sugg = useQuery(api.bank.suggestions, active ? { batch: active } : "skip");
+  const suggAll = useQuery(api.bank.suggestions, active ? { batch: active } : "skip");
+  const [q, setQ] = useState(""); const needle = q.trim().toLowerCase();
+  const sugg = suggAll?.filter(({ entry }) => !needle || `${entry.reference} ${entry.amount / 100}`.toLowerCase().includes(needle));
   const imp = useMutation(api.bank.importStatement); const match = useMutation(api.bank.confirmMatch);
   const { run, error, notice } = useRun();
   return (
     <div className="stack">
-      <PageHeader title={t("nav.bank")}>
+      <PageHeader title={t("nav.bank")} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchBank")} />{batches.length > 1 && <FilterSelect label={t("nav.bank")} value={active} onChange={setBatch} options={batches.map((b) => ({ value: b, label: b, icon: <Landmark size={16} /> }))} />}</>}>
         {can("financeOfficer") && <label className="btn">{t("bank.import")}<input type="file" accept=".csv,text/csv" hidden onChange={async (e) => {
           const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
           const entries = parseStatementCsv(await f.text());
@@ -30,7 +32,6 @@ export default function Bank() {
       </PageHeader>
       <p className="muted">{t("bank.note")} CSV: date, amount, reference.</p>
       <Message error={error} notice={notice} />
-      {batches.length > 1 && <FilterSelect label={t("nav.bank")} value={active} onChange={setBatch} options={batches.map((b) => ({ value: b, label: b, icon: <Landmark size={16} /> }))} />}
       {unmatched && batches.length === 0 && <Card><Empty title={t("empty.bank")} /></Card>}
       {sugg?.map(({ entry, candidates }) => (
         <Card key={entry._id}>

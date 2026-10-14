@@ -98,6 +98,7 @@ export const EN: Record<string, string> = {
   "filter.anyStatus": "Any status",
   "search.clear": "Clear search", "filter.searchBills": "Search bill, unit or renter", "filter.searchRenters": "Search name, TIN or phone", "filter.searchAgreements": "Search unit or renter",
   "filter.allTypes": "All types", "filter.allMethods": "All methods", "filter.searchPayments": "Search renter or reference",
+  "filter.searchAudit": "Search user, action or record", "filter.allActions": "All actions", "filter.searchMessages": "Search renter or message", "filter.allStatuses": "All statuses", "filter.searchUsers": "Search name or email", "filter.allRoles": "All roles", "filter.searchBank": "Search reference or amount",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -174,6 +175,7 @@ export const AM: Record<string, string> = {
   "filter.anyStatus": "ማንኛውም ሁኔታ",
   "search.clear": "ፍለጋን አጽዳ", "filter.searchBills": "ደረሰኝ፣ ክፍል ወይም ተከራይ ፈልግ", "filter.searchRenters": "ስም፣ TIN ወይም ስልክ ፈልግ", "filter.searchAgreements": "ክፍል ወይም ተከራይ ፈልግ",
   "filter.allTypes": "ሁሉም ዓይነቶች", "filter.allMethods": "ሁሉም መንገዶች", "filter.searchPayments": "ተከራይ ወይም ማጣቀሻ ፈልግ",
+  "filter.searchAudit": "ተጠቃሚ፣ ድርጊት ወይም መዝገብ ፈልግ", "filter.allActions": "ሁሉም ድርጊቶች", "filter.searchMessages": "ተከራይ ወይም መልዕክት ፈልግ", "filter.allStatuses": "ሁሉም ሁኔታዎች", "filter.searchUsers": "ስም ወይም ኢሜይል ፈልግ", "filter.allRoles": "ሁሉም ሚናዎች", "filter.searchBank": "ማጣቀሻ ወይም መጠን ፈልግ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

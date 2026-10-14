@@ -1,9 +1,11 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
+import { FilterSelect } from "@/components/FilterSelect";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, ConfirmDialog, Message, Modal, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Card, ConfirmDialog, Message, Modal, PageHeader, SearchInput, StatusBadge, Table } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useRun } from "@/lib/useRun";
 
@@ -11,10 +13,14 @@ const ROLES = ["propertyManager", "financeOfficer", "approver", "auditor", "acce
 type Role = (typeof ROLES)[number];
 
 export default function Users() {
-  const { t } = useI18n(); const users = useQuery(api.users.list); const [edit, setEdit] = useState<NonNullable<typeof users>[number] | null>(null);
+  const { t } = useI18n(); const all = useQuery(api.users.list);
+  const [q, setQ] = useState(""); const [role, setRole] = useState("");
+  const needle = q.trim().toLowerCase();
+  const users = all?.filter((u) => (!role || (u.roles as string[]).includes(role)) && (!needle || `${u.name} ${u.email}`.toLowerCase().includes(needle)));
+  const [edit, setEdit] = useState<NonNullable<typeof users>[number] | null>(null);
   return (
     <div className="stack">
-      <PageHeader title={t("nav.users")} />
+      <PageHeader title={t("nav.users")} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchUsers")} /><FilterSelect label={t("users.roles")} placeholder={t("users.roles")} value={role} onChange={setRole} options={[{ value: "", label: t("filter.allRoles"), icon: <ShieldCheck size={16} /> }, ...ROLES.map((r) => ({ value: r as string, label: t(r), icon: <ShieldCheck size={16} /> }))]} /></>} />
       <Card flush><Table rows={users} onRow={setEdit} cols={[
         { head: t("name"), cell: (u) => <strong>{u.name || "—"}</strong> }, { head: t("email"), cell: (u) => u.email }, { head: t("users.roles"), cell: (u) => (u.roles as string[]).map((r) => t(r)).join(", ") || "—" },
         { head: t("status"), cell: (u) => <StatusBadge status={u.active ? "active" : "inactive"} /> }]} /></Card>
