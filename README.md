@@ -75,3 +75,16 @@ Two pieces: the Convex production deployment (data and functions) and the websit
 Bills store their running balance (see `convex/lib/ledger.ts`). After deploying to a deployment that already
 has bills created before that change, run once: `npx convex run migrations:backfillInvoices` (add `--prod`
 for production). It is safe to run again. A fresh production deployment does not need it.
+
+## Load testing
+
+`convex/loadtest.ts` fills a **development** deployment with a mall-sized data set (about 1,000 units, renters and
+leases with 12 months of bills) and removes it again. Everything it creates is tagged "LT".
+
+```bash
+npx convex run loadtest:seed     # about 25 seconds
+npx convex run loadtest:clear    # about 2 minutes
+```
+
+Convex allows 4,096 database lookups per function, so screens must never look up a related record once per row.
+Read the whole related table once and use a map (see `convex/lib/bulk.ts`). Bills are issued in groups of 150.

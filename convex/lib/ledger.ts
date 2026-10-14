@@ -6,6 +6,8 @@ export type InvoiceBalance = { total: Santim; adjustments: Santim; paid: Santim;
 
 /** One place that defines "what is still owed on this bill". Screens, reports and SMS all use it. */
 export async function invoiceBalance(ctx: QueryCtx, invoice: Doc<"invoices">): Promise<InvoiceBalance> {
+  // a draft cannot have payments, corrections or credit yet, so there is nothing to look up
+  if (invoice.status === "draft") return { total: invoice.total, adjustments: 0, paid: 0, creditUsed: 0, due: invoice.total };
   // Issued bills keep their balance on the row (see refreshInvoice). Drafts and not-yet-backfilled rows are added up.
   if (invoice.status === "issued" && invoice.due !== undefined && invoice.paid !== undefined && invoice.creditUsed !== undefined && invoice.adjustments !== undefined)
     return { total: invoice.total, adjustments: invoice.adjustments, paid: invoice.paid, creditUsed: invoice.creditUsed, due: invoice.due };

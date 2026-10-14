@@ -75,7 +75,7 @@ export default defineSchema({
     createdBy: v.id("users"),
     approvedBy: v.optional(v.id("users")), // must differ from createdBy
     terminationReason: v.optional(v.string()),
-  }).index("by_unit", ["unitId", "status"]).index("by_renter", ["renterId"]),
+  }).index("by_unit", ["unitId", "status"]).index("by_renter", ["renterId"]).index("by_status", ["status"]),
 
   // Effective-dated terms: a later rent change never alters already-issued bills.
   agreementTerms: defineTable({

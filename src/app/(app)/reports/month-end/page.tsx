@@ -18,12 +18,12 @@ export default function MonthEnd() {
   const [period, setPeriod] = usePeriod();
   const dash = useQuery(api.reports.dashboard, { period });
   const bills = useQuery(api.billing.list, { period });
-  const payments = useQuery(api.payments.list, {});
+  const received = useQuery(api.payments.inPeriod, { period });
   const aging = useQuery(api.reports.aging, {});
   const roll = useQuery(api.reports.rentRoll, {});
   const { start, end } = periodRange(period);
-  const received = payments?.filter((p) => p.receivedAt >= start && p.receivedAt < end && p.status !== "voided");
-  const ready = dash && bills && received && aging && roll;
+  const shownPayments = received?.filter((p) => p.status !== "voided");
+  const ready = dash && bills && shownPayments && aging && roll;
 
   const exportAll = () => {
     if (!ready) return;
@@ -34,7 +34,7 @@ export default function MonthEnd() {
         { item: "Deposits held", etb: dash.depositsHeld / 100 }, { item: "Occupancy", etb: Math.round(dash.occupancyRate * 1000) / 10 },
       ] },
       { name: "Bills", rows: bills.map((b) => ({ number: b.number, unit: b.unitNumber, renter: b.renterName, due: iso(b.dueAt), total: (b.total + b.adjustments) / 100, paid: (b.paid + b.creditUsed) / 100, still_due: b.due / 100, status: b.payStatus })) },
-      { name: "Payments", rows: received.map((p) => ({ received: iso(p.receivedAt), renter: p.renterName, method: p.method, reference: p.reference, amount: p.amount / 100, receipt: p.receiptNumber ?? "", status: p.status })) },
+      { name: "Payments", rows: shownPayments.map((p) => ({ received: iso(p.receivedAt), renter: p.renterName, method: p.method, reference: p.reference, amount: p.amount / 100, receipt: p.receiptNumber ?? "", status: p.status })) },
       { name: "Aging", rows: aging.rows.map((r) => ({ renter: r.renterName, units: r.units, current: r.current / 100, d1_30: r.d1_30 / 100, d31_60: r.d31_60 / 100, d61_90: r.d61_90 / 100, d90plus: r.d90plus / 100 })) },
       { name: "Rent roll", rows: roll.rows.map((r) => ({ unit: r.unitNumber, status: r.status, renter: r.renterName, area_m2: r.areaM2, monthly_rent: r.monthlyRent / 100 })) },
     ]);
@@ -63,7 +63,7 @@ export default function MonthEnd() {
               { head: t("bill.due"), cell: (b) => (b.status === "issued" ? <Money v={b.due} strong /> : "—"), right: true, money: true }, { head: t("status"), cell: (b) => <StatusBadge status={b.payStatus} /> }]} />
           </Card>
           <Card flush title={t("me.payments")}>
-            <Table rows={received} cols={[
+            <Table rows={shownPayments} cols={[
               { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} /> }, { head: t("ag.renter"), cell: (p) => p.renterName }, { head: t("pay.method"), cell: (p) => t(p.method) },
               { head: t("pay.reference"), cell: (p) => p.reference }, { head: t("pay.receipt"), cell: (p) => p.receiptNumber ?? "—" },
               { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true }, { head: t("status"), cell: (p) => <StatusBadge status={p.status} /> }]} />

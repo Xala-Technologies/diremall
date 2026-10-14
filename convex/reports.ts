@@ -6,6 +6,7 @@ import { READ_ROLES, assertBuilding, canSeeBuilding, requireRole } from "./lib/a
 import { ageArrears, monthlyRent } from "./lib/billing";
 import { invoiceBalance, termAt } from "./lib/ledger";
 import { periodRange } from "./lib/period";
+import { activeAgreementsByUnit, renterMap, termsByAgreement } from "./lib/bulk";
 import { assertRenterVisible } from "./lib/scope";
 
 const DAY = 86_400_000;
@@ -78,15 +79,14 @@ export const dashboard = query({
     for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", "recorded")).collect()) if (await renterOk(p.renterId)) toConfirm++;
     for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", "confirmed")).collect()) if (await renterOk(p.renterId)) toApply++;
 
-    const deposits = (await ctx.db.query("deposits").collect());
-    let depositsHeld = 0;
-    for (const d of deposits) {
-      const ag = await ctx.db.get(d.agreementId);
-      if (ag && unitIds.has(ag.unitId)) depositsHeld += d.held - d.deductions.filter((x) => x.approvedBy).reduce((s, x) => s + x.amount, 0) - d.refunded;
-    }
-
     const horizon = Date.now() + 60 * DAY;
     const agreements = await ctx.db.query("agreements").collect();
+    const agreementById = new Map(agreements.map((a) => [a._id, a]));
+    let depositsHeld = 0;
+    for (const d of await ctx.db.query("deposits").collect()) {
+      const ag = agreementById.get(d.agreementId);
+      if (ag && unitIds.has(ag.unitId)) depositsHeld += d.held - d.deductions.filter((x) => x.approvedBy).reduce((s, x) => s + x.amount, 0) - d.refunded;
+    }
     const inScope = agreements.filter((a) => unitIds.has(a.unitId));
     const attention = {
       draftInvoices: await draftCount(ctx, u, buildingId),
@@ -109,18 +109,18 @@ export const rentRoll = query({
   handler: async (ctx, { buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
     const units = await scopedUnits(ctx, u, buildingId);
-    const rows = [];
-    for (const unit of units) {
-      const ag = (await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", unit._id).eq("status", "active")).first());
+    // four reads in total (units, leases, terms, renters) instead of a few per unit
+    const [leases, terms, renters] = await Promise.all([activeAgreementsByUnit(ctx), termsByAgreement(ctx), renterMap(ctx)]);
+    const rows = units.map((unit) => {
+      const ag = leases.get(unit._id)?.[0];
       let renter = null, rent = 0;
       if (ag) {
-        renter = await ctx.db.get(ag.renterId);
-        const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", ag._id)).collect();
-        const t = termAt(terms, Date.now());
+        renter = renters.get(ag.renterId) ?? null;
+        const t = termAt(terms.get(ag._id) ?? [], Date.now());
         if (t) rent = monthlyRent(t.rent.kind === "fixed" ? { kind: "fixed", amount: t.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: t.rent.ratePerM2 });
       }
-      rows.push({ buildingId: unit.buildingId, unitNumber: unit.number, category: unit.category, areaM2: unit.areaM2, status: unit.status, renterName: renter?.name ?? "", startsAt: ag?.startsAt ?? null, endsAt: ag?.endsAt ?? null, monthlyRent: rent });
-    }
+      return { buildingId: unit.buildingId, unitNumber: unit.number, category: unit.category, areaM2: unit.areaM2, status: unit.status, renterName: renter?.name ?? "", startsAt: ag?.startsAt ?? null, endsAt: ag?.endsAt ?? null, monthlyRent: rent };
+    });
     return { rows, totalMonthlyRent: rows.reduce((s, r) => s + r.monthlyRent, 0) };
   },
 });
@@ -143,12 +143,11 @@ export const aging = query({
     const invoices = await openInvoices(ctx, u, buildingId);
     const byRenter = new Map<string, { renterName: string; unitNumbers: Set<string>; items: { due: number; daysOverdue: number }[] }>();
     const items: { due: number; daysOverdue: number }[] = [];
-    for (const i of invoices) {
-      const b = await invoiceBalance(ctx, i);
+    // balances, units and renters are fetched together, then added up
+    const looked = await Promise.all(invoices.map(async (i) => ({ i, b: await invoiceBalance(ctx, i), unit: await ctx.db.get(i.unitId), renter: await ctx.db.get(i.renterId) })));
+    for (const { i, b, unit, renter } of looked) {
       if (b.due <= 0) continue;
       const days = Math.floor((now - i.dueAt) / DAY);
-      const unit = await ctx.db.get(i.unitId);
-      const renter = await ctx.db.get(i.renterId);
       const entry = byRenter.get(i.renterId) ?? { renterName: renter?.name ?? "", unitNumbers: new Set<string>(), items: [] };
       entry.unitNumbers.add(unit?.number ?? "");
       entry.items.push({ due: b.due, daysOverdue: days });

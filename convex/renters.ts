@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { READ_ROLES, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
-import { assertRenterVisible, renterVisible } from "./lib/scope";
+import { unitMap } from "./lib/bulk";
+import { assertRenterVisible } from "./lib/scope";
 
 const fields = {
   kind: v.union(v.literal("individual"), v.literal("company")),
@@ -42,12 +43,14 @@ export const list = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     const all = await ctx.db.query("renters").withIndex("by_name").collect();
     const q = search?.trim().toLowerCase();
-    const out = [];
-    for (const r of all) {
-      if (q && !`${r.name} ${r.tin ?? ""} ${r.phone}`.toLowerCase().includes(q)) continue;
-      if (await renterVisible(ctx, u, r._id)) out.push(r);
-    }
-    return out;
+    const matching = all.filter((r) => !q || `${r.name} ${r.tin ?? ""} ${r.phone}`.toLowerCase().includes(q));
+    if (u.buildingScope === "all") return matching;
+    // limited to some buildings: a renter is visible with no lease yet, or a lease in one of those buildings.
+    // Leases and units are read once as a whole, not once per renter.
+    const [leases, units] = await Promise.all([ctx.db.query("agreements").collect(), unitMap(ctx)]);
+    const byRenter = new Map<string, boolean[]>();
+    for (const a of leases) { const un = units.get(a.unitId); byRenter.set(a.renterId, [...(byRenter.get(a.renterId) ?? []), !!un && canSeeBuilding(u, un.buildingId)]); }
+    return matching.filter((r) => { const flags = byRenter.get(r._id); return !flags || flags.some(Boolean); });
   },
 });
 

@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, fail, getSetting, requireRole } from "./lib/access";
 import { refreshUnitStatus } from "./lib/units";
+import { renterMap, unitMap } from "./lib/bulk";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 import { rangesOverlap } from "./lib/billing";
 
@@ -162,12 +163,13 @@ export const list = query({
   handler: async (ctx, { status }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
     const all = status ? await ctx.db.query("agreements").collect().then((r) => r.filter((x) => x.status === status)) : await ctx.db.query("agreements").collect();
+    // units and renters are read once as a whole (Convex allows 4,096 lookups per call)
+    const [units, renters] = await Promise.all([unitMap(ctx), renterMap(ctx)]);
     const out = [];
     for (const ag of all) {
-      const unit = await ctx.db.get(ag.unitId);
+      const unit = units.get(ag.unitId);
       if (!unit || (u.buildingScope !== "all" && !(Array.isArray(u.buildingScope) && u.buildingScope.includes(unit.buildingId)))) continue;
-      const renter = await ctx.db.get(ag.renterId);
-      out.push({ ...ag, unitNumber: unit.number, buildingId: unit.buildingId, renterName: renter?.name ?? "" });
+      out.push({ ...ag, unitNumber: unit.number, buildingId: unit.buildingId, renterName: renters.get(ag.renterId)?.name ?? "" });
     }
     return out;
   },
@@ -192,11 +194,12 @@ export const expiring = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     const days = withinDays ?? (await getSetting(ctx, "expiryWarnDays", 60));
     const horizon = Date.now() + days * DAY;
-    const active = await ctx.db.query("agreements").collect();
+    const active = await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("status", "active")).collect();
+    const units = await unitMap(ctx);
     const out = [];
     for (const ag of active) {
-      if (ag.status !== "active" || ag.endsAt > horizon) continue;
-      const unit = await ctx.db.get(ag.unitId);
+      if (ag.endsAt > horizon) continue;
+      const unit = units.get(ag.unitId);
       if (!unit || (u.buildingScope !== "all" && !(Array.isArray(u.buildingScope) && u.buildingScope.includes(unit.buildingId)))) continue;
       out.push({ agreementId: ag._id as Id<"agreements">, unitNumber: unit.number, endsAt: ag.endsAt, renterId: ag.renterId });
     }

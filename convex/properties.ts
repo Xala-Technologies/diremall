@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { READ_ROLES, assertBuilding, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
+import { activeAgreementsByUnit, renterMap } from "./lib/bulk";
 
 const category = v.union(v.literal("office"), v.literal("retail"), v.literal("storage"), v.literal("residential"));
 
@@ -101,16 +102,17 @@ export const listUnits = query({
     }
     const shown = a.status ? units.filter((x) => x.status === a.status) : units;
     // the current renter, so the unit board can show who is in each space
-    return Promise.all(shown.map(async (x) => {
-      const actives = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", x._id).eq("status", "active")).collect();
+    const [leases, renters] = await Promise.all([activeAgreementsByUnit(ctx), renterMap(ctx)]);
+    return shown.map((x) => {
+      const actives = leases.get(x._id) ?? [];
       const now = Date.now();
       const current = actives.find((a) => a.startsAt <= now && a.endsAt > now);
       const next = actives.filter((a) => a.startsAt > now).sort((a, b) => a.startsAt - b.startsAt)[0];
       const ag = current ?? next;
-      const renter = ag ? await ctx.db.get(ag.renterId) : null;
+      const renter = ag ? renters.get(ag.renterId) ?? null : null;
       // a unit with a signed lease starting later is reserved, not available
       return { ...x, renterName: renter?.name ?? "", agreementId: ag?._id, reservedFrom: !current && next ? next.startsAt : undefined };
-    }));
+    });
   },
 });
 

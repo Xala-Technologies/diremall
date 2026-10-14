@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, nextSeq, requireRole } from "./lib/access";
 import { escalatedRent, monthlyRent } from "./lib/billing";
+import { renterMap, unitMap } from "./lib/bulk";
 import { invoiceBalance, refreshInvoice, termAt } from "./lib/ledger";
 import { etb, formatEtb } from "./lib/money";
 import { coveredDays, periodRange } from "./lib/period";
@@ -134,6 +135,8 @@ export const issue = mutation({
   args: { invoiceIds: v.array(v.id("invoices")) },
   handler: async (ctx, { invoiceIds }) => {
     const u = await requireRole(ctx, "financeOfficer");
+    // each bill takes about a dozen lookups; the screen sends them in groups that stay under the 4,096-lookup cap
+    if (invoiceIds.length > 200) fail("issue_in_smaller_groups");
     const numbers: string[] = [];
     for (const id of invoiceIds) {
       const inv = (await ctx.db.get(id)) ?? fail("not_found");
@@ -206,17 +209,16 @@ export const list = query({
       : a.renterId
         ? await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", a.renterId!)).collect()
         : await ctx.db.query("invoices").order("desc").take(300); // newest first; ask for a period to see more
-    const out = [];
-    for (const inv of rows) {
-      if (a.status && inv.status !== a.status) continue;
-      if (a.renterId && inv.renterId !== a.renterId) continue;
-      const unit = await ctx.db.get(inv.unitId);
-      if (!unit || !canSeeBuilding(u, unit.buildingId)) continue;
-      const bal = await invoiceBalance(ctx, inv);
-      if (a.openOnly && (inv.status !== "issued" || bal.due <= 0)) continue;
-      const renter = await ctx.db.get(inv.renterId);
-      out.push({ ...inv, buildingId: unit.buildingId, unitNumber: unit.number, renterName: renter?.name ?? "", ...bal, payStatus: inv.status === "draft" ? "draft" : bal.due <= 0 ? "paid" : bal.paid + bal.creditUsed > 0 ? "partial" : "outstanding" });
-    }
+    const wanted = rows.filter((inv) => (!a.status || inv.status === a.status) && (!a.renterId || inv.renterId === a.renterId));
+    // units and renters are read once as a whole, not once per bill (Convex caps lookups per call at 4,096)
+    const [units, renters] = wanted.length > 40 ? await Promise.all([unitMap(ctx), renterMap(ctx)]) : [null, null];
+    const built = await Promise.all(wanted.map(async (inv) => {
+      const [unit, bal, renter] = await Promise.all([units ? units.get(inv.unitId) : ctx.db.get(inv.unitId), invoiceBalance(ctx, inv), renters ? renters.get(inv.renterId) : ctx.db.get(inv.renterId)]);
+      if (!unit || !canSeeBuilding(u, unit.buildingId)) return null;
+      if (a.openOnly && (inv.status !== "issued" || bal.due <= 0)) return null;
+      return { ...inv, buildingId: unit.buildingId, unitNumber: unit.number, renterName: renter?.name ?? "", ...bal, payStatus: inv.status === "draft" ? "draft" : bal.due <= 0 ? "paid" : bal.paid + bal.creditUsed > 0 ? "partial" : "outstanding" };
+    }));
+    const out = built.filter((x): x is NonNullable<typeof x> => x !== null);
     return out;
   },
 });

@@ -5,6 +5,8 @@ import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding,
 import { applyPayment } from "./lib/billing";
 import { formatEtb } from "./lib/money";
 import { creditBalance, invoiceBalance, refreshInvoice } from "./lib/ledger";
+import { renterMap } from "./lib/bulk";
+import { periodRange } from "./lib/period";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 
 const method = v.union(v.literal("bankDeposit"), v.literal("transfer"), v.literal("telebirr"), v.literal("cbeBirr"), v.literal("cash"));
@@ -185,5 +187,21 @@ export const get = query({
     const credit = (await ctx.db.query("renterCredits").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect()).filter((c) => c.paymentId === paymentId).reduce((s, c) => s + c.amount, 0);
     const receivedBy = (await ctx.db.get(p.confirmedBy ?? p.recordedBy))?.name ?? "";
     return { payment: p, renter: await ctx.db.get(p.renterId), lines, credit, confirmedByName: receivedBy };
+  },
+});
+
+/** Every payment received in one month (by date, not just the newest 300), for the month-end pack. */
+export const inPeriod = query({
+  args: { period: v.string() },
+  handler: async (ctx, { period }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    const { start, end } = periodRange(period);
+    const rows = await ctx.db.query("payments").withIndex("by_received", (q) => q.gte("receivedAt", start).lt("receivedAt", end)).collect();
+    const renters = await renterMap(ctx);
+    const out = await Promise.all(rows.map(async (p) => {
+      try { await assertRenterVisible(ctx, u, p.renterId); } catch { return null; }
+      return { ...p, renterName: renters.get(p.renterId)?.name ?? "" };
+    }));
+    return out.filter((x): x is NonNullable<typeof x> => x !== null).sort((a, b) => b.receivedAt - a.receivedAt);
   },
 });

@@ -49,7 +49,7 @@ export default function Billing() {
         <Tabs value={tab} onChange={setTab} tabs={[["", `${t("all")} (${count("")})`], ["draft", `${t("draft")} (${count("draft")})`], ["outstanding", `${t("outstanding")} (${count("outstanding")})`], ["partial", `${t("partial")} (${count("partial")})`], ["paid", `${t("paidFull")} (${count("paid")})`]]} />
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} style={{ minWidth: 220 }} />
       </div>
-      {confirmIssue && <ConfirmDialog title={t("confirm.issueTitle")} message={t("confirm.issueBody").replace("{n}", String(confirmIssue.length))} confirmLabel={t("bill.issueN")} onClose={() => setConfirmIssue(null)} onConfirm={async () => { await run(async () => { await issue({ invoiceIds: confirmIssue }); setPicked(new Set()); }, t("saved")); }} />}
+      {confirmIssue && <ConfirmDialog title={t("confirm.issueTitle")} message={t("confirm.issueBody").replace("{n}", String(confirmIssue.length))} confirmLabel={t("bill.issueN")} onClose={() => setConfirmIssue(null)} onConfirm={async () => { await run(async () => { for (let i = 0; i < confirmIssue.length; i += 150) await issue({ invoiceIds: confirmIssue.slice(i, i + 150) }); setPicked(new Set()); }, t("saved")); }} />}
       <Card flush>
         <Table rows={shown} empty={t("empty.bills")} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[
           ...(can("financeOfficer") ? [{ head: "", cell: (r: NonNullable<typeof shown>[number]) => r.status === "draft" ? <input type="checkbox" aria-label={r.unitNumber} checked={picked.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} /> : null }] : []),
