@@ -96,6 +96,7 @@ export const EN: Record<string, string> = {
   "period.prev": "Previous month", "period.next": "Next month",
   "filter.allCategories": "All categories", "filter.allFloors": "All floors", "filter.searchUnits": "Search unit or renter", "filter.sort": "Sort", "sort.unit": "Unit no.", "sort.area": "Area", "sort.rate": "Rate", "filter.clear": "Clear filters", "filter.showing": "Showing {a} of {b}", "filter.noMatch": "No units match these filters.",
   "filter.anyStatus": "Any status",
+  "search.clear": "Clear search", "filter.searchBills": "Search bill, unit or renter", "filter.searchRenters": "Search name, TIN or phone", "filter.searchAgreements": "Search unit or renter",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -170,6 +171,7 @@ export const AM: Record<string, string> = {
   "period.prev": "ያለፈው ወር", "period.next": "የሚቀጥለው ወር",
   "filter.allCategories": "ሁሉም ዓይነቶች", "filter.allFloors": "ሁሉም ፎቆች", "filter.searchUnits": "ክፍል ወይም ተከራይ ፈልግ", "filter.sort": "ደርድር", "sort.unit": "የክፍል ቁ.", "sort.area": "ስፋት", "sort.rate": "ዋጋ", "filter.clear": "ማጣሪያዎችን አጽዳ", "filter.showing": "{a} ከ {b} እየታየ ነው", "filter.noMatch": "ከእነዚህ ማጣሪያዎች ጋር የሚስማማ ክፍል የለም።",
   "filter.anyStatus": "ማንኛውም ሁኔታ",
+  "search.clear": "ፍለጋን አጽዳ", "filter.searchBills": "ደረሰኝ፣ ክፍል ወይም ተከራይ ፈልግ", "filter.searchRenters": "ስም፣ TIN ወይም ስልክ ፈልግ", "filter.searchAgreements": "ክፍል ወይም ተከራይ ፈልግ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

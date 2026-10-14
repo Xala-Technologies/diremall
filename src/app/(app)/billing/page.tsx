@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, ConfirmDialog, DateText, Message, Money, PageHeader, PeriodPicker, StatusBadge, Table, TableFoot, Tabs } from "@/components/ui";
+import { BuildingSelect, Card, ConfirmDialog, DateText, Message, Money, PageHeader, PeriodPicker, SearchInput, StatusBadge, Table, TableFoot, Tabs } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { downloadCsv } from "@/lib/csv";
 import { usePeriod } from "@/lib/usePeriod";
@@ -35,7 +35,7 @@ export default function Billing() {
           <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
           <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
           <span className="spacer" />
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} />
+          <SearchInput value={q} onChange={setQ} placeholder={t("filter.searchBills")} />
         </>}
         actions={<>
           {can("financeOfficer") && <>

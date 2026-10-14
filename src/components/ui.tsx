@@ -310,3 +310,29 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm,
     </Modal>
   );
 }
+
+/** Search box with a magnifier, a clear button and a "/" shortcut that focuses it from anywhere on the page. */
+export function SearchInput({ value, onChange, placeholder, label }: { value: string; onChange: (v: string) => void; placeholder?: string; label?: string }) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      const typing = !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+      if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !document.querySelector("dialog[open]")) { e.preventDefault(); ref.current?.focus(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
+  return (
+    <div className="search-box" role="search">
+      <span className="search-ic" aria-hidden="true"><Icon name="search" size={16} /></span>
+      <input ref={ref} type="search" value={value} placeholder={placeholder ?? t("search")} aria-label={label ?? placeholder ?? t("search")}
+        onChange={(e) => onChange(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        onKeyDown={(e) => { if (e.key === "Escape" && value) { e.preventDefault(); onChange(""); } }} />
+      {value ? <button type="button" className="search-clear" aria-label={t("search.clear")} onClick={() => { onChange(""); ref.current?.focus(); }}><Icon name="close" size={14} /></button>
+        : !focused && <kbd className="search-key" aria-hidden="true">/</kbd>}
+    </div>
+  );
+}

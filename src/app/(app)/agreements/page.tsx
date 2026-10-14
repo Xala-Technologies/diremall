@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateField, DateText, Field, Message, Modal, MoneyInput, PageHeader, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Card, DateField, DateText, Field, Message, Modal, MoneyInput, PageHeader, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -22,7 +22,7 @@ export default function Agreements() {
   const expiring = useQuery(api.agreements.expiring, {});
   return (
     <div className="stack">
-      <PageHeader title={t("nav.agreements")} filters={<><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} /><span className="spacer" /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} /></>}
+      <PageHeader title={t("nav.agreements")} filters={<><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} /><span className="spacer" /><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchAgreements")} /></>}
         actions={can("propertyManager") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("ag.new")}</button> : undefined} />
       {expiring && expiring.length > 0 && <Card title={t("att.expiringAgreements")}><Table rows={expiring.map((e) => ({ ...e, _id: e.agreementId }))} onRow={(e) => router.push(`/agreements/${e.agreementId}`)} cols={[
         { head: t("ag.unit"), cell: (e) => e.unitNumber }, { head: t("ag.end"), cell: (e) => <DateText ms={e.endsAt} /> }]} /></Card>}

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateText, Empty, Field, Message, Modal, Money, PageHeader, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
+import { Card, DateText, Empty, Field, Message, Modal, Money, PageHeader, SearchInput, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
 import { useI18n } from "@/lib/i18n";
@@ -22,7 +22,7 @@ export default function Renters() {
   return (
     <div className="stack">
       <PageHeader title={t("nav.renters")}
-        filters={<><input type="search" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("search")} /><span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
+        filters={<><SearchInput value={search} onChange={setSearch} placeholder={t("filter.searchRenters")} /><span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
         actions={can("propertyManager", "financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button> : undefined} />
       {view === "grid" ? (
         !renters ? <Card><Skeleton lines={4} /></Card> : renters.length === 0 ? <Card><Empty title={t("none")} hint={t("first.2")} /></Card> : (

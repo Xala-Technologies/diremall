@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
+import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, SearchInput, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { ArrowUpDown, Briefcase, Circle, CircleCheck, Home, LayoutGrid, Layers, Package, Store, Wrench } from "lucide-react";
 import { Icon } from "@/components/icons";
@@ -45,7 +45,7 @@ export default function Properties() {
     <div className="stack">
       <PageHeader title={t("nav.properties")}
         filters={<>
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("filter.searchUnits")} aria-label={t("search")} />
+          <SearchInput value={q} onChange={setQ} placeholder={t("filter.searchUnits")} />
           <BuildingSelect buildings={buildings} value={building} onChange={changeBuilding} />
           <FilterSelect label={t("status")} placeholder={t("status")} value={status} onChange={setStatus} options={[
             { value: "", label: t("filter.anyStatus"), icon: <LayoutGrid size={16} /> },
