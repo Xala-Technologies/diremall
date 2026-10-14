@@ -36,15 +36,14 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 /**
- * Title, filters and main buttons share one row when there is room, and wrap into two rows when there is not.
- * `heavy` pages (many filters or buttons) need a wider screen before they go onto one row.
+ * Every page: the title with its main buttons on the right, then a row of filters (pickers, tabs, search) beneath.
  */
-export function PageHeader({ title, sub, actions, filters, heavy, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; heavy?: boolean; children?: ReactNode }) {
+export function PageHeader({ title, sub, actions, filters, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; children?: ReactNode }) {
   // each screen names its browser tab, so several open tabs stay distinguishable
   useEffect(() => { document.title = `${title} · Dire Mall Rentals`; }, [title]);
   const buttons = actions ?? children;
   return (
-    <div className={`page-head-wrap ${heavy ? "heavy" : ""}`}>
+    <div className="page-head-wrap">
       <header className="page-head">
         <div className="page-title"><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div>
         {filters && <div className="filter-bar">{filters}</div>}

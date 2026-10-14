@@ -30,10 +30,12 @@ export default function Billing() {
   const toggle = (id: Id<"invoices">) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   return (
     <div className="stack">
-      <PageHeader title={t("nav.billing")} heavy
+      <PageHeader title={t("nav.billing")}
         filters={<>
           <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
           <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
+          <span className="spacer" />
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} />
         </>}
         actions={<>
           {can("financeOfficer") && <>
@@ -50,10 +52,7 @@ export default function Billing() {
 
         </>} />
       <Message error={error} notice={notice} />
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <Tabs value={tab} onChange={setTab} tabs={[["", `${t("all")} (${count("")})`], ["draft", `${t("draft")} (${count("draft")})`], ["outstanding", `${t("outstanding")} (${count("outstanding")})`], ["partial", `${t("partial")} (${count("partial")})`], ["paid", `${t("paidFull")} (${count("paid")})`]]} />
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} aria-label={t("search")} style={{ minWidth: 220 }} />
-      </div>
+      <Tabs value={tab} onChange={setTab} tabs={[["", `${t("all")} (${count("")})`], ["draft", `${t("draft")} (${count("draft")})`], ["outstanding", `${t("outstanding")} (${count("outstanding")})`], ["partial", `${t("partial")} (${count("partial")})`], ["paid", `${t("paidFull")} (${count("paid")})`]]} />
       {confirmIssue && <ConfirmDialog title={t("confirm.issueTitle")} message={t("confirm.issueBody").replace("{n}", String(confirmIssue.length))} confirmLabel={t("bill.issueN")} onClose={() => setConfirmIssue(null)} onConfirm={async () => { await run(async () => { for (let i = 0; i < confirmIssue.length; i += 150) await issue({ invoiceIds: confirmIssue.slice(i, i + 150) }); setPicked(new Set()); }, t("saved")); }} />}
       <Card flush>
         <Table rows={shown} empty={t("empty.bills")} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[

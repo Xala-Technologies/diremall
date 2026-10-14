@@ -27,7 +27,7 @@ export default function Properties() {
 
   return (
     <div className="stack">
-      <PageHeader title={t("nav.properties")} heavy
+      <PageHeader title={t("nav.properties")}
         filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
         actions={can("propertyManager") ? <>
           <button className="btn" onClick={() => setModal("building")}>{t("prop.addBuilding")}</button>
