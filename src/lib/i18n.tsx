@@ -14,7 +14,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
   const [calendar, setCalendarState] = useState<Calendar>("gregorian");
   useEffect(() => {
-    setLangState(read("lang") === "am" ? "am" : "en");
+    const saved = read("lang") === "am" ? "am" : "en";
+    setLangState(saved);
+    document.documentElement.lang = saved; // screen readers pick the right voice for Amharic
     setCalendarState(read("calendar") === "ethiopian" ? "ethiopian" : "gregorian");
   }, []);
   const setLang = (l: Lang) => { setLangState(l); write("lang", l); document.documentElement.lang = l; };

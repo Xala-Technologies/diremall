@@ -89,7 +89,7 @@ export function FilterSelect({
         ref={triggerRef}
         type="button"
         className="filter-select-trigger"
-        aria-label={label}
+        aria-label={`${label}: ${selected?.label ?? ""}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}

@@ -81,6 +81,7 @@ export const EN: Record<string, string> = {
   "confirm.approveTitle": "Activate this agreement?", "confirm.approveBody": "The unit is reserved or occupied and billing can start. Check the dates, rent and signed copy first.",
   "confirm.applyTitle": "Apply this payment?", "confirm.applyBody": "It is applied to the renter's oldest open bills first. Any excess is kept as credit. This cannot be undone.",
   "confirm.deactivateTitle": "Remove access?", "confirm.deactivateBody": "This person is signed out immediately and can no longer use the system.", "bill.issueN": "Issue",
+  table: "Table",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -139,6 +140,7 @@ export const AM: Record<string, string> = {
   "confirm.approveTitle": "ይህን ውል ያስጀምሩ?", "confirm.approveBody": "ክፍሉ ይያዛል፤ ደረሰኝ ማዘጋጀት ይጀምራል። መጀመሪያ ቀናቱን፣ ኪራዩንና የተፈረመውን ቅጂ ያረጋግጡ።",
   "confirm.applyTitle": "ይህ ክፍያ ይመዝገብ?", "confirm.applyBody": "መጀመሪያ ለተከራዩ ቀደምት ያልተከፈሉ ደረሰኞች ይመዘገባል። ትርፉ እንደ ቀሪ ይቀመጣል። ይህ አይመለስም።",
   "confirm.deactivateTitle": "መዳረሻ ይወገድ?", "confirm.deactivateBody": "ይህ ሰው ወዲያውኑ ይወጣል፤ ስርዓቱን መጠቀም አይችልም።", "bill.issueN": "ስጥ",
+  table: "ሰንጠረዥ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

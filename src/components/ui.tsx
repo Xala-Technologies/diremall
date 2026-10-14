@@ -51,9 +51,9 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
   if (!rows) return <Skeleton lines={5} />;
   if (rows.length === 0) return <Empty title={empty ?? t("empty.default")} />;
   return (
-    <div className="table-wrap">
+    <div className="table-wrap" tabIndex={0} role="region" aria-label={cols.map((c) => c.head).filter(Boolean).slice(0, 3).join(", ") || t("table")}>
       <table>
-        <thead><tr>{cols.map((c, i) => <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""}`}>{c.head}{c.money && c.head ? " (ETB)" : ""}</th>)}</tr></thead>
+        <thead><tr>{cols.map((c, i) => <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""}`}>{c.head === "" ? <span className="sr-only">{t("actions")}</span> : <>{c.head}{c.money ? " (ETB)" : ""}</>}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => (
           <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}
             tabIndex={onRow ? 0 : undefined} onKeyDown={onRow ? (e) => { if (e.key === "Enter") onRow(r); } : undefined}>
