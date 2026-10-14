@@ -51,11 +51,11 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr>{cols.map((c, i) => <th key={i} className={c.right ? "r" : ""}>{c.head}{c.money && c.head ? " (ETB)" : ""}</th>)}</tr></thead>
+        <thead><tr>{cols.map((c, i) => <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""}`}>{c.head}{c.money && c.head ? " (ETB)" : ""}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => (
           <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}
             tabIndex={onRow ? 0 : undefined} onKeyDown={onRow ? (e) => { if (e.key === "Enter") onRow(r); } : undefined}>
-            {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
+            {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""} ${c.head === "" ? "act" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
           </tr>))}</tbody>
       </table>
     </div>

@@ -40,7 +40,7 @@ export default function Billing() {
         <Table rows={shown} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[
           ...(can("financeOfficer") ? [{ head: "", cell: (r: NonNullable<typeof shown>[number]) => r.status === "draft" ? <input type="checkbox" aria-label={r.unitNumber} checked={picked.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} /> : null }] : []),
           { head: t("bill.number"), cell: (r) => r.number || t("draft") }, { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong> }, { head: t("ag.renter"), cell: (r) => r.renterName },
-          { head: t("date"), cell: (r) => <DateText ms={r.dueAt} /> }, { head: t("total"), cell: (r) => <Money v={r.total + r.adjustments} />, right: true, money: true },
+          { head: t("bill.dueDate"), cell: (r) => <DateText ms={r.dueAt} /> }, { head: t("total"), cell: (r) => <Money v={r.total + r.adjustments} />, right: true, money: true },
           { head: t("bill.paid"), cell: (r) => <Money v={r.paid + r.creditUsed} />, right: true, money: true }, { head: t("bill.due"), cell: (r) => r.status === "issued" ? <Money v={r.due} strong /> : "—", right: true, money: true },
           { head: t("status"), cell: (r) => <StatusBadge status={r.payStatus} /> },
         ]} />

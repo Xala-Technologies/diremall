@@ -100,6 +100,10 @@ th:first-child { border-radius: var(--r-sm) 0 0 0; } th:last-child { border-radi
 td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; } td.txt { white-space: normal; min-width: 220px; max-width: 460px; } tr:last-child td { border-bottom: 0; }
 th.r, td.r { text-align: right; } td.r { font-variant-numeric: tabular-nums slashed-zero; }
 tr.click { cursor: pointer; } tr.click:hover td { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); } tr.click:focus-visible td { background: var(--accent-soft); }
+/* when a table is wider than the screen, keep the actions column in view */
+.table-wrap td.act .row { flex-wrap: nowrap; }
+.table-wrap td.act, .table-wrap th.act { position: sticky; right: 0; background: var(--panel); box-shadow: -8px 0 8px -8px rgb(18 40 52 / .18); }
+.table-wrap th.act { background: var(--sunken); } tr.click:hover td.act { background: color-mix(in srgb, var(--accent-soft) 55%, var(--panel)); }
 tfoot td { font-weight: 650; background: var(--sunken); }
 .table-foot { display: flex; justify-content: flex-end; gap: 28px; flex-wrap: wrap; padding: 14px 16px; border-top: 1px solid var(--line); background: var(--sunken); border-radius: 0 0 var(--r-md) var(--r-md); }
 .table-foot span { color: var(--muted); } .table-foot b { margin-left: 8px; color: var(--ink); }

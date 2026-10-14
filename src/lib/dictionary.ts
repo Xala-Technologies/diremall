@@ -68,6 +68,7 @@ export const EN: Record<string, string> = {
   "receipt.title": "Payment receipt", "receipt.receivedFrom": "Received from", "receipt.notYet": "A receipt is issued once the payment is applied to bills. Status:", "receipt.credit": "Kept as credit for later bills", "receipt.receivedBy": "Received by", "receipt.payerSign": "Payer signature", "pay.receipt": "Receipt",
   "rep.monthEnd": "Month-end pack", "me.title": "Month-end pack", "me.summary": "Summary", "me.bills": "Bills issued", "me.payments": "Payments received", "me.exportAll": "Export all to Excel", "me.note": "One pack for finance to review and close the month. Figures come from the same records as every other screen.",
   "contract.title": "Lease contract", "contract.draft": "Draft template. Dire Mall's lawyer should check the wording against Proclamation No. 1320/2024 before it is signed.", "ag.escalation": "Yearly rent increase", "ag.escPct": "Increase (%)", "ag.escEvery": "Every (months)", "ag.reservedFrom": "Reserved from",
+  "bill.dueDate": "Due date",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -113,6 +114,7 @@ export const AM: Record<string, string> = {
   "receipt.title": "የክፍያ ደረሰኝ", "receipt.receivedFrom": "ከ", "receipt.notYet": "ክፍያው ደረሰኞች ላይ ከተመዘገበ በኋላ ደረሰኝ ይሰጣል። ሁኔታ:", "receipt.credit": "ለሚቀጥሉ ደረሰኞች የተያዘ ቀሪ", "receipt.receivedBy": "የተቀበለው", "receipt.payerSign": "የከፋይ ፊርማ", "pay.receipt": "ደረሰኝ",
   "rep.monthEnd": "የወር መጨረሻ ማጠቃለያ", "me.title": "የወር መጨረሻ ማጠቃለያ", "me.summary": "ማጠቃለያ", "me.bills": "የተሰጡ ደረሰኞች", "me.payments": "የደረሱ ክፍያዎች", "me.exportAll": "ሁሉንም ወደ ኤክሴል አውጣ", "me.note": "ፋይናንስ ወሩን ለመገምገምና ለመዝጋት የሚጠቀምበት አንድ ማጠቃለያ።",
   "contract.title": "የኪራይ ውል", "contract.draft": "ረቂቅ ቅጽ። ከመፈረሙ በፊት የድሬ ሞል ጠበቃ ጽሑፉን ከአዋጅ ቁጥር 1320/2024 ጋር ማመሳከር አለበት።", "ag.escalation": "ዓመታዊ የኪራይ ጭማሪ", "ag.escPct": "ጭማሪ (%)", "ag.escEvery": "በየ (ወር)", "ag.reservedFrom": "የተያዘው ከ",
+  "bill.dueDate": "የመክፈያ ቀን",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };
