@@ -30,7 +30,12 @@ export default function Billing() {
         <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
         <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
         {can("financeOfficer") && <>
-          <button className="btn" onClick={async () => { const r = await run(() => generate({ period, buildingId: (building || undefined) as Id<"buildings"> | undefined })); if (r) setPicked(new Set()); r && toast(`${r.created} ${t("bill.created")}${r.skipped.length ? `, ${r.skipped.length} ${t("bill.skipped")} (${r.skipped.map((s) => s.reason).join(", ")})` : ""}`); }}>{t("bill.generate")}</button>
+          <button className="btn" onClick={async () => { const r = await run(async () => {
+              // large malls are billed in batches; keep going until the server says it is done
+              let created = 0; const skipped: { agreementId: string; reason: string }[] = [];
+              for (let i = 0; i < 40; i++) { const part = await generate({ period, buildingId: (building || undefined) as Id<"buildings"> | undefined }); created += part.created; skipped.push(...part.skipped); if (part.done) break; }
+              return { created, skipped };
+            }); if (r) setPicked(new Set()); r && toast(`${r.created} ${t("bill.created")}${r.skipped.length ? `, ${r.skipped.length} ${t("bill.skipped")} (${r.skipped.map((s) => s.reason).join(", ")})` : ""}`); }}>{t("bill.generate")}</button>
           <button className="btn primary" disabled={picked.size === 0} onClick={() => setConfirmIssue([...picked])}>{t("bill.issue")} ({picked.size})</button>
           <button className="btn" disabled={drafts.length === 0} onClick={() => setConfirmIssue(drafts.map((d) => d._id))}>{t("bill.issueAll")}</button></>}
         <button className="btn" onClick={() => shown && downloadCsv(`bills-${period}.csv`, shown.map((r) => ({ number: r.number, unit: r.unitNumber, renter: r.renterName, status: r.status, total: (r.total + r.adjustments) / 100, paid: (r.paid + r.creditUsed) / 100, due: r.due / 100 })))}>{t("export")}</button>

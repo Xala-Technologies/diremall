@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, nextSeq, requireRole } from "./lib/access";
 import { escalatedRent, monthlyRent } from "./lib/billing";
-import { invoiceBalance, termAt } from "./lib/ledger";
+import { invoiceBalance, refreshInvoice, termAt } from "./lib/ledger";
 import { etb, formatEtb } from "./lib/money";
 import { coveredDays, periodRange } from "./lib/period";
 import { assertUnitVisible } from "./lib/scope";
@@ -16,10 +16,13 @@ const lineKind = v.union(v.literal("rent"), v.literal("water"), v.literal("elect
  * Safe to re-run: an agreement+period that already has a bill is left alone.
  */
 export const generate = mutation({
-  args: { period: v.string(), buildingId: v.optional(v.id("buildings")) },
-  handler: async (ctx, { period, buildingId }) => {
+  args: { period: v.string(), buildingId: v.optional(v.id("buildings")), batch: v.optional(v.number()) },
+  handler: async (ctx, { period, buildingId, batch }) => {
     const u = await requireRole(ctx, "financeOfficer");
     assertPeriod(period);
+    // A large mall is billed in batches of this many bills per call (the screen keeps calling until done=true).
+    const limit = Math.max(1, Math.min(batch ?? 150, 300));
+    let done = true;
     const { start, end, days } = periodRange(period);
     if (start > Date.now() + 31 * 86_400_000) fail("period_in_future");
     const tariffElectricity = await getSetting(ctx, "tariff.electricity", etb(6));
@@ -30,6 +33,7 @@ export const generate = mutation({
     const skipped: { agreementId: string; reason: string }[] = [];
 
     for (const ag of agreements) {
+      if (created.length >= limit) { done = false; break; }
       const unit = await ctx.db.get(ag.unitId);
       if (!unit || !canSeeBuilding(u, unit.buildingId)) continue;
       if (buildingId && unit.buildingId !== buildingId) continue;
@@ -77,18 +81,18 @@ export const generate = mutation({
       // Shared costs approved for this building and period.
       const costs = supersededByLater ? [] : (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", unit.buildingId).eq("period", period)).collect()).filter((c) => c.approvedBy);
       for (const c of costs) {
-        const alloc = (await ctx.db.query("sharedCostAllocations").withIndex("by_cost", (q) => q.eq("sharedCostId", c._id)).collect()).find((x) => x.unitId === unit._id);
+        const alloc = await ctx.db.query("sharedCostAllocations").withIndex("by_cost_unit", (q) => q.eq("sharedCostId", c._id).eq("unitId", unit._id)).first();
         if (alloc && alloc.amount > 0) lines.push({ kind: c.kind, description: `${c.kind} ${period}`, amount: alloc.amount, calcNote: `share of ${formatEtb(c.total)} by ${c.basis}` });
       }
 
       const total = lines.reduce((s, l) => s + l.amount, 0);
       const dueAt = start + (term.dueDay - 1) * DAY;
-      const invoiceId = await ctx.db.insert("invoices", { number: "", agreementId: ag._id, unitId: unit._id, renterId: ag.renterId, period, status: "draft", total, dueAt });
+      const invoiceId = await ctx.db.insert("invoices", { number: "", agreementId: ag._id, unitId: unit._id, buildingId: unit.buildingId, renterId: ag.renterId, period, status: "draft", total, dueAt });
       for (const l of lines) await ctx.db.insert("invoiceLines", { ...l, invoiceId });
       created.push(invoiceId);
     }
     await audit(ctx, u, "billing.generate", "invoices", period, `created=${created.length} skipped=${skipped.length}`);
-    return { created: created.length, skipped };
+    return { created: created.length, skipped, done };
   },
 });
 
@@ -138,7 +142,8 @@ export const issue = mutation({
       if (inv.total <= 0) fail("zero_total_needs_review");
       const n = await nextSeq(ctx, `invoiceSeq:${inv.period}`);
       const number = `INV-${inv.period}-${String(n).padStart(4, "0")}`;
-      await ctx.db.patch(id, { status: "issued", number, issuedBy: u._id, issuedAt: Date.now() });
+      await ctx.db.patch(id, { status: "issued", number, issuedBy: u._id, issuedAt: Date.now(), buildingId: (await ctx.db.get(inv.unitId))?.buildingId });
+      await refreshInvoice(ctx, id);
       await audit(ctx, u, "invoice.issue", "invoices", id, number);
       numbers.push(number);
     }
@@ -173,6 +178,7 @@ export const approveAdjustment = mutation({
     if (adj.approvedBy) fail("already_approved");
     assertDifferentPerson(adj.requestedBy, u._id);
     await ctx.db.patch(adjustmentId, { approvedBy: u._id });
+    await refreshInvoice(ctx, adj.invoiceId);
     await audit(ctx, u, "invoice.adjustApprove", "invoices", adj.invoiceId, String(adj.delta));
   },
 });
@@ -199,7 +205,7 @@ export const list = query({
       ? await ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("period", a.period!)).collect()
       : a.renterId
         ? await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", a.renterId!)).collect()
-        : await ctx.db.query("invoices").collect();
+        : await ctx.db.query("invoices").order("desc").take(300); // newest first; ask for a period to see more
     const out = [];
     for (const inv of rows) {
       if (a.status && inv.status !== a.status) continue;

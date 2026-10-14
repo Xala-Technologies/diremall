@@ -103,10 +103,18 @@ export default defineSchema({
     dueAt: ts,
     issuedBy: v.optional(v.id("users")),
     issuedAt: v.optional(ts),
+    // Kept up to date by refreshInvoice() whenever a payment, credit or correction touches the bill,
+    // so reports read a number instead of re-adding every payment. Optional only until the backfill has run.
+    buildingId: v.optional(v.id("buildings")),
+    adjustments: v.optional(money),
+    paid: v.optional(money),
+    creditUsed: v.optional(money),
+    due: v.optional(money),
   })
     .index("by_agreement_period", ["agreementId", "period"]) // idempotency: one original bill per agreement+period
     .index("by_renter", ["renterId"])
-    .index("by_period", ["period"]),
+    .index("by_period", ["period"])
+    .index("by_status_due", ["status", "due"]), // open bills: status = issued and due > 0
   invoiceLines: defineTable({
     invoiceId: v.id("invoices"),
     kind: v.union(v.literal("rent"), v.literal("water"), v.literal("electricity"), v.literal("generator"), v.literal("security"), v.literal("cleaning"), v.literal("other")),
@@ -134,7 +142,7 @@ export default defineSchema({
     confirmedBy: v.optional(v.id("users")),
     evidenceFileId: v.optional(v.id("_storage")),
     receiptNumber: v.optional(v.string()),
-  }).index("by_renter", ["renterId"]).index("by_status", ["status"]).index("by_reference", ["method", "reference"]),
+  }).index("by_renter", ["renterId"]).index("by_status", ["status"]).index("by_reference", ["method", "reference"]).index("by_amount", ["amount"]).index("by_received", ["receivedAt"]),
   paymentAllocations: defineTable({ paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
     .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]),
   // positive = credit created from an overpayment, negative = credit consumed by a bill
@@ -171,7 +179,7 @@ export default defineSchema({
   }).index("by_building_period", ["buildingId", "period"]),
 
   sharedCostAllocations: defineTable({ sharedCostId: v.id("sharedCosts"), unitId: v.id("units"), amount: money })
-    .index("by_cost", ["sharedCostId"]).index("by_unit", ["unitId"]),
+    .index("by_cost", ["sharedCostId"]).index("by_unit", ["unitId"]).index("by_cost_unit", ["sharedCostId", "unitId"]),
 
   handovers: defineTable({
     agreementId: v.id("agreements"),
@@ -192,7 +200,7 @@ export default defineSchema({
     amount: money,
     reference: v.string(),
     matchedPaymentId: v.optional(v.id("payments")), // matching links evidence; never creates a payment
-  }).index("by_batch", ["importBatch"]),
+  }).index("by_batch", ["importBatch"]).index("by_payment", ["matchedPaymentId"]),
 
   smsMessages: defineTable({
     renterId: v.id("renters"),

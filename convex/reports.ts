@@ -16,9 +16,33 @@ async function scopedUnits(ctx: QueryCtx, u: Doc<"users">, buildingId?: Id<"buil
   return units.filter((x) => canSeeBuilding(u, x.buildingId) && (!buildingId || x.buildingId === buildingId));
 }
 
-async function scopedInvoices(ctx: QueryCtx, u: Doc<"users">, buildingId?: Id<"buildings">) {
-  const unitIds = new Set((await scopedUnits(ctx, u, buildingId)).map((x) => x._id));
-  return (await ctx.db.query("invoices").collect()).filter((i) => unitIds.has(i.unitId));
+/** Is this bill in a building the user may see (and the chosen one, if any)? */
+async function inScope(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined, inv: Doc<"invoices">) {
+  const b = inv.buildingId ?? (await ctx.db.get(inv.unitId))?.buildingId;
+  return !!b && canSeeBuilding(u, b) && (!buildingId || b === buildingId);
+}
+
+/** Issued bills for periods from..to, read through the period index (not the whole table). */
+async function rangeInvoices(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined, from: string, to: string) {
+  const rows = await ctx.db.query("invoices").withIndex("by_period", (q) => q.gte("period", from).lte("period", to)).collect();
+  const out: Doc<"invoices">[] = [];
+  for (const i of rows) if (i.status === "issued" && (await inScope(ctx, u, buildingId, i))) out.push(i);
+  return out;
+}
+
+/** Bills that still owe money, read through the open-bills index. Paid-up history is never touched. */
+async function openInvoices(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined) {
+  const rows = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "issued").gt("due", 0)).collect();
+  const out: Doc<"invoices">[] = [];
+  for (const i of rows) if (await inScope(ctx, u, buildingId, i)) out.push(i);
+  return out;
+}
+
+async function draftCount(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined) {
+  const rows = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "draft")).collect();
+  let n = 0;
+  for (const i of rows) if (await inScope(ctx, u, buildingId, i)) n++;
+  return n;
 }
 
 /** Headline figures. Every total here is built from the same balance function the bill screens use. */
@@ -32,17 +56,16 @@ export const dashboard = query({
     const unitIds = new Set(units.map((x) => x._id));
     const occupied = units.filter((x) => x.status === "occupied").length;
 
-    const invoices = (await scopedInvoices(ctx, u, buildingId)).filter((i) => i.status === "issued");
     let billed = 0, outstanding = 0, overdue = 0, appliedToBills = 0;
-    for (const i of invoices) {
+    for (const i of await rangeInvoices(ctx, u, buildingId, period, period)) {
       const b = await invoiceBalance(ctx, i);
       // billed, applied and outstanding all describe the same set of bills (this period's), so billed = applied + outstanding
-      if (i.period === period) { billed += b.total + b.adjustments; appliedToBills += b.paid + b.creditUsed; outstanding += b.due; }
-      if (b.due > 0 && i.dueAt < Date.now()) overdue += b.due;
+      billed += b.total + b.adjustments; appliedToBills += b.paid + b.creditUsed; outstanding += b.due;
     }
+    for (const i of await openInvoices(ctx, u, buildingId)) if (i.dueAt < Date.now()) overdue += i.due ?? 0;
 
     const renterOk = async (id: Id<"renters">) => { try { await assertRenterVisible(ctx, u, id); return true; } catch { return false; } };
-    const payments = (await ctx.db.query("payments").collect()).filter((p) => p.receivedAt >= start && p.receivedAt < end);
+    const payments = await ctx.db.query("payments").withIndex("by_received", (q) => q.gte("receivedAt", start).lt("receivedAt", end)).collect();
     let confirmed = 0, waiting = 0;
     for (const p of payments) {
       if (p.status !== "confirmed" && p.status !== "applied") continue;
@@ -66,7 +89,7 @@ export const dashboard = query({
     const agreements = await ctx.db.query("agreements").collect();
     const inScope = agreements.filter((a) => unitIds.has(a.unitId));
     const attention = {
-      draftInvoices: (await scopedInvoices(ctx, u, buildingId)).filter((i) => i.status === "draft").length,
+      draftInvoices: await draftCount(ctx, u, buildingId),
       paymentsToConfirm: toConfirm,
       paymentsToApply: toApply,
       agreementsInReview: inScope.filter((a) => a.status === "inReview").length,
@@ -117,7 +140,7 @@ export const aging = query({
   handler: async (ctx, { asOf, buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
     const now = asOf ?? Date.now();
-    const invoices = (await scopedInvoices(ctx, u, buildingId)).filter((i) => i.status === "issued");
+    const invoices = await openInvoices(ctx, u, buildingId);
     const byRenter = new Map<string, { renterName: string; unitNumbers: Set<string>; items: { due: number; daysOverdue: number }[] }>();
     const items: { due: number; daysOverdue: number }[] = [];
     for (const i of invoices) {
@@ -168,7 +191,7 @@ export const revenue = query({
   args: { fromPeriod: v.string(), toPeriod: v.string(), buildingId: v.optional(v.id("buildings")) },
   handler: async (ctx, { fromPeriod, toPeriod, buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const invoices = (await scopedInvoices(ctx, u, buildingId)).filter((i) => i.status === "issued" && i.period >= fromPeriod && i.period <= toPeriod);
+    const invoices = await rangeInvoices(ctx, u, buildingId, fromPeriod, toPeriod);
     const byPeriod = new Map<string, { billed: number; collected: number; outstanding: number }>();
     for (const i of invoices) {
       const b = await invoiceBalance(ctx, i);

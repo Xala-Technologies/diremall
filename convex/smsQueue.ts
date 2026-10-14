@@ -23,7 +23,8 @@ export const queueDueReminders = internalMutation({
     const lead = await getSetting(ctx, "dueReminderDays", 3);
     const now = Date.now();
     let queued = 0;
-    for (const inv of (await ctx.db.query("invoices").collect()).filter((i) => i.status === "issued")) {
+    // only bills that still owe money
+    for (const inv of await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "issued").gt("due", 0)).collect()) {
       const bal = await invoiceBalance(ctx, inv);
       if (bal.due <= 0) continue;
       if (inv.dueAt >= now && inv.dueAt - now <= lead * DAY) {

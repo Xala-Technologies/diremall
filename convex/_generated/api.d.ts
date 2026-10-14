@@ -25,6 +25,7 @@ import type * as lib_money from "../lib/money.js";
 import type * as lib_period from "../lib/period.js";
 import type * as lib_scope from "../lib/scope.js";
 import type * as lib_units from "../lib/units.js";
+import type * as migrations from "../migrations.js";
 import type * as payments from "../payments.js";
 import type * as properties from "../properties.js";
 import type * as renters from "../renters.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   "lib/period": typeof lib_period;
   "lib/scope": typeof lib_scope;
   "lib/units": typeof lib_units;
+  migrations: typeof migrations;
   payments: typeof payments;
   properties: typeof properties;
   renters: typeof renters;

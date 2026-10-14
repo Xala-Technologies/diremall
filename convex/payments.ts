@@ -4,7 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, nextSeq, requireRole } from "./lib/access";
 import { applyPayment } from "./lib/billing";
 import { formatEtb } from "./lib/money";
-import { creditBalance, invoiceBalance } from "./lib/ledger";
+import { creditBalance, invoiceBalance, refreshInvoice } from "./lib/ledger";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 
 const method = v.union(v.literal("bankDeposit"), v.literal("transfer"), v.literal("telebirr"), v.literal("cbeBirr"), v.literal("cash"));
@@ -99,7 +99,10 @@ export const apply = mutation({
         left = r.credit;
       }
     }
-    for (const al of plan) await ctx.db.insert("paymentAllocations", { paymentId, invoiceId: al.invoiceId, amount: al.amount });
+    for (const al of plan) {
+      await ctx.db.insert("paymentAllocations", { paymentId, invoiceId: al.invoiceId, amount: al.amount });
+      await refreshInvoice(ctx, al.invoiceId);
+    }
     const credit = p.amount - plan.reduce((s, x) => s + x.amount, 0);
     if (credit > 0) await ctx.db.insert("renterCredits", { renterId: p.renterId, paymentId, amount: credit });
     const year = new Date(p.receivedAt).getUTCFullYear();
@@ -129,6 +132,7 @@ export const useCredit = mutation({
     const use = Math.min(bal.due, credit);
     if (use <= 0) fail("nothing_to_apply");
     await ctx.db.insert("renterCredits", { renterId: inv.renterId, invoiceId, amount: -use });
+    await refreshInvoice(ctx, invoiceId);
     await audit(ctx, u, "credit.use", "invoices", invoiceId, String(use));
     return use;
   },
@@ -138,11 +142,12 @@ export const list = query({
   args: { status: v.optional(v.union(v.literal("recorded"), v.literal("confirmed"), v.literal("applied"), v.literal("voided"))), renterId: v.optional(v.id("renters")) },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, ...READ_ROLES);
+    // newest 300 when not narrowed to one renter, so the list stays quick as years of payments pile up
     const rows = a.renterId
       ? await ctx.db.query("payments").withIndex("by_renter", (q) => q.eq("renterId", a.renterId!)).collect()
       : a.status
-        ? await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", a.status!)).collect()
-        : await ctx.db.query("payments").collect();
+        ? await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", a.status!)).order("desc").take(300)
+        : await ctx.db.query("payments").order("desc").take(300);
     const out = [];
     for (const p of rows) {
       if (a.status && p.status !== a.status) continue;

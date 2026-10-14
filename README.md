@@ -69,3 +69,9 @@ Two pieces: the Convex production deployment (data and functions) and the websit
    `SMS_WEBHOOK_SECRET` on production with `npx convex env set --prod`.
 5. **Do not** run `seed:load` on production. It is demo data for the development deployment only.
 6. Sign up with the admin email, then add staff under Staff access.
+
+## Data migrations
+
+Bills store their running balance (see `convex/lib/ledger.ts`). After deploying to a deployment that already
+has bills created before that change, run once: `npx convex run migrations:backfillInvoices` (add `--prod`
+for production). It is safe to run again. A fresh production deployment does not need it.
