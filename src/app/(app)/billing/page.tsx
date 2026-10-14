@@ -30,14 +30,13 @@ export default function Billing() {
   const toggle = (id: Id<"invoices">) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   return (
     <div className="stack">
-      <PageHeader title={t("nav.billing")}
+      <PageHeader title={t("nav.billing")} heavy
         filters={<>
           <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
           <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
-          <span className="spacer" />
-          <button className="btn" onClick={() => shown && downloadCsv(`bills-${period}.csv`, shown.map((r) => ({ number: r.number, unit: r.unitNumber, renter: r.renterName, status: r.status, total: (r.total + r.adjustments) / 100, paid: (r.paid + r.creditUsed) / 100, due: r.due / 100 })))}>{t("export")}</button>
         </>}
-        actions={can("financeOfficer") ? <>
+        actions={<>
+          {can("financeOfficer") && <>
           <button className="btn primary" onClick={async () => { const r = await run(async () => {
               // large malls are billed in batches; keep going until the server says it is done
               let created = 0; const skipped: { agreementId: string; reason: string }[] = [];
@@ -46,7 +45,10 @@ export default function Billing() {
             }); if (r) setPicked(new Set()); r && toast(`${r.created} ${t("bill.created")}${r.skipped.length ? `, ${r.skipped.length} ${t("bill.skipped")} (${r.skipped.map((s) => s.reason).join(", ")})` : ""}`); }}>{t("bill.generate")}</button>
           {picked.size > 0 && <button className="btn primary" onClick={() => setConfirmIssue([...picked])}>{t("bill.issue")} ({picked.size})</button>}
           <button className="btn" disabled={drafts.length === 0} onClick={() => setConfirmIssue(drafts.map((d) => d._id))}>{t("bill.issueAll")}{drafts.length > 0 ? ` (${drafts.length})` : ""}</button>
-        </> : undefined} />
+          </>}
+          <button className="btn" onClick={() => shown && downloadCsv(`bills-${period}.csv`, shown.map((r) => ({ number: r.number, unit: r.unitNumber, renter: r.renterName, status: r.status, total: (r.total + r.adjustments) / 100, paid: (r.paid + r.creditUsed) / 100, due: r.due / 100 })))}>{t("export")}</button>
+
+        </>} />
       <Message error={error} notice={notice} />
       <div className="row" style={{ justifyContent: "space-between" }}>
         <Tabs value={tab} onChange={setTab} tabs={[["", `${t("all")} (${count("")})`], ["draft", `${t("draft")} (${count("draft")})`], ["outstanding", `${t("outstanding")} (${count("outstanding")})`], ["partial", `${t("partial")} (${count("partial")})`], ["paid", `${t("paidFull")} (${count("paid")})`]]} />

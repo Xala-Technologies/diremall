@@ -13,8 +13,7 @@ export default function Utilities() {
   const { t } = useI18n(); const [tab, setTab] = useState<"readings" | "shared">("readings");
   return (
     <div className="stack">
-      <PageHeader title={t("nav.utilities")} />
-      <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["readings", t("util.meters")], ["shared", t("util.shared")]]} />
+      <PageHeader title={t("nav.utilities")} filters={<Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["readings", t("util.meters")], ["shared", t("util.shared")]]} />} />
       {tab === "readings" ? <Readings /> : <Shared />}
     </div>
   );

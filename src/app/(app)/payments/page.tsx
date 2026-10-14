@@ -20,9 +20,8 @@ export default function Payments() {
   const { run, error, notice } = useRun();
   return (
     <div className="stack">
-      <PageHeader title={t("nav.payments")}>{can("financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button>}</PageHeader>
+      <PageHeader title={t("nav.payments")} filters={<Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} />} actions={can("financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button> : undefined} />
       <Message error={error} notice={notice} />
-      <Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} />
       <Card flush><Table rows={rows} empty={t("empty.payments")} cols={[
         { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} />, sort: (p) => p.receivedAt }, { head: t("ag.renter"), cell: (p) => p.renterName, sort: (p) => p.renterName },
         { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true, sort: (p) => p.amount },

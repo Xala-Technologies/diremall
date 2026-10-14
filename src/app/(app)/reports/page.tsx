@@ -15,9 +15,8 @@ export default function Reports() {
   const buildings = useQuery(api.properties.listBuildings); const b = (building || undefined) as Id<"buildings"> | undefined;
   return (
     <div className="stack">
-      <PageHeader title={t("nav.reports")} filters={<BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />}
+      <PageHeader title={t("nav.reports")} heavy filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")]]} /></>}
         actions={<Link className="btn primary no-print" href="/reports/month-end">{t("rep.monthEnd")}</Link>} />
-      <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")]]} />
       {tab === "rentRoll" && <RentRoll b={b} />}{tab === "vacancy" && <Vacancy b={b} />}{tab === "aging" && <Aging b={b} />}{tab === "revenue" && <Revenue b={b} />}{tab === "ledger" && <Ledger />}
     </div>
   );

@@ -35,19 +35,22 @@ export function StatusBadge({ status }: { status: string }) {
   return <Badge tone={statusTone(status)}>{status === "paid" ? t("paidFull") : t(status)}</Badge>;
 }
 
-/** Title and main buttons on one row; pickers and search on a filter row beneath. Same on every page. */
-export function PageHeader({ title, sub, actions, filters, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; children?: ReactNode }) {
+/**
+ * Title, filters and main buttons share one row when there is room, and wrap into two rows when there is not.
+ * `heavy` pages (many filters or buttons) need a wider screen before they go onto one row.
+ */
+export function PageHeader({ title, sub, actions, filters, heavy, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; heavy?: boolean; children?: ReactNode }) {
   // each screen names its browser tab, so several open tabs stay distinguishable
   useEffect(() => { document.title = `${title} · Dire Mall Rentals`; }, [title]);
   const buttons = actions ?? children;
   return (
-    <header className="page-head">
-      <div className="page-header">
-        <div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div>
+    <div className={`page-head-wrap ${heavy ? "heavy" : ""}`}>
+      <header className="page-head">
+        <div className="page-title"><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div>
+        {filters && <div className="filter-bar">{filters}</div>}
         {buttons && <div className="actions">{buttons}</div>}
-      </div>
-      {filters && <div className="filter-bar">{filters}</div>}
-    </header>
+      </header>
+    </div>
   );
 }
 
