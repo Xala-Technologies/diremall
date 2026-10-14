@@ -14,6 +14,7 @@ export function FilterSelect({
   onChange,
   disabled = false,
   title,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -21,6 +22,8 @@ export function FilterSelect({
   onChange: (value: string) => void;
   disabled?: boolean;
   title?: string;
+  /** shown (muted) instead of the first option while nothing is chosen, e.g. "Building" instead of "All buildings" */
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -109,7 +112,7 @@ export function FilterSelect({
         <span className="filter-select-icon" aria-hidden="true">
           {selected?.icon}
         </span>
-        <span className="filter-select-value">{selected?.label}</span>
+        <span className={`filter-select-value ${placeholder && value === "" ? "is-placeholder" : ""}`}>{placeholder && value === "" ? placeholder : selected?.label}</span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
       {open && (

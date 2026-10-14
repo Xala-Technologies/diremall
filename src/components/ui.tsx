@@ -181,7 +181,7 @@ const formatPeriodLabel = (p: string, lang: "en" | "am") => formatPeriod(p, "eth
 export function BuildingSelect({ buildings, value, onChange }: { buildings: { _id: string; name: string }[] | undefined; value: string; onChange: (v: string) => void }) {
   const { t } = useI18n();
   return (
-    <FilterSelect label={t("building")} value={value} onChange={onChange}
+    <FilterSelect label={t("building")} placeholder={t("building")} value={value} onChange={onChange}
       options={[{ value: "", label: t("allBuildings"), icon: <Building2 size={16} /> }, ...(buildings ?? []).map((b) => ({ value: b._id, label: b.name, icon: <Building2 size={16} /> }))]} />
   );
 }

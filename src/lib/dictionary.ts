@@ -94,7 +94,8 @@ export const EN: Record<string, string> = {
   "ag.view": "View", "dep.required": "Required", "dep.held": "Held", "dep.available": "Available", "dep.refunded": "Refunded",
   "err.issue_in_smaller_groups": "Too many bills at once. Issue them in smaller groups.",
   "period.prev": "Previous month", "period.next": "Next month",
-  "filter.allCategories": "All categories", "filter.allFloors": "All floors", "filter.searchUnits": "Search unit or renter", "filter.sort": "Sort", "sort.unit": "Unit number", "sort.area": "Largest area", "sort.rate": "Highest rate", "filter.clear": "Clear filters", "filter.showing": "Showing {a} of {b}", "filter.noMatch": "No units match these filters.",
+  "filter.allCategories": "All categories", "filter.allFloors": "All floors", "filter.searchUnits": "Search unit or renter", "filter.sort": "Sort", "sort.unit": "Unit no.", "sort.area": "Area", "sort.rate": "Rate", "filter.clear": "Clear filters", "filter.showing": "Showing {a} of {b}", "filter.noMatch": "No units match these filters.",
+  "filter.anyStatus": "Any status",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -167,7 +168,8 @@ export const AM: Record<string, string> = {
   "err.inactive": "መለያዎ ንቁ አይደለም።", "err.forbidden_building": "ያ ሕንፃ ከመዳረሻዎ ውጭ ነው።", "err.forbidden_renter": "ያ ተከራይ ከመዳረሻዎ ውጭ ነው።", "err.duplicate_payment_reference": "በዚህ የመክፈያ መንገድና ማጣቀሻ ቁጥር ክፍያ አስቀድሞ አለ።", "err.allocation_exceeds_balance": "ደረሰኙ ገና ከሚቀረው በላይ ነው።", "err.unit_number_exists": "ይህ የክፍል ቁጥር በዚህ ሕንፃ ውስጥ አስቀድሞ አለ።",
   "err.issue_in_smaller_groups": "በአንድ ጊዜ ብዙ ደረሰኞች። በትንሽ ቡድኖች ይስጡ።",
   "period.prev": "ያለፈው ወር", "period.next": "የሚቀጥለው ወር",
-  "filter.allCategories": "ሁሉም ዓይነቶች", "filter.allFloors": "ሁሉም ፎቆች", "filter.searchUnits": "ክፍል ወይም ተከራይ ፈልግ", "filter.sort": "ደርድር", "sort.unit": "የክፍል ቁጥር", "sort.area": "ትልቁ ስፋት", "sort.rate": "ከፍተኛ ዋጋ", "filter.clear": "ማጣሪያዎችን አጽዳ", "filter.showing": "{a} ከ {b} እየታየ ነው", "filter.noMatch": "ከእነዚህ ማጣሪያዎች ጋር የሚስማማ ክፍል የለም።",
+  "filter.allCategories": "ሁሉም ዓይነቶች", "filter.allFloors": "ሁሉም ፎቆች", "filter.searchUnits": "ክፍል ወይም ተከራይ ፈልግ", "filter.sort": "ደርድር", "sort.unit": "የክፍል ቁ.", "sort.area": "ስፋት", "sort.rate": "ዋጋ", "filter.clear": "ማጣሪያዎችን አጽዳ", "filter.showing": "{a} ከ {b} እየታየ ነው", "filter.noMatch": "ከእነዚህ ማጣሪያዎች ጋር የሚስማማ ክፍል የለም።",
+  "filter.anyStatus": "ማንኛውም ሁኔታ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

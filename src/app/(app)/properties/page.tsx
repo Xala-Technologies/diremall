@@ -3,9 +3,10 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, Skeleton, StatusBadge, Table, Tabs, Money, ViewToggle } from "@/components/ui";
+import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
-import { ArrowUpDown, Briefcase, Home, LayoutGrid, Layers, Package, Store } from "lucide-react";
+import { ArrowUpDown, Briefcase, Circle, CircleCheck, Home, LayoutGrid, Layers, Package, Store, Wrench } from "lucide-react";
+import { Icon } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -44,11 +45,17 @@ export default function Properties() {
     <div className="stack">
       <PageHeader title={t("nav.properties")}
         filters={<>
-          <BuildingSelect buildings={buildings} value={building} onChange={changeBuilding} />
-          <FilterSelect label={t("prop.category")} value={category} onChange={setCategory} options={(["", "office", "retail", "storage", "residential"] as const).map((c) => ({ value: c, label: c === "" ? t("filter.allCategories") : t(c), icon: catIcon[c] }))} />
-          {building && floors && floors.length > 0 && <FilterSelect label={t("prop.floor")} value={floor} onChange={setFloor} options={[{ value: "", label: t("filter.allFloors"), icon: <Layers size={16} /> }, ...floors.map((f) => ({ value: f._id as string, label: f.label, icon: <Layers size={16} /> }))]} />}
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("filter.searchUnits")} aria-label={t("search")} />
-          <span className="spacer" />
+          <BuildingSelect buildings={buildings} value={building} onChange={changeBuilding} />
+          <FilterSelect label={t("status")} placeholder={t("status")} value={status} onChange={setStatus} options={[
+            { value: "", label: t("filter.anyStatus"), icon: <LayoutGrid size={16} /> },
+            { value: "occupied", label: `${t("occupied")} (${count("occupied")})`, icon: <CircleCheck size={16} /> },
+            { value: "vacant", label: `${t("vacant")} (${count("vacant")})`, icon: <Circle size={16} /> },
+            { value: "maintenance", label: `${t("maintenance")} (${count("maintenance")})`, icon: <Wrench size={16} /> }]} />
+          <FilterSelect label={t("prop.category")} placeholder={t("prop.category")} value={category} onChange={setCategory} options={(["", "office", "retail", "storage", "residential"] as const).map((c) => ({ value: c, label: c === "" ? t("filter.allCategories") : t(c), icon: catIcon[c] }))} />
+          {building && floors && floors.length > 0 && <FilterSelect label={t("prop.floor")} placeholder={t("prop.floor")} value={floor} onChange={setFloor} options={[{ value: "", label: t("filter.allFloors"), icon: <Layers size={16} /> }, ...floors.map((f) => ({ value: f._id as string, label: f.label, icon: <Layers size={16} /> }))]} />}
+          <FilterSelect label={t("filter.sort")} value={sort} onChange={setSort} options={[{ value: "unit", label: t("sort.unit"), icon: <ArrowUpDown size={16} /> }, { value: "area", label: t("sort.area"), icon: <ArrowUpDown size={16} /> }, { value: "rate", label: t("sort.rate"), icon: <ArrowUpDown size={16} /> }]} />
+          {filtered && <><span className="muted result-count" aria-live="polite">{t("filter.showing").replace("{a}", String(shown?.length ?? 0)).replace("{b}", String(units?.length ?? 0))}</span><button className="btn ghost sm" onClick={clear}><Icon name="close" size={14} />{t("filter.clear")}</button></>}
           <ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} />
         </>}
         actions={can("propertyManager") ? <>
@@ -57,14 +64,6 @@ export default function Properties() {
           {building && <button className="btn primary" onClick={() => setModal("unit")}>{t("prop.addUnit")}</button>}
         </> : undefined} />
       <Message error={error} />
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <Tabs value={status} onChange={setStatus} tabs={[["", `${t("all")} (${count("")})`], ["occupied", `${t("occupied")} (${count("occupied")})`], ["vacant", `${t("vacant")} (${count("vacant")})`], ["maintenance", `${t("maintenance")} (${count("maintenance")})`]]} />
-        <div className="row result-bar">
-          <div className="sort-box"><FilterSelect label={t("filter.sort")} value={sort} onChange={setSort} options={[{ value: "unit", label: t("sort.unit"), icon: <ArrowUpDown size={16} /> }, { value: "area", label: t("sort.area"), icon: <ArrowUpDown size={16} /> }, { value: "rate", label: t("sort.rate"), icon: <ArrowUpDown size={16} /> }]} /></div>
-          <span className="muted">{units ? t("filter.showing").replace("{a}", String(shown?.length ?? 0)).replace("{b}", String(units.length)) : ""}</span>
-          {filtered && <button className="btn ghost sm" onClick={clear}>{t("filter.clear")}</button>}
-        </div>
-      </div>
       {view === "grid" ? (
         !units ? <Card><Skeleton lines={4} /></Card> : (shown ?? []).length === 0 ? <Card><Empty title={units.length === 0 ? t("none") : t("filter.noMatch")} hint={units.length === 0 ? t("first.1") : undefined} action={filtered ? <button className="btn" onClick={clear}>{t("filter.clear")}</button> : undefined} /></Card> : (
           <div className="tiles">
