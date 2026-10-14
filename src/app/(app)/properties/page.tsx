@@ -64,11 +64,11 @@ export default function Properties() {
       <Card flush>
         <Table rows={units} cols={[
           { head: t("building"), cell: (u) => bName(u.buildingId) },
-          { head: t("prop.unitNumber"), cell: (u) => <strong>{u.number}</strong> },
+          { head: t("prop.unitNumber"), cell: (u) => <strong>{u.number}</strong>, sort: (u) => u.number },
           { head: t("prop.category"), cell: (u) => t(u.category) },
-          { head: t("prop.area"), cell: (u) => u.areaM2, right: true },
+          { head: t("prop.area"), cell: (u) => u.areaM2, right: true, sort: (u) => u.areaM2 },
           { head: t("prop.rate"), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
-          { head: t("status"), cell: (u) => <StatusBadge status={u.status} /> },
+          { head: t("status"), cell: (u) => <StatusBadge status={u.status} />, sort: (u) => u.status },
           { head: "", cell: (u) => can("propertyManager") && u.status !== "occupied" ? (
             <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>
               {u.status === "vacant" ? t("maintenance") : t("vacant")}</button>) : null },

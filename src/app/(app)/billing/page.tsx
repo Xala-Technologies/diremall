@@ -7,14 +7,14 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { BuildingSelect, Card, ConfirmDialog, DateText, Message, Money, PageHeader, PeriodPicker, StatusBadge, Table, TableFoot } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { downloadCsv } from "@/lib/csv";
-import { currentPeriod } from "@/lib/format";
+import { usePeriod } from "@/lib/usePeriod";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 
 export default function Billing() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
-  const [period, setPeriod] = useState(currentPeriod()); const [building, setBuilding] = useState("");
+  const [period, setPeriod] = usePeriod(); const [building, setBuilding] = useState("");
   const [picked, setPicked] = useState<Set<Id<"invoices">>>(new Set()); const [confirmIssue, setConfirmIssue] = useState<Id<"invoices">[] | null>(null);
   const buildings = useQuery(api.properties.listBuildings);
   const rows = useQuery(api.billing.list, { period });
@@ -45,9 +45,9 @@ export default function Billing() {
       <Card flush>
         <Table rows={shown} empty={t("empty.bills")} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[
           ...(can("financeOfficer") ? [{ head: "", cell: (r: NonNullable<typeof shown>[number]) => r.status === "draft" ? <input type="checkbox" aria-label={r.unitNumber} checked={picked.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} /> : null }] : []),
-          { head: t("bill.number"), cell: (r) => r.number || t("draft") }, { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong> }, { head: t("ag.renter"), cell: (r) => r.renterName },
-          { head: t("bill.dueDate"), cell: (r) => <DateText ms={r.dueAt} /> }, { head: t("total"), cell: (r) => <Money v={r.total + r.adjustments} />, right: true, money: true },
-          { head: t("bill.paid"), cell: (r) => <Money v={r.paid + r.creditUsed} />, right: true, money: true }, { head: t("bill.due"), cell: (r) => r.status === "issued" ? <Money v={r.due} strong /> : "—", right: true, money: true },
+          { head: t("bill.number"), cell: (r) => r.number || t("draft") }, { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName },
+          { head: t("bill.dueDate"), cell: (r) => <DateText ms={r.dueAt} />, sort: (r) => r.dueAt }, { head: t("total"), cell: (r) => <Money v={r.total + r.adjustments} />, right: true, money: true, sort: (r) => r.total + r.adjustments },
+          { head: t("bill.paid"), cell: (r) => <Money v={r.paid + r.creditUsed} />, right: true, money: true }, { head: t("bill.due"), cell: (r) => r.status === "issued" ? <Money v={r.due} strong /> : "—", right: true, money: true, sort: (r) => (r.status === "issued" ? r.due : -1) },
           { head: t("status"), cell: (r) => <StatusBadge status={r.payStatus} /> },
         ]} />
         {shown && shown.length > 0 && <TableFoot items={[[t("total"), <Money key="t" v={totals.total} strong />], [t("bill.paid"), <Money key="p" v={totals.paid} strong />], [t("bill.due"), <Money key="d" v={totals.due} strong />]]} />}

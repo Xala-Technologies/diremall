@@ -36,7 +36,7 @@ export default function Renters() {
           </div>)
       ) : (
       <Card flush><Table rows={renters} onRow={(r) => setOpen(r._id)} cols={[
-        { head: t("name"), cell: (r) => <strong>{r.name}</strong> }, { head: t("renter.kind"), cell: (r) => t(r.kind) },
+        { head: t("name"), cell: (r) => <strong>{r.name}</strong>, sort: (r) => r.name }, { head: t("renter.kind"), cell: (r) => t(r.kind), sort: (r) => r.kind },
         { head: t("renter.tin"), cell: (r) => r.tin ?? "—" }, { head: t("renter.phone"), cell: (r) => r.phone },
       ]} /></Card>
       )}

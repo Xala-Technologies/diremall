@@ -45,16 +45,34 @@ export function Card({ title, children, actions, flush }: { title?: string; chil
   return <section className={`card ${flush ? "flush" : ""}`}>{(title || actions) && <header className="card-h"><h2>{title}</h2><div className="row">{actions}</div></header>}{children}</section>;
 }
 
-export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; money?: boolean; text?: boolean };
+export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; money?: boolean; text?: boolean; sort?: (r: T) => string | number | null | undefined };
 export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: { cols: Col<T>[]; rows: T[] | undefined; onRow?: (r: T) => void; empty?: string }) {
   const { t } = useI18n();
+  const [sortCol, setSortCol] = useState<number | null>(null); const [dir, setDir] = useState<1 | -1>(1);
   if (!rows) return <Skeleton lines={5} />;
   if (rows.length === 0) return <Empty title={empty ?? t("empty.default")} />;
+  const sortFn = sortCol != null ? cols[sortCol]?.sort : undefined;
+  const sorted = (list: T[]) => {
+    if (!sortFn) return list;
+    const val = (r: T) => sortFn(r) ?? "";
+    return list.map((r, i) => [r, i] as const).sort(([a, ai], [b, bi]) => {
+      const x = val(a), y = val(b);
+      const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" });
+      return c * dir || ai - bi;
+    }).map(([r]) => r);
+  };
   return (
     <div className="table-wrap" tabIndex={0} role="region" aria-label={cols.map((c) => c.head).filter(Boolean).slice(0, 3).join(", ") || t("table")}>
       <table>
-        <thead><tr>{cols.map((c, i) => <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""}`}>{c.head === "" ? <span className="sr-only">{t("actions")}</span> : <>{c.head}{c.money ? " (ETB)" : ""}</>}</th>)}</tr></thead>
-        <tbody>{rows.map((r, i) => (
+        <thead><tr>{cols.map((c, i) => (
+          <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""}`} aria-sort={sortCol === i ? (dir === 1 ? "ascending" : "descending") : c.sort ? "none" : undefined}>
+            {c.head === "" ? <span className="sr-only">{t("actions")}</span> : c.sort ? (
+              <button type="button" className="th-sort" onClick={() => { if (sortCol === i) setDir(dir === 1 ? -1 : 1); else { setSortCol(i); setDir(1); } }}>
+                {c.head}{c.money ? " (ETB)" : ""}<Icon name={sortCol === i ? (dir === 1 ? "sortUp" : "sortDown") : "sort"} size={14} />
+              </button>
+            ) : <>{c.head}{c.money ? " (ETB)" : ""}</>}
+          </th>))}</tr></thead>
+        <tbody>{sorted(rows).map((r, i) => (
           <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}
             tabIndex={onRow ? 0 : undefined} onKeyDown={onRow ? (e) => { if (e.key === "Enter") onRow(r); } : undefined}>
             {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""} ${c.head === "" ? "act" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
@@ -98,7 +116,9 @@ export function MoneyInput({ value, onChange, placeholder }: { value: number | n
   const [text, setText] = useState(value == null ? "" : String(value / 100));
   return (
     <input inputMode="decimal" value={text} placeholder={placeholder ?? "0.00"}
-      onChange={(e) => { setText(e.target.value); onChange(parseEtb(e.target.value)); }} />
+      onChange={(e) => { setText(e.target.value); onChange(parseEtb(e.target.value)); }}
+      // tidy the number when leaving the field: 12500 becomes 12,500.00
+      onBlur={() => { const v = parseEtb(text); if (v != null) setText((v / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }} />
   );
 }
 

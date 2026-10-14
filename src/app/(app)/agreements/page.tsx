@@ -23,8 +23,8 @@ export default function Agreements() {
         { head: t("ag.unit"), cell: (e) => e.unitNumber }, { head: t("ag.end"), cell: (e) => <DateText ms={e.endsAt} /> }]} /></Card>}
       <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} />
       <Card flush><Table rows={list} empty={t("empty.agreements")} onRow={(a) => router.push(`/agreements/${a._id}`)} cols={[
-        { head: t("ag.unit"), cell: (a) => <strong>{a.unitNumber}</strong> }, { head: t("ag.renter"), cell: (a) => a.renterName },
-        { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} /> }, { head: t("ag.end"), cell: (a) => <DateText ms={a.endsAt} /> },
+        { head: t("ag.unit"), cell: (a) => <strong>{a.unitNumber}</strong>, sort: (a) => a.unitNumber }, { head: t("ag.renter"), cell: (a) => a.renterName, sort: (a) => a.renterName },
+        { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} />, sort: (a) => a.startsAt }, { head: t("ag.end"), cell: (a) => <DateText ms={a.endsAt} />, sort: (a) => a.endsAt },
         { head: t("ag.signed"), cell: (a) => (a.signedFileId ? "✓" : "—") }, { head: t("status"), cell: (a) => <StatusBadge status={a.status} /> },
       ]} /></Card>
       {adding && <NewAgreement onClose={() => setAdding(false)} onCreated={(id) => router.push(`/agreements/${id}`)} />}

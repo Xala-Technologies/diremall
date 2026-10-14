@@ -6,13 +6,14 @@ import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
 import { BarChart, BuildingSelect, Card, DateText, Donut, Kpi, Money, PageHeader, PeriodPicker, Skeleton } from "@/components/ui";
-import { currentPeriod, formatPeriod, pct, shiftPeriod } from "@/lib/format";
+import { formatPeriod, pct, shiftPeriod } from "@/lib/format";
+import { usePeriod } from "@/lib/usePeriod";
 import { useI18n } from "@/lib/i18n";
 
 export default function Dashboard() {
   const { t, calendar, lang } = useI18n();
   const router = useRouter();
-  const [period, setPeriod] = useState(currentPeriod());
+  const [period, setPeriod] = usePeriod();
   const [building, setBuilding] = useState("");
   const b = (building || undefined) as any;
   const buildings = useQuery(api.properties.listBuildings);
@@ -38,7 +39,7 @@ export default function Dashboard() {
         <PeriodPicker value={period} onChange={setPeriod} />
       </PageHeader>
 
-      {!d ? <div className="kpis">{[0, 1, 2, 3].map((i) => <div key={i} className="kpi"><Skeleton lines={3} /></div>)}</div> : (
+      {!d ? <div className="kpis kpis-4">{[0, 1, 2, 3].map((i) => <div key={i} className="kpi"><Skeleton lines={3} /></div>)}</div> : (
         <>
           {d.units === 0 && (
             <Card title={t("first.title")}>
@@ -46,7 +47,7 @@ export default function Dashboard() {
             </Card>
           )}
 
-          <div className="kpis">
+          <div className="kpis kpis-4">
             <Kpi tone="bad" icon="bills" label={t("dash.outstanding")} unit="ETB" value={<Money bare v={d.outstanding} />} sub={<>{t("dash.of")} {Math.round(d.billed / 100).toLocaleString()} {t("dash.billedShort")}</>} />
             <Kpi tone="good" icon="payments" label={t("dash.collectedTitle")} unit="ETB" value={<Money bare v={d.appliedToBills} />} sub={<>{pct(d.collectionRate)} · {t("dash.collectedKpi")}</>} />
             <Kpi tone="info" icon="reports" label={t("dash.billed")} unit="ETB" value={<Money bare v={d.billed} />} sub={<>{t("dash.confirmed")}: {Math.round(d.confirmedPayments / 100).toLocaleString()}</>} />

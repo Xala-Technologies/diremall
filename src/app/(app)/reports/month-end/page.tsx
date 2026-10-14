@@ -5,7 +5,8 @@ import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
 import { Card, DateText, Kpi, Money, PageHeader, PeriodPicker, Skeleton, StatusBadge, Table } from "@/components/ui";
-import { currentPeriod, pct, shiftPeriod } from "@/lib/format";
+import { pct } from "@/lib/format";
+import { usePeriod } from "@/lib/usePeriod";
 import { useI18n } from "@/lib/i18n";
 import { downloadXlsx } from "@/lib/xlsx";
 import { periodRange } from "../../../../../convex/lib/period";
@@ -14,7 +15,7 @@ const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export default function MonthEnd() {
   const { t } = useI18n();
-  const [period, setPeriod] = useState(shiftPeriod(currentPeriod(), -1));
+  const [period, setPeriod] = usePeriod();
   const dash = useQuery(api.reports.dashboard, { period });
   const bills = useQuery(api.billing.list, { period });
   const payments = useQuery(api.payments.list, {});
@@ -49,7 +50,7 @@ export default function MonthEnd() {
       </PageHeader>
       {!ready ? <Card><Skeleton lines={8} /></Card> : (
         <>
-          <div className="kpis">
+          <div className="kpis kpis-4">
             <Kpi tone="info" icon="reports" label={t("dash.billed")} unit="ETB" value={<Money bare v={dash.billed} />} />
             <Kpi tone="good" icon="payments" label={t("dash.applied")} unit="ETB" value={<Money bare v={dash.appliedToBills} />} sub={`${pct(dash.collectionRate)} ${t("dash.collected")}`} />
             <Kpi tone="bad" icon="bills" label={t("dash.outstanding")} unit="ETB" value={<Money bare v={dash.outstanding} />} />

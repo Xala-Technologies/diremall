@@ -30,9 +30,9 @@ function RentRoll({ b }: { b?: Id<"buildings"> }) {
   const { t } = useI18n(); const d = useQuery(api.reports.rentRoll, { buildingId: b });
   return <Card title={t("rep.rentRoll")} actions={<ExportMenu name="rent-roll" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, category: r.category, area_m2: r.areaM2, status: r.status, renter: r.renterName, start: r.startsAt ? new Date(r.startsAt).toISOString().slice(0, 10) : "", end: r.endsAt ? new Date(r.endsAt).toISOString().slice(0, 10) : "", monthly_rent: r.monthlyRent / 100 })) : []} />}>
     <Table rows={d?.rows.map((r, i) => ({ ...r, _id: String(i) }))} cols={[
-      { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong> }, { head: t("prop.category"), cell: (r) => t(r.category) }, { head: t("prop.area"), cell: (r) => r.areaM2, right: true },
-      { head: t("status"), cell: (r) => <StatusBadge status={r.status} /> }, { head: t("ag.renter"), cell: (r) => r.renterName }, { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt} /> },
-      { head: t("rent"), cell: (r) => <Money v={r.monthlyRent} />, right: true, money: true }]} />
+      { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("prop.category"), cell: (r) => t(r.category), sort: (r) => r.category }, { head: t("prop.area"), cell: (r) => r.areaM2, right: true, sort: (r) => r.areaM2 },
+      { head: t("status"), cell: (r) => <StatusBadge status={r.status} />, sort: (r) => r.status }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName }, { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt} />, sort: (r) => r.endsAt },
+      { head: t("rent"), cell: (r) => <Money v={r.monthlyRent} />, right: true, money: true, sort: (r) => r.monthlyRent }]} />
     {d && <p style={{ textAlign: "right" }}>{t("total")}: <Money v={d.totalMonthlyRent} strong /></p>}
   </Card>;
 }

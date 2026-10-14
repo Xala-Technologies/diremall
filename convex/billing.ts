@@ -233,3 +233,14 @@ export const get = query({
     return { invoice: inv, unit, renter: await ctx.db.get(inv.renterId), lines, adjustments, allocations, balance: await invoiceBalance(ctx, inv) };
   },
 });
+
+/** The most recent month with issued bills (or any bills), so screens open on data instead of an empty current month. */
+export const latestPeriod = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, ...READ_ROLES);
+    // newest issued bill wins; months that only hold drafts do not count
+    const recent = await ctx.db.query("invoices").withIndex("by_period").order("desc").take(200);
+    return (recent.find((i) => i.status === "issued") ?? recent[0])?.period ?? null;
+  },
+});
