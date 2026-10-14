@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useI18n } from "@/lib/i18n";
 import { formatDate, formatEtb, parseEtb } from "@/lib/format";
 import { Icon } from "./icons";
+import { downloadCsv } from "@/lib/csv";
+import { downloadXlsx } from "@/lib/xlsx";
 import { ETH_MONTHS_AM, ETH_MONTHS_EN, ethiopianToGregorian, gregorianToEthiopian } from "../../convex/lib/ethiopianCalendar";
 
 const InTable = createContext(false);
@@ -241,6 +243,18 @@ export function ViewToggle({ value, onChange, labels }: { value: "grid" | "table
     <div className="seg-ctl" role="group" aria-label="View">
       <button aria-pressed={value === "grid"} onClick={() => onChange("grid")}>{labels[0]}</button>
       <button aria-pressed={value === "table"} onClick={() => onChange("table")}>{labels[1]}</button>
+    </div>
+  );
+}
+
+/** Excel, CSV and PDF (the browser's save-as-PDF) for the rows shown on screen, so exports match the totals you see. */
+export function ExportMenu({ name, rows }: { name: string; rows: Record<string, string | number | null | undefined>[] }) {
+  const { t } = useI18n();
+  return (
+    <div className="row no-print" role="group" aria-label={t("export")}>
+      <button className="btn sm" disabled={rows.length === 0} onClick={() => void downloadXlsx(name, [{ name: name.slice(0, 31), rows }])}><Icon name="download" size={15} />Excel</button>
+      <button className="btn sm" disabled={rows.length === 0} onClick={() => downloadCsv(`${name}.csv`, rows)}>CSV</button>
+      <button className="btn sm" onClick={() => window.print()}><Icon name="print" size={15} />PDF</button>
     </div>
   );
 }

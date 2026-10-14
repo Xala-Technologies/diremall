@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, nextSeq, requireRole } from "./lib/access";
-import { monthlyRent } from "./lib/billing";
+import { escalatedRent, monthlyRent } from "./lib/billing";
 import { invoiceBalance, termAt } from "./lib/ledger";
 import { etb, formatEtb } from "./lib/money";
 import { coveredDays, periodRange } from "./lib/period";
@@ -46,8 +46,11 @@ export const generate = mutation({
       }
 
       const lines: Omit<Doc<"invoiceLines">, "_id" | "_creationTime" | "invoiceId">[] = [];
-      const monthly = monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: term.rent.ratePerM2 });
-      const basis = term.rent.kind === "fixed" ? `fixed ${formatEtb(monthly)}` : `${unit.areaM2} m² × ${formatEtb(term.rent.ratePerM2)} = ${formatEtb(monthly)}`;
+      const base = monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: term.rent.ratePerM2 });
+      const esc = escalatedRent(base, term.escalation, term.effectiveFrom, start);
+      const monthly = esc.amount;
+      const basis0 = term.rent.kind === "fixed" ? `fixed ${formatEtb(base)}` : `${unit.areaM2} m² × ${formatEtb(term.rent.ratePerM2)} = ${formatEtb(base)}`;
+      const basis = esc.steps > 0 && term.escalation ? `${basis0}; +${term.escalation.percent}% × ${esc.steps} = ${formatEtb(monthly)}` : basis0;
       const rentAmount = covered === days ? monthly : Math.round((monthly * covered) / days);
       lines.push({ kind: "rent", description: `Rent ${period}`, amount: rentAmount, calcNote: covered === days ? basis : `${basis}; ${covered}/${days} days = ${formatEtb(rentAmount)}` });
 

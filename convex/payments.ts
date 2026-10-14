@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
+import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, nextSeq, requireRole } from "./lib/access";
 import { applyPayment } from "./lib/billing";
 import { creditBalance, invoiceBalance } from "./lib/ledger";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
@@ -101,7 +101,9 @@ export const apply = mutation({
     for (const al of plan) await ctx.db.insert("paymentAllocations", { paymentId, invoiceId: al.invoiceId, amount: al.amount });
     const credit = p.amount - plan.reduce((s, x) => s + x.amount, 0);
     if (credit > 0) await ctx.db.insert("renterCredits", { renterId: p.renterId, paymentId, amount: credit });
-    await ctx.db.patch(paymentId, { status: "applied" });
+    const year = new Date(p.receivedAt).getUTCFullYear();
+    const receiptNumber = p.receiptNumber ?? `RCT-${year}-${String(await nextSeq(ctx, `receiptSeq:${year}`)).padStart(4, "0")}`;
+    await ctx.db.patch(paymentId, { status: "applied", receiptNumber });
     await audit(ctx, u, "payment.apply", "payments", paymentId, `applied=${p.amount - credit} credit=${credit}`);
 
     // Receipt acknowledgment by SMS (once per payment).
@@ -157,5 +159,25 @@ export const credit = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     await assertRenterVisible(ctx, u, renterId);
     return creditBalance(ctx, renterId);
+  },
+});
+
+/** Everything a printed receipt needs. */
+export const get = query({
+  args: { paymentId: v.id("payments") },
+  handler: async (ctx, { paymentId }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    await assertRenterVisible(ctx, u, p.renterId);
+    const allocs = await ctx.db.query("paymentAllocations").withIndex("by_payment", (q) => q.eq("paymentId", paymentId)).collect();
+    const lines = [];
+    for (const a of allocs) {
+      const inv = await ctx.db.get(a.invoiceId);
+      const unit = inv ? await ctx.db.get(inv.unitId) : null;
+      lines.push({ invoiceNumber: inv?.number ?? "", period: inv?.period ?? "", unitNumber: unit?.number ?? "", amount: a.amount });
+    }
+    const credit = (await ctx.db.query("renterCredits").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect()).filter((c) => c.paymentId === paymentId).reduce((s, c) => s + c.amount, 0);
+    const receivedBy = (await ctx.db.get(p.confirmedBy ?? p.recordedBy))?.name ?? "";
+    return { payment: p, renter: await ctx.db.get(p.renterId), lines, credit, confirmedByName: receivedBy };
   },
 });

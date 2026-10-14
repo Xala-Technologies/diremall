@@ -1,5 +1,6 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -11,7 +12,7 @@ import { useUpload } from "@/lib/useUpload";
 
 type Status = "" | "recorded" | "confirmed" | "applied" | "voided";
 export default function Payments() {
-  const { t } = useI18n(); const { can, me } = useMe();
+  const { t } = useI18n(); const { can, me } = useMe(); const router = useRouter();
   const [tab, setTab] = useState<Status>(""); const [adding, setAdding] = useState(false); const [voiding, setVoiding] = useState<Id<"payments"> | null>(null);
   const rows = useQuery(api.payments.list, { status: tab || undefined });
   const confirm = useMutation(api.payments.confirm); const apply = useMutation(api.payments.apply); const voidP = useMutation(api.payments.voidPayment);
@@ -26,6 +27,7 @@ export default function Payments() {
         { head: t("pay.reference"), cell: (p) => p.reference }, { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true },
         { head: t("pay.evidence"), cell: (p) => (p.evidenceUrl ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer">✓</a> : "—") }, { head: t("status"), cell: (p) => <StatusBadge status={p.status} /> },
         { head: "", cell: (p) => <div className="row">
+          <button className="btn sm" onClick={() => router.push(`/payments/${p._id}`)}>{t("pay.receipt")}</button>
           {p.status === "recorded" && can("approver") && <button className="btn sm primary" disabled={p.recordedBy === me?._id} title={p.recordedBy === me?._id ? t("err.same_person_cannot_approve") : ""} onClick={() => void run(() => confirm({ paymentId: p._id }), t("saved"))}>{t("pay.confirm")}</button>}
           {p.status === "confirmed" && can("financeOfficer") && <button className="btn sm primary" onClick={() => void run(async () => { const r = await apply({ paymentId: p._id }); return r; }, t("saved"))}>{t("pay.apply")}</button>}
           {(p.status === "recorded" || p.status === "confirmed") && can("approver") && <button className="btn sm danger" onClick={() => setVoiding(p._id)}>{t("pay.void")}</button>}</div> },

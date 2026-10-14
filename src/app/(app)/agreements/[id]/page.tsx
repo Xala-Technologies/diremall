@@ -1,5 +1,6 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
@@ -28,7 +29,7 @@ export default function AgreementPage() {
   const rentOf = (term: (typeof d.terms)[number]) => monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: d.unit.areaM2, ratePerM2: term.rent.ratePerM2 });
   return (
     <div className="stack">
-      <PageHeader title={`${d.unit.number} — ${d.renter?.name ?? ""}`}><StatusBadge status={a.status} /></PageHeader>
+      <PageHeader title={`${d.unit.number} — ${d.renter?.name ?? ""}`}><StatusBadge status={a.status} /><Link className="btn" href={`/agreements/${agreementId}/contract`}>{t("contract.title")}</Link></PageHeader>
       <Message error={error} notice={notice} />
       <Card title={t("nav.agreements")} actions={<>
         {can("propertyManager") && (a.status === "draft" || a.status === "inReview") && (
@@ -45,6 +46,7 @@ export default function AgreementPage() {
       <Card title={t("ag.terms")}><Table rows={d.terms.slice().sort((x, y) => x.effectiveFrom - y.effectiveFrom)} cols={[
         { head: t("date"), cell: (x) => <DateText ms={x.effectiveFrom} /> },
         { head: t("ag.rentBasis"), cell: (x) => (x.rent.kind === "fixed" ? t("ag.fixed") : `${t("ag.perM2")} @ ${(x.rent.ratePerM2 / 100).toLocaleString()}`) },
+        { head: t("ag.escalation"), cell: (x) => (x.escalation ? `+${x.escalation.percent}% / ${x.escalation.everyMonths} mo` : "—") },
         { head: t("bill.calc"), cell: (x) => <Money v={rentOf(x)} />, right: true, money: true }, { head: t("ag.dueDay"), cell: (x) => x.dueDay, right: true },
       ]} /></Card>
       {a.status === "active" && dep && <Card title={t("ag.deposit")} actions={<>
@@ -93,9 +95,10 @@ function TermsDialog({ onClose, agreementId, endsAt }: { onClose: () => void; ag
   const { t } = useI18n(); const add = useMutation(api.agreements.addTerm); const { run, error } = useRun();
   const [from, setFrom] = useState<number | null>(null); const [basis, setBasis] = useState<"perM2" | "fixed">("perM2"); const [amount, setAmount] = useState<number | null>(null);
   const [dueDay, setDueDay] = useState(5); const [deposit, setDeposit] = useState<number | null>(0); const [newEnd, setNewEnd] = useState<number | null>(null);
+  const [escPct, setEscPct] = useState(""); const [escEvery, setEscEvery] = useState("12");
   return <Modal title={t("ag.renew")} onClose={onClose}><form className="form" onSubmit={async (e) => {
     e.preventDefault(); if (from == null || amount == null || deposit == null) return;
-    if (await run(() => add({ agreementId, effectiveFrom: from, rent: basis === "fixed" ? { kind: "fixed", amount } : { kind: "perM2", ratePerM2: amount }, dueDay, depositAmount: deposit, newEndsAt: newEnd && newEnd > endsAt ? newEnd : undefined }))) onClose();
+    if (await run(() => add({ agreementId, effectiveFrom: from, rent: basis === "fixed" ? { kind: "fixed", amount } : { kind: "perM2", ratePerM2: amount }, dueDay, depositAmount: deposit, newEndsAt: newEnd && newEnd > endsAt ? newEnd : undefined, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }))) onClose();
   }}>
     <Field label={t("date")}><DateField value={from} onChange={setFrom} /></Field>
     <Field label={t("ag.rentBasis")}><select value={basis} onChange={(e) => setBasis(e.target.value as typeof basis)}><option value="perM2">{t("ag.perM2")}</option><option value="fixed">{t("ag.fixed")}</option></select></Field>
@@ -103,5 +106,7 @@ function TermsDialog({ onClose, agreementId, endsAt }: { onClose: () => void; ag
     <Field label={t("ag.dueDay")}><input type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} /></Field>
     <Field label={t("ag.deposit")}><MoneyInput value={deposit} onChange={setDeposit} /></Field>
     <Field label={`${t("ag.end")} (${t("ag.renew")})`}><DateField value={newEnd} onChange={setNewEnd} /></Field>
+    <Field label={t("ag.escPct")}><input inputMode="decimal" value={escPct} onChange={(e) => setEscPct(e.target.value)} placeholder="10" /></Field>
+    <Field label={t("ag.escEvery")}><input type="number" min={1} max={60} value={escEvery} onChange={(e) => setEscEvery(e.target.value)} /></Field>
     <div className="wide"><Message error={error} /><button className="btn primary" disabled={from == null || amount == null}>{t("save")}</button></div></form></Modal>;
 }

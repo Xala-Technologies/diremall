@@ -50,7 +50,7 @@ export default function Dashboard() {
             <Kpi tone="bad" icon="bills" label={t("dash.outstanding")} unit="ETB" value={<Money bare v={d.outstanding} />} sub={<>{t("dash.of")} {Math.round(d.billed / 100).toLocaleString()} {t("dash.billedShort")}</>} />
             <Kpi tone="good" icon="payments" label={t("dash.collectedTitle")} unit="ETB" value={<Money bare v={d.appliedToBills} />} sub={<>{pct(d.collectionRate)} · {t("dash.collectedKpi")}</>} />
             <Kpi tone="info" icon="reports" label={t("dash.billed")} unit="ETB" value={<Money bare v={d.billed} />} sub={<>{t("dash.confirmed")}: {Math.round(d.confirmedPayments / 100).toLocaleString()}</>} />
-            <Kpi icon="buildings" label={t("dash.occupancy")} value={pct(d.occupancyRate)} sub={<>{d.occupied} / {d.units} {t("dash.occupancyNote")}</>} />
+            <Kpi icon="buildings" label={t("dash.occupancy")} value={pct(d.occupancyRate)} sub={<>{d.occupied} / {d.units} {t("dash.occupancyNote")} · {d.buildings} {d.buildings === 1 ? "building" : "buildings"}</>} />
           </div>
 
           <div className="cols-2">

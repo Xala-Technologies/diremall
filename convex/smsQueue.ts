@@ -63,6 +63,14 @@ export const expireAgreements = internalMutation({
   },
 });
 
+/** Turn reserved units occupied once their lease starts. */
+export const refreshUnits = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    for (const u of await ctx.db.query("units").collect()) await refreshUnitStatus(ctx, u._id);
+  },
+});
+
 /** Messages ready to send, with the phone number; a message whose bill has since been paid is cancelled. */
 export const claimQueued = internalMutation({
   args: {},

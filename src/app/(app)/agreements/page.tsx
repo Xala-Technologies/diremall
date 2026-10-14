@@ -38,13 +38,14 @@ function NewAgreement({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [start, setStart] = useState<number | null>(null); const [end, setEnd] = useState<number | null>(null);
   const [basis, setBasis] = useState<"perM2" | "fixed">("perM2"); const [amount, setAmount] = useState<number | null>(null);
   const [dueDay, setDueDay] = useState(5); const [deposit, setDeposit] = useState<number | null>(0);
+  const [escPct, setEscPct] = useState(""); const [escEvery, setEscEvery] = useState("12");
   const unit = vacant?.find((u) => u._id === unitId);
   const ok = unitId && renterId && start != null && end != null && amount != null && deposit != null && end > start;
   return (
     <Modal title={t("ag.new")} onClose={onClose}>
       <form className="form" onSubmit={async (e) => {
         e.preventDefault(); if (!ok) return;
-        const id = await run(() => create({ unitId: unitId as Id<"units">, renterId: renterId as Id<"renters">, startsAt: start!, endsAt: end!, rent: basis === "fixed" ? { kind: "fixed", amount: amount! } : { kind: "perM2", ratePerM2: amount! }, dueDay, depositAmount: deposit! }));
+        const id = await run(() => create({ unitId: unitId as Id<"units">, renterId: renterId as Id<"renters">, startsAt: start!, endsAt: end!, rent: basis === "fixed" ? { kind: "fixed", amount: amount! } : { kind: "perM2", ratePerM2: amount! }, dueDay, depositAmount: deposit!, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }));
         if (id) onCreated(id);
       }}>
         <Field label={t("ag.unit")}><select required value={unitId} onChange={(e) => { setUnitId(e.target.value); const u = vacant?.find((x) => x._id === e.target.value); if (u && basis === "perM2") setAmount(u.ratePerM2); }}><option value="" />{vacant?.map((u) => <option key={u._id} value={u._id}>{u.number} — {u.areaM2} m²</option>)}</select></Field>
@@ -55,6 +56,8 @@ function NewAgreement({ onClose, onCreated }: { onClose: () => void; onCreated: 
         <Field label={basis === "perM2" ? t("prop.rate") : t("amount")}><MoneyInput key={basis + unitId} value={amount} onChange={setAmount} /></Field>
         <Field label={t("ag.dueDay")}><input type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} /></Field>
         <Field label={t("ag.deposit")}><MoneyInput value={deposit} onChange={setDeposit} /></Field>
+        <Field label={t("ag.escPct")}><input inputMode="decimal" value={escPct} onChange={(e) => setEscPct(e.target.value)} placeholder="10" /></Field>
+        <Field label={t("ag.escEvery")}><input type="number" min={1} max={60} value={escEvery} onChange={(e) => setEscEvery(e.target.value)} /></Field>
         <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy || !ok}>{t("create")}</button></div>
       </form>
     </Modal>

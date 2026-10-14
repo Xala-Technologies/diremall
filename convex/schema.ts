@@ -87,6 +87,8 @@ export default defineSchema({
     ),
     dueDay: v.number(),
     depositAmount: money,
+    // e.g. { percent: 10, everyMonths: 12 } raises the rent 10% every 12 months from effectiveFrom
+    escalation: v.optional(v.object({ percent: v.number(), everyMonths: v.number() })),
     createdBy: v.id("users"),
   }).index("by_agreement", ["agreementId", "effectiveFrom"]),
 
@@ -131,6 +133,7 @@ export default defineSchema({
     recordedBy: v.id("users"),
     confirmedBy: v.optional(v.id("users")),
     evidenceFileId: v.optional(v.id("_storage")),
+    receiptNumber: v.optional(v.string()),
   }).index("by_renter", ["renterId"]).index("by_status", ["status"]).index("by_reference", ["method", "reference"]),
   paymentAllocations: defineTable({ paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
     .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]),

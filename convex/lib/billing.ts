@@ -60,3 +60,18 @@ export function ageArrears(items: { due: Santim; daysOverdue: number }[]): Aging
 export function rangesOverlap(a: [number, number], b: [number, number]): boolean {
   return a[0] < b[1] && b[0] < a[1];
 }
+
+export type Escalation = { percent: number; everyMonths: number };
+
+/** Whole months from `from` to `to` (UTC), never negative. */
+export function monthsBetween(from: number, to: number): number {
+  const a = new Date(from), b = new Date(to);
+  return Math.max(0, (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth()));
+}
+
+/** Rent after yearly (or other interval) increases: monthly × (1 + percent)^steps, rounded to whole santim. */
+export function escalatedRent(monthly: Santim, esc: Escalation | undefined, effectiveFrom: number, periodStart: number): { amount: Santim; steps: number } {
+  if (!esc) return { amount: monthly, steps: 0 };
+  const steps = Math.floor(monthsBetween(effectiveFrom, periodStart) / esc.everyMonths);
+  return { amount: steps === 0 ? monthly : Math.round(monthly * Math.pow(1 + esc.percent / 100, steps)), steps };
+}

@@ -6,6 +6,12 @@ import { refreshUnitStatus } from "./lib/units";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 import { rangesOverlap } from "./lib/billing";
 
+const escalation = v.optional(v.object({ percent: v.number(), everyMonths: v.number() }));
+function assertEscalation(e?: { percent: number; everyMonths: number }) {
+  if (!e) return;
+  if (!(e.percent > 0 && e.percent <= 100) || !Number.isInteger(e.everyMonths) || e.everyMonths < 1 || e.everyMonths > 60) fail("invalid_escalation");
+}
+
 const rent = v.union(
   v.object({ kind: v.literal("perM2"), ratePerM2: v.number() }),
   v.object({ kind: v.literal("fixed"), amount: v.number() }),
@@ -22,9 +28,11 @@ export const createDraft = mutation({
     rent,
     dueDay: v.number(),
     depositAmount: v.number(),
+    escalation,
   },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
+    assertEscalation(a.escalation);
     const unit = await assertUnitVisible(ctx, u, a.unitId);
     await assertRenterVisible(ctx, u, a.renterId);
     if (a.endsAt <= a.startsAt) fail("end_before_start");
@@ -33,7 +41,7 @@ export const createDraft = mutation({
     assertSantim(a.rent.kind === "fixed" ? a.rent.amount : a.rent.ratePerM2, { allowZero: true });
     if (unit.status === "maintenance") fail("unit_in_maintenance");
     const id = await ctx.db.insert("agreements", { unitId: a.unitId, renterId: a.renterId, status: "draft", startsAt: a.startsAt, endsAt: a.endsAt, createdBy: u._id });
-    await ctx.db.insert("agreementTerms", { agreementId: id, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, createdBy: u._id });
+    await ctx.db.insert("agreementTerms", { agreementId: id, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.create", "agreements", id);
     return id;
   },
@@ -90,8 +98,8 @@ export const approve = mutation({
     const others = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", ag.unitId).eq("status", "active")).collect();
     if (others.some((o) => rangesOverlap([o.startsAt, o.endsAt], [ag.startsAt, ag.endsAt]))) fail("overlapping_active_agreement");
     await ctx.db.patch(agreementId, { status: "active", approvedBy: u._id });
-    // Occupied only once the lease has begun is a policy choice; we mark it as soon as it is active.
-    await ctx.db.patch(ag.unitId, { status: "occupied" });
+    // A lease that starts in the future reserves the unit; it turns occupied on its start date.
+    await refreshUnitStatus(ctx, ag.unitId);
     const term = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).first();
     await ctx.db.insert("deposits", { agreementId, required: term?.depositAmount ?? 0, held: 0, deductions: [], refunded: 0 });
     await audit(ctx, u, "agreement.approve", "agreements", agreementId);
@@ -100,9 +108,10 @@ export const approve = mutation({
 
 /** Rent change or renewal: earlier terms stay in history; issued bills never change. */
 export const addTerm = mutation({
-  args: { agreementId: v.id("agreements"), effectiveFrom: v.number(), rent, dueDay: v.number(), depositAmount: v.number(), newEndsAt: v.optional(v.number()) },
+  args: { agreementId: v.id("agreements"), effectiveFrom: v.number(), rent, dueDay: v.number(), depositAmount: v.number(), newEndsAt: v.optional(v.number()), escalation },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "approver");
+    assertEscalation(a.escalation);
     const ag = (await ctx.db.get(a.agreementId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "active") fail("agreement_not_active");
@@ -115,7 +124,7 @@ export const addTerm = mutation({
       if (a.newEndsAt <= ag.endsAt) fail("renewal_must_extend");
       await ctx.db.patch(a.agreementId, { endsAt: a.newEndsAt });
     }
-    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.effectiveFrom, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, createdBy: u._id });
+    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.effectiveFrom, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.term", "agreements", a.agreementId, JSON.stringify({ effectiveFrom: a.effectiveFrom, rent: a.rent }));
   },
 });
@@ -197,9 +206,10 @@ export const expiring = query({
 
 /** Correct a draft that was returned for correction. Only drafts can be edited; active terms change through addTerm. */
 export const updateDraft = mutation({
-  args: { agreementId: v.id("agreements"), startsAt: v.number(), endsAt: v.number(), rent, dueDay: v.number(), depositAmount: v.number() },
+  args: { agreementId: v.id("agreements"), startsAt: v.number(), endsAt: v.number(), rent, dueDay: v.number(), depositAmount: v.number(), escalation },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
+    assertEscalation(a.escalation);
     const ag = (await ctx.db.get(a.agreementId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "draft") fail("not_a_draft");
@@ -210,7 +220,7 @@ export const updateDraft = mutation({
     await ctx.db.patch(a.agreementId, { startsAt: a.startsAt, endsAt: a.endsAt });
     const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", a.agreementId)).collect();
     for (const t of terms) await ctx.db.delete(t._id);
-    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, createdBy: u._id });
+    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.updateDraft", "agreements", a.agreementId);
   },
 });

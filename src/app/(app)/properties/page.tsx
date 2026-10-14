@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
+import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -48,6 +48,7 @@ export default function Properties() {
                   onKeyDown={(e) => { if (e.key === "Enter" && agreementId) router.push(`/agreements/${agreementId}`); }}>
                   <div className="tile-h"><span className="tile-t">{u.number}</span><StatusBadge status={u.status} /></div>
                   <div className="tile-r">{u.renterName || <span className="muted">—</span>}</div>
+                  {"reservedFrom" in u && u.reservedFrom && <div className="tile-m"><Badge tone="info">{t("ag.reservedFrom")} <DateText ms={u.reservedFrom} /></Badge></div>}
                   <div className="tile-m"><span>{t(u.category)}</span><span>·</span><span className="num">{u.areaM2} m²</span><span>·</span><span className="num">{(u.ratePerM2 / 100).toLocaleString()} /m²</span></div>
                   {can("propertyManager") && u.status !== "occupied" && (
                     <div className="row" onClick={(e) => e.stopPropagation()}>
