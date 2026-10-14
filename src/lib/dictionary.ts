@@ -161,6 +161,7 @@ export const AM: Record<string, string> = {
   "pw.show": "የይለፍ ቃል አሳይ", "pw.hide": "የይለፍ ቃል ደብቅ", "pw.hint": "ቢያንስ 8 ቁምፊዎች።",
   "bill.item": "ዕቃ", "bill.summary": "ማጠቃለያ", "bill.details": "ዝርዝር", "bill.issuedOn": "የተሰጠበት ቀን",
   "ag.view": "ተመልከት", "dep.required": "የሚያስፈልግ", "dep.held": "የተያዘ", "dep.available": "የሚገኝ", "dep.refunded": "የተመለሰ",
+  "err.inactive": "መለያዎ ንቁ አይደለም።", "err.forbidden_building": "ያ ሕንፃ ከመዳረሻዎ ውጭ ነው።", "err.forbidden_renter": "ያ ተከራይ ከመዳረሻዎ ውጭ ነው።", "err.duplicate_payment_reference": "በዚህ የመክፈያ መንገድና ማጣቀሻ ቁጥር ክፍያ አስቀድሞ አለ።", "err.allocation_exceeds_balance": "ደረሰኙ ገና ከሚቀረው በላይ ነው።", "err.unit_number_exists": "ይህ የክፍል ቁጥር በዚህ ሕንፃ ውስጥ አስቀድሞ አለ።",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };
