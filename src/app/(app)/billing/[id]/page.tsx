@@ -1,10 +1,13 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import { formatEtb } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -23,6 +26,7 @@ export default function InvoicePage() {
   const inv = d.invoice; const b = d.balance;
   return (
     <div className="stack">
+      <Link href="/billing" className="crumb"><Icon name="back" size={16} />{t("nav.billing")}</Link>
       <PageHeader title={`${t("bill.number")} ${inv.number || t("draft")}`}>
         <StatusBadge status={inv.status === "draft" ? "draft" : b.due <= 0 ? "paid" : b.paid + b.creditUsed > 0 ? "partial" : "outstanding"} />
         <button className="btn no-print" onClick={() => window.print()}>{t("print")}</button>
@@ -33,18 +37,41 @@ export default function InvoicePage() {
         {inv.status === "issued" && can("financeOfficer") && (credit ?? 0) > 0 && b.due > 0 && <button className="btn" onClick={() => void run(() => useCredit({ invoiceId }), t("saved"))}>{t("pay.useCredit")} (<Money v={credit ?? 0} />)</button>}
       </PageHeader>
       <Message error={error} notice={notice} />
-      <Card>
-        <div className="row"><span><strong>{d.unit.number}</strong> — {d.renter?.name}</span><span>{inv.period}</span><span>{t("date")}: <DateText ms={inv.dueAt} /></span></div>
-      </Card>
-      <Card title={t("bill.calc")}>
-        <Table rows={d.lines} cols={[
-          { head: "", cell: (l) => l.description }, { head: t("bill.calc"), cell: (l) => <span className="muted">{l.calcNote}</span>, text: true }, { head: t("amount"), cell: (l) => <Money v={l.amount} />, right: true, money: true }]} />
-        <div className="stack" style={{ marginTop: 12, justifyItems: "end" }}>
-          <div>{t("total")}: <Money v={b.total} strong /></div>
-          {b.adjustments !== 0 && <div>{t("bill.adjustments")}: <Money v={b.adjustments} /></div>}
-          {inv.status === "issued" && <><div>{t("bill.paid")}: <Money v={b.paid + b.creditUsed} /></div><div style={{ fontSize: 18 }}>{t("bill.due")}: <Money v={b.due} strong /></div></>}
+      <div className="split">
+        <div className="stack">
+          <Card flush title={t("bill.calc")}>
+            <Table rows={d.lines} cols={[
+              { head: t("bill.item"), cell: (l) => <strong>{l.description}</strong> }, { head: t("bill.calc"), cell: (l) => <span className="muted">{l.calcNote}</span>, text: true },
+              { head: t("amount"), cell: (l) => <Money v={l.amount} />, right: true, money: true }]} />
+          </Card>
+          {d.payments.length > 0 && (
+            <Card flush title={t("nav.payments")}>
+              <Table rows={d.payments.map((p, i) => ({ ...p, _id: String(i) }))} cols={[
+                { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} /> }, { head: t("pay.method"), cell: (p) => t(p.method) }, { head: t("pay.reference"), cell: (p) => p.reference },
+                { head: t("amount"), cell: (p) => <Money v={p.amount} />, right: true, money: true },
+                { head: "", cell: (p) => <button className="btn sm" onClick={() => router.push(`/payments/${p.paymentId}`)}>{t("pay.receipt")} {p.receiptNumber}</button> }]} />
+            </Card>)}
         </div>
-      </Card>
+        <div className="stack">
+          <Card title={t("bill.summary")}>
+            <dl className="dl">
+              <div><dt>{t("total")}</dt><dd><Money v={b.total} /></dd></div>
+              {b.adjustments !== 0 && <div><dt>{t("bill.adjustments")}</dt><dd><Money v={b.adjustments} /></dd></div>}
+              {inv.status === "issued" && <div><dt>{t("bill.paid")}</dt><dd><Money v={b.paid + b.creditUsed} /></dd></div>}
+            </dl>
+            {inv.status === "issued" && <div className="due-box"><span>{t("bill.due")}</span><strong className="num">{formatEtb(b.due)}</strong></div>}
+          </Card>
+          <Card title={t("bill.details")}>
+            <dl className="dl">
+              <div><dt>{t("ag.renter")}</dt><dd>{d.renter?.name}</dd></div>
+              <div><dt>{t("ag.unit")}</dt><dd>{d.unit.number}</dd></div>
+              <div><dt>{t("period")}</dt><dd>{inv.period}</dd></div>
+              <div><dt>{t("bill.dueDate")}</dt><dd><DateText ms={inv.dueAt} /></dd></div>
+              {inv.issuedAt && <div><dt>{t("bill.issuedOn")}</dt><dd><DateText ms={inv.issuedAt} /></dd></div>}
+            </dl>
+          </Card>
+        </div>
+      </div>
       {d.adjustments.length > 0 && <Card title={t("bill.adjustments")}><Table rows={d.adjustments} cols={[
         { head: t("amount"), cell: (a) => <Money v={a.delta} /> }, { head: t("reason"), cell: (a) => a.reason, text: true },
         { head: t("status"), cell: (a) => (a.approvedBy ? t("approved") : can("approver") && a.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appAdj({ adjustmentId: a._id }), t("saved"))}>{t("bill.approve")}</button> : t("inReview")) }]} /></Card>}

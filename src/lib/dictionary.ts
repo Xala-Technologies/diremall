@@ -90,6 +90,7 @@ export const EN: Record<string, string> = {
   "imp.err.already_exists": "Already in the system", "imp.err.forbidden_building": "You do not have access to this building", "imp.err.phone": "Not a valid phone number", "imp.err.tin": "A TIN has 10 digits", "imp.err.email": "Not a valid email", "imp.err.kind": "Use company or individual",
   "err.import_has_errors": "The file still has problems. Nothing was imported.", "err.import_too_many_rows": "Too many rows. Split the file into parts of up to 1,000.", "err.import_empty": "The file has no rows.",
   "pw.show": "Show password", "pw.hide": "Hide password", "pw.hint": "At least 8 characters.",
+  "bill.item": "Item", "bill.summary": "Summary", "bill.details": "Details", "bill.issuedOn": "Issued on",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -157,6 +158,7 @@ export const AM: Record<string, string> = {
   "imp.err.already_exists": "አስቀድሞ በስርዓቱ አለ", "imp.err.forbidden_building": "ለዚህ ሕንፃ መዳረሻ የለዎትም", "imp.err.phone": "ትክክለኛ ስልክ ቁጥር አይደለም", "imp.err.tin": "የግብር ከፋይ መለያ ቁጥር 10 አሃዞች አሉት", "imp.err.email": "ትክክለኛ ኢሜይል አይደለም", "imp.err.kind": "company ወይም individual ይጠቀሙ",
   "err.import_has_errors": "ፋይሉ አሁንም ችግሮች አሉበት። ምንም አልገባም።", "err.import_too_many_rows": "ብዙ ረድፎች። ፋይሉን እስከ 1,000 በሚደርሱ ክፍሎች ይከፋፍሉት።", "err.import_empty": "ፋይሉ ምንም ረድፍ የለውም።",
   "pw.show": "የይለፍ ቃል አሳይ", "pw.hide": "የይለፍ ቃል ደብቅ", "pw.hint": "ቢያንስ 8 ቁምፊዎች።",
+  "bill.item": "ዕቃ", "bill.summary": "ማጠቃለያ", "bill.details": "ዝርዝር", "bill.issuedOn": "የተሰጠበት ቀን",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

@@ -230,7 +230,12 @@ export const get = query({
     const lines = await ctx.db.query("invoiceLines").withIndex("by_invoice", (q) => q.eq("invoiceId", invoiceId)).collect();
     const adjustments = await ctx.db.query("invoiceAdjustments").withIndex("by_invoice", (q) => q.eq("invoiceId", invoiceId)).collect();
     const allocations = await ctx.db.query("paymentAllocations").withIndex("by_invoice", (q) => q.eq("invoiceId", invoiceId)).collect();
-    return { invoice: inv, unit, renter: await ctx.db.get(inv.renterId), lines, adjustments, allocations, balance: await invoiceBalance(ctx, inv) };
+    // which payments paid this bill, for the detail screen
+    const payments = await Promise.all(allocations.map(async (a) => {
+      const p = await ctx.db.get(a.paymentId);
+      return { paymentId: a.paymentId, amount: a.amount, reference: p?.reference ?? "", method: p?.method ?? "cash", receivedAt: p?.receivedAt ?? 0, receiptNumber: p?.receiptNumber ?? "" };
+    }));
+    return { invoice: inv, unit, renter: await ctx.db.get(inv.renterId), lines, adjustments, allocations, payments, balance: await invoiceBalance(ctx, inv) };
   },
 });
 
