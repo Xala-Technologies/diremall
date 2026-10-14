@@ -37,7 +37,7 @@ export default function Properties() {
           { head: t("prop.unitNumber"), cell: (u) => <strong>{u.number}</strong> },
           { head: t("prop.category"), cell: (u) => t(u.category) },
           { head: t("prop.area"), cell: (u) => u.areaM2, right: true },
-          { head: t("prop.rate"), cell: (u) => <Money v={u.ratePerM2} />, right: true },
+          { head: t("prop.rate"), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
           { head: t("status"), cell: (u) => <StatusBadge status={u.status} /> },
           { head: "", cell: (u) => can("propertyManager") && u.status !== "occupied" ? (
             <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>

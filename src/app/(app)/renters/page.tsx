@@ -20,7 +20,7 @@ export default function Renters() {
         <input type="search" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("search")} />
         {can("propertyManager", "financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button>}
       </PageHeader>
-      <Card><Table rows={renters} onRow={(r) => setOpen(r._id)} cols={[
+      <Card flush><Table rows={renters} onRow={(r) => setOpen(r._id)} cols={[
         { head: t("name"), cell: (r) => <strong>{r.name}</strong> }, { head: t("renter.kind"), cell: (r) => t(r.kind) },
         { head: t("renter.tin"), cell: (r) => r.tin ?? "—" }, { head: t("renter.phone"), cell: (r) => r.phone },
       ]} /></Card>
@@ -78,8 +78,8 @@ function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void 
           <button className="btn sm" onClick={() => ledger && downloadCsv(`statement-${data.renter.name}.csv`, ledger.map((l) => ({ date: new Date(l.at).toISOString().slice(0, 10), type: l.kind, reference: l.ref, debit: l.debit / 100, credit: l.credit / 100, balance: l.balance / 100 })))}>{t("export")}</button></>}>
           <Table rows={ledger?.map((l, i) => ({ ...l, _id: String(i) }))} cols={[
             { head: t("date"), cell: (l) => <DateText ms={l.at} /> }, { head: t("status"), cell: (l) => l.kind }, { head: t("pay.reference"), cell: (l) => l.ref },
-            { head: "Debit", cell: (l) => l.debit ? <Money v={l.debit} /> : "", right: true }, { head: "Credit", cell: (l) => l.credit ? <Money v={l.credit} /> : "", right: true },
-            { head: t("bill.due"), cell: (l) => <Money v={l.balance} strong />, right: true },
+            { head: "Debit", cell: (l) => l.debit ? <Money v={l.debit} /> : "", right: true, money: true }, { head: "Credit", cell: (l) => l.credit ? <Money v={l.credit} /> : "", right: true, money: true },
+            { head: t("bill.due"), cell: (l) => <Money v={l.balance} strong />, right: true, money: true },
           ]} />
         </Card>
         <Card title={t("nav.agreements")}><Table rows={data.agreements} cols={[

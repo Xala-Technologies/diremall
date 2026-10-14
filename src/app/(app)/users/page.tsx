@@ -15,7 +15,7 @@ export default function Users() {
   return (
     <div className="stack">
       <PageHeader title={t("nav.users")} />
-      <Card><Table rows={users} onRow={setEdit} cols={[
+      <Card flush><Table rows={users} onRow={setEdit} cols={[
         { head: t("name"), cell: (u) => <strong>{u.name || "—"}</strong> }, { head: t("email"), cell: (u) => u.email }, { head: t("users.roles"), cell: (u) => (u.roles as string[]).map((r) => t(r)).join(", ") || "—" },
         { head: t("status"), cell: (u) => <StatusBadge status={u.active ? "active" : "draft"} /> }]} /></Card>
       {edit && <Edit user={edit} onClose={() => setEdit(null)} />}

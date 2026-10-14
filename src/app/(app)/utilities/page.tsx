@@ -85,9 +85,9 @@ function Shared() {
         <MoneyInput value={total} onChange={setTotal} placeholder={`${t("amount")} (ETB)`} />
         <button className="btn primary" disabled={!total} onClick={() => void run(() => create({ buildingId: building as Id<"buildings">, kind, period, total: total! }), t("saved"))}>{t("create")}</button></div></Card>}
       <Message error={error} notice={notice} />
-      <Card><Table rows={costs} empty={building ? "—" : t("allBuildings")} cols={[
-        { head: t("util.shared"), cell: (c) => t(c.kind) }, { head: t("total"), cell: (c) => <Money v={c.total} />, right: true },
-        { head: t("util.ownerShare"), cell: (c) => <Money v={c.ownerShare} />, right: true },
+      <Card flush><Table rows={costs} empty={building ? "—" : t("allBuildings")} cols={[
+        { head: t("util.shared"), cell: (c) => t(c.kind) }, { head: t("total"), cell: (c) => <Money v={c.total} />, right: true, money: true },
+        { head: t("util.ownerShare"), cell: (c) => <Money v={c.ownerShare} />, right: true, money: true },
         { head: t("status"), cell: (c) => (c.approvedBy ? <StatusBadge status="approved" /> : can("approver") && c.createdBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => approve({ sharedCostId: c._id }))}>{t("bill.approve")}</button> : <StatusBadge status="draft" />) },
       ]} /></Card>
     </div>

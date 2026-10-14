@@ -1,10 +1,16 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
 import { formatDate, formatEtb, parseEtb } from "@/lib/format";
+import { Icon } from "./icons";
 import { ETH_MONTHS_AM, ETH_MONTHS_EN, ethiopianToGregorian, gregorianToEthiopian } from "../../convex/lib/ethiopianCalendar";
 
-export const Money = ({ v, strong }: { v: number; strong?: boolean }) => <span className={`num ${strong ? "strong" : ""}`}>{formatEtb(v)}</span>;
+const InTable = createContext(false);
+/** Inside a table the column header says ETB, so cells show only the figure. */
+export const Money = ({ v, strong }: { v: number; strong?: boolean }) => {
+  const bare = useContext(InTable);
+  return <span className={`num ${strong ? "strong" : ""}`}>{bare ? formatEtb(v).replace("ETB ", "") : formatEtb(v)}</span>;
+};
 
 export function DateText({ ms }: { ms: number | null | undefined }) {
   const { calendar, lang } = useI18n();
@@ -23,37 +29,38 @@ export function StatusBadge({ status }: { status: string }) {
   return <Badge tone={statusTone(status)}>{status === "paid" ? t("paidFull") : t(status)}</Badge>;
 }
 
-export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
-  return <div className="page-header"><h1>{title}</h1><div className="row">{children}</div></div>;
+export function PageHeader({ title, sub, children }: { title: string; sub?: string; children?: ReactNode }) {
+  return <div className="page-header"><div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div><div className="toolbar">{children}</div></div>;
 }
 
-export function Card({ title, children, actions }: { title?: string; children: ReactNode; actions?: ReactNode }) {
-  return <section className="card">{(title || actions) && <header className="card-h"><h2>{title}</h2><div className="row">{actions}</div></header>}{children}</section>;
+export function Card({ title, children, actions, flush }: { title?: string; children: ReactNode; actions?: ReactNode; flush?: boolean }) {
+  return <section className={`card ${flush ? "flush" : ""}`}>{(title || actions) && <header className="card-h"><h2>{title}</h2><div className="row">{actions}</div></header>}{children}</section>;
 }
 
 export function Stat({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "bad" | "good" }) {
   return <div className={`stat ${tone ?? ""}`}><div className="stat-l">{label}</div><div className="stat-v">{value}</div>{sub && <div className="stat-s">{sub}</div>}</div>;
 }
 
-export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean };
+export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; money?: boolean; text?: boolean };
 export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: { cols: Col<T>[]; rows: T[] | undefined; onRow?: (r: T) => void; empty?: string }) {
   const { t } = useI18n();
-  if (!rows) return <p className="muted">{t("loading")}</p>;
-  if (rows.length === 0) return <p className="muted">{empty ?? t("none")}</p>;
+  if (!rows) return <Skeleton lines={5} />;
+  if (rows.length === 0) return <Empty title={empty ?? t("none")} />;
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr>{cols.map((c, i) => <th key={i} className={c.right ? "r" : ""}>{c.head}</th>)}</tr></thead>
+        <thead><tr>{cols.map((c, i) => <th key={i} className={c.right ? "r" : ""}>{c.head}{c.money && c.head ? " (ETB)" : ""}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => (
-          <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}>
-            {cols.map((c, j) => <td key={j} className={c.right ? "r" : ""}>{c.cell(r)}</td>)}
+          <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}
+            tabIndex={onRow ? 0 : undefined} onKeyDown={onRow ? (e) => { if (e.key === "Enter") onRow(r); } : undefined}>
+            {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
           </tr>))}</tbody>
       </table>
     </div>
   );
 }
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, children, narrow }: { title: string; onClose: () => void; children: ReactNode; narrow?: boolean }) {
   const { t } = useI18n();
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -62,8 +69,8 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, [onClose]);
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
-        <header className="card-h"><h2>{title}</h2><button className="btn ghost" onClick={onClose} aria-label={t("close")}>✕</button></header>
+      <div className={`modal ${narrow ? "narrow" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
+        <header className="card-h"><h2>{title}</h2><button className="btn ghost sm icon-only" onClick={onClose} aria-label={t("close")}><Icon name="close" /></button></header>
         {children}
       </div>
     </div>
@@ -143,4 +150,32 @@ export function BuildingSelect({ buildings, value, onChange }: { buildings: { _i
 
 export function Tabs({ tabs, value, onChange }: { tabs: [string, string][]; value: string; onChange: (v: string) => void }) {
   return <div className="tabs" role="tablist">{tabs.map(([k, label]) => <button key={k} role="tab" aria-selected={value === k} className={value === k ? "on" : ""} onClick={() => onChange(k)}>{label}</button>)}</div>;
+}
+
+export function Skeleton({ lines = 4 }: { lines?: number }) {
+  return <div className="skeleton" aria-busy="true" aria-label="Loading">{Array.from({ length: lines }, (_, i) => <div key={i} className="sk" style={{ width: `${92 - ((i * 13) % 38)}%` }} />)}</div>;
+}
+
+export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
+  return <div className="empty"><b>{title}</b>{hint && <span>{hint}</span>}{action}</div>;
+}
+
+/** Ask for a reason (void, return, terminate…) without a browser prompt. */
+export function ReasonDialog({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: (reason: string) => Promise<unknown> }) {
+  const { t } = useI18n();
+  const [r, setR] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal title={title} onClose={onClose} narrow>
+      <form className="form" onSubmit={async (e) => { e.preventDefault(); setBusy(true); const ok = await onSave(r.trim()); setBusy(false); if (ok !== undefined) onClose(); }}>
+        <div className="wide"><Field label={t("reason")}><input autoFocus required value={r} onChange={(e) => setR(e.target.value)} /></Field></div>
+        <div className="wide row" style={{ justifyContent: "flex-end" }}><button type="button" className="btn ghost" onClick={onClose}>{t("cancel")}</button><button className="btn primary" disabled={busy || !r.trim()}>{t("save")}</button></div>
+      </form>
+    </Modal>
+  );
+}
+
+/** Totals under a table. */
+export function TableFoot({ items }: { items: [string, ReactNode][] }) {
+  return <div className="table-foot">{items.map(([k, v]) => <span key={k}>{k}<b>{v}</b></span>)}</div>;
 }

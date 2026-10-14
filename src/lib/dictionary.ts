@@ -1,7 +1,11 @@
 // English is the source of truth. Amharic falls back to English for any missing key.
 // Amharic wording is a first draft and should be reviewed by Dire Mall staff before launch.
 export const EN: Record<string, string> = {
-  appName: "Dire Mall Rentals",
+  appName: "Dire Mall Rentals", appSub: "Rentals",
+  "nav.g.operate": "Operate", "nav.g.money": "Money", "nav.g.insight": "Insight", "nav.g.admin": "Admin",
+  "dash.title": "Overview", "dash.of": "of", "dash.billedShort": "billed", "dash.collected": "collected", "dash.stillDue": "still due",
+  "first.title": "Set up Dire Mall", "first.1": "Add your buildings, floors and units", "first.2": "Add your renters", "first.3": "Create an agreement, then prepare the first bills",
+  "dash.allClear": "Nothing is waiting for you.", "dash.occupancyNote": "spaces occupied",
   "nav.dashboard": "Overview", "nav.properties": "Buildings & units", "nav.renters": "Renters", "nav.agreements": "Agreements",
   "nav.billing": "Bills", "nav.payments": "Payments", "nav.utilities": "Utilities", "nav.reports": "Reports", "nav.bank": "Bank matching",
   "nav.messages": "SMS", "nav.users": "Staff access", "nav.audit": "History", "nav.settings": "Settings",
@@ -65,7 +69,11 @@ export const EN: Record<string, string> = {
 };
 
 export const AM: Record<string, string> = {
-  appName: "ድሬ ሞል የኪራይ አስተዳደር",
+  appName: "ድሬ ሞል የኪራይ አስተዳደር", appSub: "ኪራይ",
+  "nav.g.operate": "ሥራ", "nav.g.money": "ገንዘብ", "nav.g.insight": "ግንዛቤ", "nav.g.admin": "አስተዳደር",
+  "dash.title": "አጠቃላይ እይታ", "dash.of": "ከ", "dash.billedShort": "ተሰጥቷል", "dash.collected": "ተሰብስቧል", "dash.stillDue": "ቀሪ",
+  "first.title": "ድሬ ሞልን ያዘጋጁ", "first.1": "ሕንፃዎችን፣ ፎቆችንና ክፍሎችን ያክሉ", "first.2": "ተከራዮችን ያክሉ", "first.3": "ውል ይፍጠሩ፣ ከዚያ የመጀመሪያዎቹን ደረሰኞች ያዘጋጁ",
+  "dash.allClear": "የሚጠብቅዎት ምንም ነገር የለም።", "dash.occupancyNote": "የተያዙ ክፍሎች",
   "nav.dashboard": "አጠቃላይ እይታ", "nav.properties": "ሕንፃዎችና ክፍሎች", "nav.renters": "ተከራዮች", "nav.agreements": "ውሎች", "nav.billing": "ደረሰኞች",
   "nav.payments": "ክፍያዎች", "nav.utilities": "አገልግሎቶች", "nav.reports": "ሪፖርቶች", "nav.bank": "የባንክ ማመሳከሪያ", "nav.messages": "አጭር መልእክት", "nav.users": "የሠራተኛ መዳረሻ", "nav.audit": "ታሪክ", "nav.settings": "ቅንብሮች",
   signIn: "ግባ", signUp: "መለያ ክፈት", signOut: "ውጣ", email: "ኢሜይል", password: "የይለፍ ቃል", name: "ሙሉ ስም",

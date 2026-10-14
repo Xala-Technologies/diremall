@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Card, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Card, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -22,7 +22,7 @@ export default function AgreementPage() {
   const receive = useMutation(api.deposits.receive); const refund = useMutation(api.deposits.refund);
   const reqDed = useMutation(api.deposits.requestDeduction); const appDed = useMutation(api.deposits.approveDeduction);
   const upload = useUpload(); const { run, error, notice } = useRun();
-  const [dlg, setDlg] = useState<null | "terms" | "handover" | "deduct" | "refund" | "receive" | "terminate">(null);
+  const [dlg, setDlg] = useState<null | "terms" | "handover" | "deduct" | "refund" | "receive" | "terminate" | "return">(null);
   if (!d) return <p className="muted">{t("loading")}</p>;
   const a = d.agreement; const mine = me?._id === a.createdBy;
   const rentOf = (term: (typeof d.terms)[number]) => monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: d.unit.areaM2, ratePerM2: term.rent.ratePerM2 });
@@ -36,7 +36,7 @@ export default function AgreementPage() {
         {can("propertyManager") && a.status === "draft" && <button className="btn sm primary" onClick={() => void run(() => submit({ agreementId }), t("saved"))}>{t("ag.submit")}</button>}
         {can("approver") && a.status === "inReview" && <>
           <button className="btn sm primary" disabled={mine} title={mine ? t("err.same_person_cannot_approve") : ""} onClick={() => void run(() => approve({ agreementId }), t("saved"))}>{t("ag.approve")}</button>
-          <button className="btn sm" onClick={() => { const reason = prompt(t("reason")); if (reason) void run(() => back({ agreementId, reason })); }}>{t("ag.return")}</button></>}
+          <button className="btn sm" onClick={() => setDlg("return")}>{t("ag.return")}</button></>}
         {can("approver") && a.status === "active" && <><button className="btn sm" onClick={() => setDlg("terms")}>{t("ag.renew")}</button><button className="btn sm danger" onClick={() => setDlg("terminate")}>{t("ag.terminate")}</button></>}
       </>}>
         <div className="row"><span>{t("ag.start")}: <DateText ms={a.startsAt} /></span><span>{t("ag.end")}: <DateText ms={a.endsAt} /></span>
@@ -45,7 +45,7 @@ export default function AgreementPage() {
       <Card title={t("ag.terms")}><Table rows={d.terms.slice().sort((x, y) => x.effectiveFrom - y.effectiveFrom)} cols={[
         { head: t("date"), cell: (x) => <DateText ms={x.effectiveFrom} /> },
         { head: t("ag.rentBasis"), cell: (x) => (x.rent.kind === "fixed" ? t("ag.fixed") : `${t("ag.perM2")} @ ${(x.rent.ratePerM2 / 100).toLocaleString()}`) },
-        { head: t("bill.calc"), cell: (x) => <Money v={rentOf(x)} />, right: true }, { head: t("ag.dueDay"), cell: (x) => x.dueDay, right: true },
+        { head: t("bill.calc"), cell: (x) => <Money v={rentOf(x)} />, right: true, money: true }, { head: t("ag.dueDay"), cell: (x) => x.dueDay, right: true },
       ]} /></Card>
       {a.status === "active" && dep && <Card title={t("ag.deposit")} actions={<>
         {can("financeOfficer") && <button className="btn sm" onClick={() => setDlg("receive")}>{t("dep.receive")}</button>}
@@ -53,27 +53,22 @@ export default function AgreementPage() {
         {can("approver") && <button className="btn sm" onClick={() => setDlg("refund")}>{t("dep.refund")}</button>}</>}>
         <div className="row"><span>Required <Money v={dep.required} /></span><span>Held <Money v={dep.held} /></span><span>Available <Money v={dep.available} strong /></span><span>Refunded <Money v={dep.refunded} /></span></div>
         <Table rows={dep.deductions.map((x, i) => ({ ...x, _id: String(i), i }))} empty="—" cols={[
-          { head: t("amount"), cell: (x) => <Money v={x.amount} /> }, { head: t("reason"), cell: (x) => x.reason },
+          { head: t("amount"), cell: (x) => <Money v={x.amount} /> }, { head: t("reason"), cell: (x) => x.reason, text: true },
           { head: t("status"), cell: (x) => (x.approvedBy ? t("approved") : can("approver") && x.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appDed({ agreementId, index: x.i }))}>{t("bill.approve")}</button> : t("inReview")) },
         ]} />
       </Card>}
       <Card title={t("ag.handover")} actions={can("propertyManager") && <button className="btn sm" onClick={() => setDlg("handover")}>{t("add")}</button>}>
-        <Table rows={d.handovers} empty="—" cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition }]} />
+        <Table rows={d.handovers} empty="—" cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition, text: true }]} />
       </Card>
       {dlg === "terms" && <TermsDialog onClose={() => setDlg(null)} agreementId={agreementId} endsAt={a.endsAt} />}
       {dlg === "handover" && <HandoverDialog onClose={() => setDlg(null)} onSave={(v) => run(() => handover({ agreementId, ...v }))} />}
-      {dlg === "terminate" && <ReasonDialog title={t("ag.terminate")} onClose={() => setDlg(null)} onSave={(reason) => run(() => terminate({ agreementId, reason }))} />}
+      {dlg === "terminate" && <ReasonDialog title={t("ag.terminate")} onClose={() => setDlg(null)} onSave={(reason) => run(() => terminate({ agreementId, reason }), t("saved"))} />}
+      {dlg === "return" && <ReasonDialog title={t("ag.return")} onClose={() => setDlg(null)} onSave={(reason) => run(() => back({ agreementId, reason }), t("saved"))} />}
       {dlg === "deduct" && <AmountDialog title={t("dep.deduct")} reason onClose={() => setDlg(null)} onSave={(amount, reason) => run(() => reqDed({ agreementId, amount, reason: reason! }))} />}
       {dlg === "receive" && <AmountDialog title={t("dep.receive")} onClose={() => setDlg(null)} onSave={(amount) => run(() => receive({ agreementId, amount }))} />}
       {dlg === "refund" && <AmountDialog title={t("dep.refund")} onClose={() => setDlg(null)} onSave={(amount) => run(() => refund({ agreementId, amount }))} />}
     </div>
   );
-}
-
-function ReasonDialog({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: (r: string) => Promise<unknown> }) {
-  const { t } = useI18n(); const [r, setR] = useState("");
-  return <Modal title={title} onClose={onClose}><form className="form" onSubmit={async (e) => { e.preventDefault(); if (await onSave(r) !== undefined) onClose(); }}>
-    <Field label={t("reason")}><input required value={r} onChange={(e) => setR(e.target.value)} /></Field><div className="wide"><button className="btn primary">{t("save")}</button></div></form></Modal>;
 }
 
 function AmountDialog({ title, reason, onClose, onSave }: { title: string; reason?: boolean; onClose: () => void; onSave: (amount: number, reason?: string) => Promise<unknown> }) {

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Card, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table, Tabs } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -12,7 +12,7 @@ import { useUpload } from "@/lib/useUpload";
 type Status = "" | "recorded" | "confirmed" | "applied" | "voided";
 export default function Payments() {
   const { t } = useI18n(); const { can, me } = useMe();
-  const [tab, setTab] = useState<Status>(""); const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState<Status>(""); const [adding, setAdding] = useState(false); const [voiding, setVoiding] = useState<Id<"payments"> | null>(null);
   const rows = useQuery(api.payments.list, { status: tab || undefined });
   const confirm = useMutation(api.payments.confirm); const apply = useMutation(api.payments.apply); const voidP = useMutation(api.payments.voidPayment);
   const { run, error, notice } = useRun();
@@ -21,16 +21,17 @@ export default function Payments() {
       <PageHeader title={t("nav.payments")}>{can("financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button>}</PageHeader>
       <Message error={error} notice={notice} />
       <Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} />
-      <Card><Table rows={rows} cols={[
+      <Card flush><Table rows={rows} cols={[
         { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} /> }, { head: t("ag.renter"), cell: (p) => p.renterName }, { head: t("pay.method"), cell: (p) => t(p.method) },
-        { head: t("pay.reference"), cell: (p) => p.reference }, { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true },
+        { head: t("pay.reference"), cell: (p) => p.reference }, { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true },
         { head: t("pay.evidence"), cell: (p) => (p.evidenceUrl ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer">✓</a> : "—") }, { head: t("status"), cell: (p) => <StatusBadge status={p.status} /> },
         { head: "", cell: (p) => <div className="row">
           {p.status === "recorded" && can("approver") && <button className="btn sm primary" disabled={p.recordedBy === me?._id} title={p.recordedBy === me?._id ? t("err.same_person_cannot_approve") : ""} onClick={() => void run(() => confirm({ paymentId: p._id }), t("saved"))}>{t("pay.confirm")}</button>}
           {p.status === "confirmed" && can("financeOfficer") && <button className="btn sm primary" onClick={() => void run(async () => { const r = await apply({ paymentId: p._id }); return r; }, t("saved"))}>{t("pay.apply")}</button>}
-          {(p.status === "recorded" || p.status === "confirmed") && can("approver") && <button className="btn sm danger" onClick={() => { const reason = prompt(t("reason")); if (reason) void run(() => voidP({ paymentId: p._id, reason })); }}>{t("pay.void")}</button>}</div> },
+          {(p.status === "recorded" || p.status === "confirmed") && can("approver") && <button className="btn sm danger" onClick={() => setVoiding(p._id)}>{t("pay.void")}</button>}</div> },
       ]} /></Card>
       {adding && <RecordForm onClose={() => setAdding(false)} />}
+      {voiding && <ReasonDialog title={t("pay.void")} onClose={() => setVoiding(null)} onSave={(reason) => run(() => voidP({ paymentId: voiding, reason }), t("saved"))} />}
     </div>
   );
 }

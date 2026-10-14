@@ -37,7 +37,7 @@ export default function InvoicePage() {
       </Card>
       <Card title={t("bill.calc")}>
         <Table rows={d.lines} cols={[
-          { head: "", cell: (l) => l.description }, { head: t("bill.calc"), cell: (l) => <span className="muted">{l.calcNote}</span> }, { head: t("amount"), cell: (l) => <Money v={l.amount} />, right: true }]} />
+          { head: "", cell: (l) => l.description }, { head: t("bill.calc"), cell: (l) => <span className="muted">{l.calcNote}</span>, text: true }, { head: t("amount"), cell: (l) => <Money v={l.amount} />, right: true, money: true }]} />
         <div className="stack" style={{ marginTop: 12, justifyItems: "end" }}>
           <div>{t("total")}: <Money v={b.total} strong /></div>
           {b.adjustments !== 0 && <div>{t("bill.adjustments")}: <Money v={b.adjustments} /></div>}
@@ -45,7 +45,7 @@ export default function InvoicePage() {
         </div>
       </Card>
       {d.adjustments.length > 0 && <Card title={t("bill.adjustments")}><Table rows={d.adjustments} cols={[
-        { head: t("amount"), cell: (a) => <Money v={a.delta} /> }, { head: t("reason"), cell: (a) => a.reason },
+        { head: t("amount"), cell: (a) => <Money v={a.delta} /> }, { head: t("reason"), cell: (a) => a.reason, text: true },
         { head: t("status"), cell: (a) => (a.approvedBy ? t("approved") : can("approver") && a.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appAdj({ adjustmentId: a._id }), t("saved"))}>{t("bill.approve")}</button> : t("inReview")) }]} /></Card>}
       {dlg && <AdjustDialog onClose={() => setDlg(false)} onSave={(delta, reason) => run(() => reqAdj({ invoiceId, delta, reason }))} />}
     </div>
