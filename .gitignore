@@ -1,5 +1,4 @@
 node_modules
 .next
 .env*
-convex/_generated
 .DS_Store
