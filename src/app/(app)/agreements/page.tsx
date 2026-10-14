@@ -22,7 +22,7 @@ export default function Agreements() {
   const expiring = useQuery(api.agreements.expiring, {});
   return (
     <div className="stack">
-      <PageHeader title={t("nav.agreements")} filters={<><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} /><span className="spacer" /><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchAgreements")} /></>}
+      <PageHeader title={t("nav.agreements")} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchAgreements")} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} /></>}
         actions={can("propertyManager") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("ag.new")}</button> : undefined} />
       {expiring && expiring.length > 0 && <Card title={t("att.expiringAgreements")}><Table rows={expiring.map((e) => ({ ...e, _id: e.agreementId }))} onRow={(e) => router.push(`/agreements/${e.agreementId}`)} cols={[
         { head: t("ag.unit"), cell: (e) => e.unitNumber }, { head: t("ag.end"), cell: (e) => <DateText ms={e.endsAt} /> }]} /></Card>}

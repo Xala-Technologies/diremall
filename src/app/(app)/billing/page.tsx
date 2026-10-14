@@ -32,10 +32,9 @@ export default function Billing() {
     <div className="stack">
       <PageHeader title={t("nav.billing")}
         filters={<>
+          <SearchInput value={q} onChange={setQ} placeholder={t("filter.searchBills")} />
           <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
           <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
-          <span className="spacer" />
-          <SearchInput value={q} onChange={setQ} placeholder={t("filter.searchBills")} />
         </>}
         actions={<>
           {can("financeOfficer") && <>
