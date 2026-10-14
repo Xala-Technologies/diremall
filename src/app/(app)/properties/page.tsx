@@ -1,9 +1,10 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, Field, Message, Modal, MoneyInput, PageHeader, StatusBadge, Table, Money } from "@/components/ui";
+import { BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -13,6 +14,9 @@ export default function Properties() {
   const { can } = useMe();
   const [building, setBuilding] = useState("");
   const [modal, setModal] = useState<null | "building" | "floor" | "unit">(null);
+  const [view, setViewState] = useState<"grid" | "table">("grid"); const router = useRouter();
+  useEffect(() => { try { if (localStorage.getItem("unitView") === "table") setViewState("table"); } catch {} }, []);
+  const setView = (v: "grid" | "table") => { setViewState(v); try { localStorage.setItem("unitView", v); } catch {} };
   const buildings = useQuery(api.properties.listBuildings);
   const units = useQuery(api.properties.listUnits, { buildingId: (building || undefined) as Id<"buildings"> | undefined });
   const floors = useQuery(api.properties.listFloors, building ? { buildingId: building as Id<"buildings"> } : "skip");
@@ -24,6 +28,7 @@ export default function Properties() {
     <div className="stack">
       <PageHeader title={t("nav.properties")}>
         <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
+        <ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} />
         {can("propertyManager") && <>
           <button className="btn" onClick={() => setModal("building")}>{t("prop.addBuilding")}</button>
           {building && <button className="btn" onClick={() => setModal("floor")}>{t("prop.addFloor")}</button>}
@@ -31,7 +36,30 @@ export default function Properties() {
         </>}
       </PageHeader>
       <Message error={error} />
-      <Card>
+      {view === "grid" ? (
+        !units ? <Card><Skeleton lines={4} /></Card> : units.length === 0 ? <Card><Empty title={t("none")} hint={t("first.1")} /></Card> : (
+          <div className="tiles">
+            {units.map((u) => {
+              const agreementId = "agreementId" in u ? u.agreementId : undefined;
+              return (
+                <div key={u._id} className={`tile ${u.status} ${agreementId ? "clickable" : ""}`}
+                  role={agreementId ? "link" : undefined} tabIndex={agreementId ? 0 : undefined}
+                  onClick={() => agreementId && router.push(`/agreements/${agreementId}`)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && agreementId) router.push(`/agreements/${agreementId}`); }}>
+                  <div className="tile-h"><span className="tile-t">{u.number}</span><StatusBadge status={u.status} /></div>
+                  <div className="tile-r">{u.renterName || <span className="muted">—</span>}</div>
+                  <div className="tile-m"><span>{t(u.category)}</span><span>·</span><span className="num">{u.areaM2} m²</span><span>·</span><span className="num">{(u.ratePerM2 / 100).toLocaleString()} /m²</span></div>
+                  {can("propertyManager") && u.status !== "occupied" && (
+                    <div className="row" onClick={(e) => e.stopPropagation()}>
+                      <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>{u.status === "vacant" ? t("maintenance") : t("vacant")}</button>
+                    </div>)}
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+      <Card flush>
         <Table rows={units} cols={[
           { head: t("building"), cell: (u) => bName(u.buildingId) },
           { head: t("prop.unitNumber"), cell: (u) => <strong>{u.number}</strong> },
@@ -44,6 +72,7 @@ export default function Properties() {
               {u.status === "vacant" ? t("maintenance") : t("vacant")}</button>) : null },
         ]} />
       </Card>
+      )}
       {modal === "building" && <BuildingForm onClose={() => setModal(null)} />}
       {modal === "floor" && building && <FloorForm buildingId={building as Id<"buildings">} onClose={() => setModal(null)} />}
       {modal === "unit" && building && floors && <UnitForm buildingId={building as Id<"buildings">} floors={floors} onClose={() => setModal(null)} />}

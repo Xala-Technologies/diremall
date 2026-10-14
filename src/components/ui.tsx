@@ -7,8 +7,8 @@ import { ETH_MONTHS_AM, ETH_MONTHS_EN, ethiopianToGregorian, gregorianToEthiopia
 
 const InTable = createContext(false);
 /** Inside a table the column header says ETB, so cells show only the figure. */
-export const Money = ({ v, strong }: { v: number; strong?: boolean }) => {
-  const bare = useContext(InTable);
+export const Money = ({ v, strong, bare: forceBare }: { v: number; strong?: boolean; bare?: boolean }) => {
+  const bare = useContext(InTable) || !!forceBare;
   return <span className={`num ${strong ? "strong" : ""}`}>{bare ? formatEtb(v).replace("ETB ", "") : formatEtb(v)}</span>;
 };
 
@@ -178,4 +178,69 @@ export function ReasonDialog({ title, onClose, onSave }: { title: string; onClos
 /** Totals under a table. */
 export function TableFoot({ items }: { items: [string, ReactNode][] }) {
   return <div className="table-foot">{items.map(([k, v]) => <span key={k}>{k}<b>{v}</b></span>)}</div>;
+}
+
+export function Kpi({ icon, label, value, sub, tone, unit }: { icon: string; label: string; value: ReactNode; sub?: ReactNode; tone?: "good" | "bad" | "info" | "warn"; unit?: string }) {
+  return (
+    <div className={`kpi ${tone ?? ""}`}>
+      <div className="kpi-top"><span>{label}</span><span className="kpi-ic"><Icon name={icon} size={20} /></span></div>
+      <div className="kpi-v">{unit && <small>{unit}</small>}{value}</div>
+      {sub && <div className="kpi-s">{sub}</div>}
+    </div>
+  );
+}
+
+/** Grouped bars per period: billed (light) and collected (solid). Values in santim; labelled in ETB thousands. */
+export function BarChart({ data, labelA, labelB }: { data: { label: string; a: number; b: number }[]; labelA: string; labelB: string }) {
+  const W = 560, H = 210, L = 44, B = 26, T = 10;
+  const max = Math.max(1, ...data.flatMap((d) => [d.a, d.b]));
+  const nice = (() => { const p = Math.pow(10, Math.floor(Math.log10(max))); return Math.ceil(max / p) * p; })();
+  const bw = (W - L) / Math.max(1, data.length);
+  const y = (v: number) => T + (H - T - B) * (1 - v / nice);
+  const k = (v: number) => (v / 100 >= 1_000_000 ? `${(v / 100 / 1_000_000).toFixed(1)}M` : `${Math.round(v / 100 / 1000)}k`);
+  return (
+    <div>
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${labelA}, ${labelB}`}>
+        {[0, 0.5, 1].map((f) => <g key={f}><line className="grid" x1={L} x2={W} y1={y(nice * f)} y2={y(nice * f)} /><text x={L - 8} y={y(nice * f) + 4} textAnchor="end">{k(nice * f)}</text></g>)}
+        {data.map((d, i) => {
+          const x = L + i * bw + bw * 0.16, w = bw * 0.34;
+          return (
+            <g key={d.label}>
+              <title>{`${d.label}: ${labelA} ${(d.a / 100).toLocaleString()} · ${labelB} ${(d.b / 100).toLocaleString()}`}</title>
+              <rect className="bar-a" x={x} y={y(d.a)} width={w} height={Math.max(0, H - B - y(d.a))} rx={3} />
+              <rect className="bar-b" x={x + w + 3} y={y(d.b)} width={w} height={Math.max(0, H - B - y(d.b))} rx={3} />
+              <text x={L + i * bw + bw / 2} y={H - 8} textAnchor="middle">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="legend" style={{ marginTop: 6 }}><span><i className="dot" style={{ background: "color-mix(in srgb, var(--accent) 30%, var(--panel))" }} />{labelA}</span><span><i className="dot" style={{ background: "var(--accent)" }} />{labelB}</span></div>
+    </div>
+  );
+}
+
+export function Donut({ parts, size = 120 }: { parts: { value: number; color: string; label: string }[]; size?: number }) {
+  const total = parts.reduce((s, p) => s + p.value, 0) || 1;
+  const r = size / 2 - 11, c = 2 * Math.PI * r;
+  let off = 0;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={parts.map((p) => `${p.label} ${p.value}`).join(", ")}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--sunken)" strokeWidth={16} />
+      {parts.map((p) => {
+        const len = (p.value / total) * c;
+        const el = <circle key={p.label} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeWidth={16} strokeDasharray={`${Math.max(0, len - 2)} ${c - Math.max(0, len - 2)}`} strokeDashoffset={-off} transform={`rotate(-90 ${size / 2} ${size / 2})`} />;
+        off += len;
+        return el;
+      })}
+    </svg>
+  );
+}
+
+export function ViewToggle({ value, onChange, labels }: { value: "grid" | "table"; onChange: (v: "grid" | "table") => void; labels: [string, string] }) {
+  return (
+    <div className="seg-ctl" role="group" aria-label="View">
+      <button aria-pressed={value === "grid"} onClick={() => onChange("grid")}>{labels[0]}</button>
+      <button aria-pressed={value === "table"} onClick={() => onChange("table")}>{labels[1]}</button>
+    </div>
+  );
 }

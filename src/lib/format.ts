@@ -38,3 +38,10 @@ export const currentPeriod = () => {
 };
 
 export const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/** "2026-09" shifted by n months. */
+export function shiftPeriod(period: string, n: number): string {
+  const [y, m] = period.split("-").map(Number) as [number, number];
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}

@@ -1,9 +1,10 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateText, Field, Message, Modal, Money, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Card, DateText, Empty, Field, Message, Modal, Money, PageHeader, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -14,16 +15,30 @@ export default function Renters() {
   const { t } = useI18n(); const { can } = useMe();
   const [search, setSearch] = useState(""); const [adding, setAdding] = useState(false); const [open, setOpen] = useState<Id<"renters"> | null>(null);
   const renters = useQuery(api.renters.list, { search: search || undefined });
+  const [view, setViewState] = useState<"grid" | "table">("grid");
+  useEffect(() => { try { if (localStorage.getItem("renterView") === "table") setViewState("table"); } catch {} }, []);
+  const setView = (v: "grid" | "table") => { setViewState(v); try { localStorage.setItem("renterView", v); } catch {} };
   return (
     <div className="stack">
       <PageHeader title={t("nav.renters")}>
         <input type="search" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("search")} />
+        <ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} />
         {can("propertyManager", "financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button>}
       </PageHeader>
+      {view === "grid" ? (
+        !renters ? <Card><Skeleton lines={4} /></Card> : renters.length === 0 ? <Card><Empty title={t("none")} hint={t("first.2")} /></Card> : (
+          <div className="tiles">{renters.map((r) => (
+            <div key={r._id} className="tile clickable occupied" role="button" tabIndex={0} onClick={() => setOpen(r._id)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(r._id); }}>
+              <div className="person"><div className="avatar" aria-hidden="true">{r.name.split(/\s+/).slice(0, 2).map((x) => x[0]).join("").toUpperCase()}</div><div><b>{r.name}</b><span>{r.phone}</span></div></div>
+              <div className="row"><Badge tone={r.kind === "company" ? "info" : "muted"}>{t(r.kind)}</Badge>{r.tin && <span className="muted num">TIN {r.tin}</span>}</div>
+            </div>))}
+          </div>)
+      ) : (
       <Card flush><Table rows={renters} onRow={(r) => setOpen(r._id)} cols={[
         { head: t("name"), cell: (r) => <strong>{r.name}</strong> }, { head: t("renter.kind"), cell: (r) => t(r.kind) },
         { head: t("renter.tin"), cell: (r) => r.tin ?? "—" }, { head: t("renter.phone"), cell: (r) => r.phone },
       ]} /></Card>
+      )}
       {adding && <RenterForm onClose={() => setAdding(false)} />}
       {open && <RenterDetail id={open} onClose={() => setOpen(null)} />}
     </div>

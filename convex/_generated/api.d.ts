@@ -29,6 +29,7 @@ import type * as payments from "../payments.js";
 import type * as properties from "../properties.js";
 import type * as renters from "../renters.js";
 import type * as reports from "../reports.js";
+import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as smsQueue from "../smsQueue.js";
 import type * as smsSend from "../smsSend.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   properties: typeof properties;
   renters: typeof renters;
   reports: typeof reports;
+  seed: typeof seed;
   settings: typeof settings;
   smsQueue: typeof smsQueue;
   smsSend: typeof smsSend;

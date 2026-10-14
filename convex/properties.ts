@@ -99,7 +99,14 @@ export const listUnits = query({
     } else {
       units = (await ctx.db.query("units").collect()).filter((x) => canSeeBuilding(u, x.buildingId));
     }
-    return a.status ? units.filter((x) => x.status === a.status) : units;
+    const shown = a.status ? units.filter((x) => x.status === a.status) : units;
+    // the current renter, so the unit board can show who is in each space
+    return Promise.all(shown.map(async (x) => {
+      if (x.status !== "occupied") return { ...x, renterName: "" };
+      const ag = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", x._id).eq("status", "active")).first();
+      const renter = ag ? await ctx.db.get(ag.renterId) : null;
+      return { ...x, renterName: renter?.name ?? "", agreementId: ag?._id };
+    }));
   },
 });
 
