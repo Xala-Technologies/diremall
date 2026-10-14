@@ -131,7 +131,7 @@ export default defineSchema({
     recordedBy: v.id("users"),
     confirmedBy: v.optional(v.id("users")),
     evidenceFileId: v.optional(v.id("_storage")),
-  }).index("by_renter", ["renterId"]).index("by_status", ["status"]),
+  }).index("by_renter", ["renterId"]).index("by_status", ["status"]).index("by_reference", ["method", "reference"]),
   paymentAllocations: defineTable({ paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
     .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]),
   // positive = credit created from an overpayment, negative = credit consumed by a bill
@@ -195,7 +195,7 @@ export default defineSchema({
     renterId: v.id("renters"),
     kind: v.union(v.literal("dueReminder"), v.literal("paymentAck"), v.literal("expiryWarning")),
     body: v.string(),
-    status: v.union(v.literal("queued"), v.literal("accepted"), v.literal("delivered"), v.literal("failed"), v.literal("uncertain"), v.literal("cancelled")),
+    status: v.union(v.literal("queued"), v.literal("accepted"), v.literal("delivered"), v.literal("failed"), v.literal("uncertain"), v.literal("cancelled"), v.literal("sending")),
     invoiceId: v.optional(v.id("invoices")),
     agreementId: v.optional(v.id("agreements")),
     dedupeKey: v.optional(v.string()),

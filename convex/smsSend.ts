@@ -18,6 +18,7 @@ export const dispatch = internalAction({
     for (const m of batch) {
       try {
         const res = await fetch(url, {
+          signal: AbortSignal.timeout(15_000),
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
           body: JSON.stringify({ to: m.to, from: process.env.SMS_SENDER ?? "DireMall", message: m.body, reference: m.id }),

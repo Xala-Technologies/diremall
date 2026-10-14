@@ -33,24 +33,27 @@ export const dashboard = query({
     const occupied = units.filter((x) => x.status === "occupied").length;
 
     const invoices = (await scopedInvoices(ctx, u, buildingId)).filter((i) => i.status === "issued");
-    let billed = 0, outstanding = 0, overdue = 0;
+    let billed = 0, outstanding = 0, overdue = 0, appliedToBills = 0;
     for (const i of invoices) {
       const b = await invoiceBalance(ctx, i);
-      if (i.period === period) { billed += b.total + b.adjustments; outstanding += Math.max(0, b.due); }
+      // billed, applied and outstanding all describe the same set of bills (this period's), so billed = applied + outstanding
+      if (i.period === period) { billed += b.total + b.adjustments; appliedToBills += b.paid + b.creditUsed; outstanding += b.due; }
       if (b.due > 0 && i.dueAt < Date.now()) overdue += b.due;
     }
 
     const renterOk = async (id: Id<"renters">) => { try { await assertRenterVisible(ctx, u, id); return true; } catch { return false; } };
     const payments = (await ctx.db.query("payments").collect()).filter((p) => p.receivedAt >= start && p.receivedAt < end);
-    let confirmed = 0, applied = 0, waiting = 0;
+    let confirmed = 0, waiting = 0;
     for (const p of payments) {
       if (p.status !== "confirmed" && p.status !== "applied") continue;
       if (!(await renterOk(p.renterId))) continue;
       confirmed += p.amount;
       if (p.status === "confirmed") waiting += p.amount;
-      const al = await ctx.db.query("paymentAllocations").withIndex("by_payment", (q) => q.eq("paymentId", p._id)).collect();
-      applied += al.reduce((s, x) => s + x.amount, 0);
     }
+    // work waiting on staff is not limited to the selected month: an unconfirmed payment from last month still needs attention
+    let toConfirm = 0, toApply = 0;
+    for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", "recorded")).collect()) if (await renterOk(p.renterId)) toConfirm++;
+    for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", "confirmed")).collect()) if (await renterOk(p.renterId)) toApply++;
 
     const deposits = (await ctx.db.query("deposits").collect());
     let depositsHeld = 0;
@@ -64,16 +67,16 @@ export const dashboard = query({
     const inScope = agreements.filter((a) => unitIds.has(a.unitId));
     const attention = {
       draftInvoices: (await scopedInvoices(ctx, u, buildingId)).filter((i) => i.status === "draft").length,
-      paymentsToConfirm: payments.filter((p) => p.status === "recorded").length,
-      paymentsToApply: payments.filter((p) => p.status === "confirmed").length,
+      paymentsToConfirm: toConfirm,
+      paymentsToApply: toApply,
       agreementsInReview: inScope.filter((a) => a.status === "inReview").length,
       expiringAgreements: inScope.filter((a) => a.status === "active" && a.endsAt <= horizon).length,
     };
 
     return {
       buildings: buildings.size, units: units.length, occupied, occupancyRate: units.length ? occupied / units.length : 0,
-      billed, confirmedPayments: confirmed, appliedToBills: applied, waitingToApply: waiting, outstanding, overdue, depositsHeld,
-      collectionRate: billed ? Math.min(1, applied / billed) : 0, attention,
+      billed, confirmedPayments: confirmed, appliedToBills, waitingToApply: waiting, outstanding, overdue, depositsHeld,
+      collectionRate: billed ? Math.min(1, appliedToBills / billed) : 0, attention,
     };
   },
 });
@@ -141,7 +144,9 @@ export const tenantLedger = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     await assertRenterVisible(ctx, u, renterId);
     const entries: { at: number; kind: string; ref: string; debit: number; credit: number }[] = [];
-    const invoices = (await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect()).filter((i) => i.status === "issued");
+    const all = (await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect()).filter((i) => i.status === "issued");
+    const invoices = [];
+    for (const i of all) { const un = await ctx.db.get(i.unitId); if (un && canSeeBuilding(u, un.buildingId)) invoices.push(i); }
     for (const i of invoices) {
       entries.push({ at: i.issuedAt ?? i._creationTime, kind: "invoice", ref: i.number, debit: i.total, credit: 0 });
       for (const a of (await ctx.db.query("invoiceAdjustments").withIndex("by_invoice", (q) => q.eq("invoiceId", i._id)).collect()).filter((x) => x.approvedBy))

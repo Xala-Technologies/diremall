@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { READ_ROLES, assertDifferentPerson, audit, fail, requireRole } from "./lib/access";
+import { READ_ROLES, assertDifferentPerson, assertSantim, audit, fail, requireRole } from "./lib/access";
 import { assertUnitVisible } from "./lib/scope";
 
 const available = (d: Doc<"deposits">) =>
@@ -20,7 +20,8 @@ export const receive = mutation({
   handler: async (ctx, { agreementId, amount }) => {
     const u = await requireRole(ctx, "financeOfficer");
     const dep = await load(ctx, agreementId, u);
-    if (amount <= 0) fail("invalid_amount");
+    assertSantim(amount);
+    if (dep.held + amount > dep.required) fail("exceeds_required_deposit");
     await ctx.db.patch(dep._id, { held: dep.held + amount });
     await audit(ctx, u, "deposit.receive", "agreements", agreementId, String(amount));
   },
@@ -32,6 +33,7 @@ export const requestDeduction = mutation({
     const u = await requireRole(ctx, "financeOfficer", "propertyManager");
     const dep = await load(ctx, a.agreementId, u);
     if (!a.reason.trim()) fail("reason_required");
+    assertSantim(a.amount);
     const pending = dep.deductions.filter((x) => !x.approvedBy).reduce((s, x) => s + x.amount, 0);
     if (a.amount <= 0 || a.amount + pending > available(dep)) fail("exceeds_deposit");
     await ctx.db.patch(dep._id, { deductions: [...dep.deductions, { amount: a.amount, reason: a.reason, requestedBy: u._id }] });
@@ -59,7 +61,11 @@ export const refund = mutation({
   handler: async (ctx, { agreementId, amount }) => {
     const u = await requireRole(ctx, "approver");
     const dep = await load(ctx, agreementId, u);
-    if (amount <= 0 || amount > available(dep)) fail("exceeds_deposit");
+    // A deposit is refunded when the tenancy has ended, never during it.
+    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    if (ag.status !== "expired" && ag.status !== "terminated") fail("agreement_still_active");
+    assertSantim(amount);
+    if (amount > available(dep)) fail("exceeds_deposit");
     await ctx.db.patch(dep._id, { refunded: dep.refunded + amount });
     await audit(ctx, u, "deposit.refund", "agreements", agreementId, String(amount));
   },

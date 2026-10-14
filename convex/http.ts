@@ -12,10 +12,15 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, req) => {
     const secret = process.env.SMS_WEBHOOK_SECRET;
-    if (!secret || req.headers.get("x-webhook-secret") !== secret) return new Response("forbidden", { status: 403 });
-    const { id, status } = await req.json();
-    if (!["delivered", "failed"].includes(status)) return new Response("bad status", { status: 400 });
-    await ctx.runMutation(internal.smsQueue.setStatus, { id, status });
+    const given = req.headers.get("x-webhook-secret") ?? "";
+    // constant-time comparison
+    let diff = given.length ^ (secret ?? "").length;
+    for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ (secret ?? "").charCodeAt(i % Math.max(1, (secret ?? "").length));
+    if (!secret || diff !== 0) return new Response("forbidden", { status: 403 });
+    let body: { id?: string; status?: string };
+    try { body = await req.json(); } catch { return new Response("bad request", { status: 400 }); }
+    if (typeof body.id !== "string" || (body.status !== "delivered" && body.status !== "failed")) return new Response("bad request", { status: 400 });
+    try { await ctx.runMutation(internal.smsQueue.deliveryReceipt, { id: body.id as any, status: body.status }); } catch { return new Response("bad request", { status: 400 }); }
     return new Response("ok");
   }),
 });

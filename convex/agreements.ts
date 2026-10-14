@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { READ_ROLES, assertDifferentPerson, audit, fail, getSetting, requireRole } from "./lib/access";
+import { READ_ROLES, assertDifferentPerson, assertSantim, audit, fail, getSetting, requireRole } from "./lib/access";
+import { refreshUnitStatus } from "./lib/units";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 import { rangesOverlap } from "./lib/billing";
 
@@ -28,7 +29,8 @@ export const createDraft = mutation({
     await assertRenterVisible(ctx, u, a.renterId);
     if (a.endsAt <= a.startsAt) fail("end_before_start");
     if (a.dueDay < 1 || a.dueDay > 28) fail("due_day_1_to_28");
-    if (a.depositAmount < 0) fail("invalid_amount");
+    assertSantim(a.depositAmount, { allowZero: true });
+    assertSantim(a.rent.kind === "fixed" ? a.rent.amount : a.rent.ratePerM2, { allowZero: true });
     if (unit.status === "maintenance") fail("unit_in_maintenance");
     const id = await ctx.db.insert("agreements", { unitId: a.unitId, renterId: a.renterId, status: "draft", startsAt: a.startsAt, endsAt: a.endsAt, createdBy: u._id });
     await ctx.db.insert("agreementTerms", { agreementId: id, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, createdBy: u._id });
@@ -43,7 +45,8 @@ export const attachSignedCopy = mutation({
     const u = await requireRole(ctx, "propertyManager");
     const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, ag.unitId);
-    if (ag.status === "terminated" || ag.status === "expired") fail("agreement_closed");
+    // Replacing the signed copy on a live agreement would bypass review; only drafts and agreements in review may change it.
+    if (ag.status !== "draft" && ag.status !== "inReview") fail("signed_copy_locked");
     await ctx.db.patch(agreementId, { signedFileId: fileId });
     await audit(ctx, u, "agreement.signedCopy", "agreements", agreementId);
   },
@@ -104,6 +107,10 @@ export const addTerm = mutation({
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "active") fail("agreement_not_active");
     if (a.dueDay < 1 || a.dueDay > 28) fail("due_day_1_to_28");
+    assertSantim(a.depositAmount, { allowZero: true });
+    assertSantim(a.rent.kind === "fixed" ? a.rent.amount : a.rent.ratePerM2, { allowZero: true });
+    const existing = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", a.agreementId)).collect();
+    if (existing.some((t) => t.effectiveFrom >= a.effectiveFrom)) fail("term_must_start_after_previous");
     if (a.newEndsAt !== undefined) {
       if (a.newEndsAt <= ag.endsAt) fail("renewal_must_extend");
       await ctx.db.patch(a.agreementId, { endsAt: a.newEndsAt });
@@ -114,15 +121,17 @@ export const addTerm = mutation({
 });
 
 export const terminate = mutation({
-  args: { agreementId: v.id("agreements"), reason: v.string() },
-  handler: async (ctx, { agreementId, reason }) => {
+  args: { agreementId: v.id("agreements"), reason: v.string(), effectiveAt: v.optional(v.number()) },
+  handler: async (ctx, { agreementId, reason, effectiveAt }) => {
     const u = await requireRole(ctx, "approver");
     const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "active") fail("agreement_not_active");
     if (!reason.trim()) fail("reason_required");
-    await ctx.db.patch(agreementId, { status: "terminated", terminationReason: reason });
-    await ctx.db.patch(ag.unitId, { status: "vacant" });
+    // Billing stops at the termination date: the end date is pulled forward so later months are never billed.
+    const end = Math.min(ag.endsAt, Math.max(ag.startsAt + 1, effectiveAt ?? Date.now()));
+    await ctx.db.patch(agreementId, { status: "terminated", terminationReason: reason, endsAt: end });
+    await refreshUnitStatus(ctx, ag.unitId);
     await audit(ctx, u, "agreement.terminate", "agreements", agreementId, reason);
   },
 });
@@ -183,5 +192,25 @@ export const expiring = query({
       out.push({ agreementId: ag._id as Id<"agreements">, unitNumber: unit.number, endsAt: ag.endsAt, renterId: ag.renterId });
     }
     return out.sort((a, b) => a.endsAt - b.endsAt);
+  },
+});
+
+/** Correct a draft that was returned for correction. Only drafts can be edited; active terms change through addTerm. */
+export const updateDraft = mutation({
+  args: { agreementId: v.id("agreements"), startsAt: v.number(), endsAt: v.number(), rent, dueDay: v.number(), depositAmount: v.number() },
+  handler: async (ctx, a) => {
+    const u = await requireRole(ctx, "propertyManager");
+    const ag = (await ctx.db.get(a.agreementId)) ?? fail("not_found");
+    await assertUnitVisible(ctx, u, ag.unitId);
+    if (ag.status !== "draft") fail("not_a_draft");
+    if (a.endsAt <= a.startsAt) fail("end_before_start");
+    if (a.dueDay < 1 || a.dueDay > 28) fail("due_day_1_to_28");
+    assertSantim(a.depositAmount, { allowZero: true });
+    assertSantim(a.rent.kind === "fixed" ? a.rent.amount : a.rent.ratePerM2, { allowZero: true });
+    await ctx.db.patch(a.agreementId, { startsAt: a.startsAt, endsAt: a.endsAt });
+    const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", a.agreementId)).collect();
+    for (const t of terms) await ctx.db.delete(t._id);
+    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, createdBy: u._id });
+    await audit(ctx, u, "agreement.updateDraft", "agreements", a.agreementId);
   },
 });

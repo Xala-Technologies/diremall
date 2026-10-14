@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { READ_ROLES, assertDifferentPerson, audit, fail, requireRole } from "./lib/access";
+import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
 import { applyPayment } from "./lib/billing";
 import { creditBalance, invoiceBalance } from "./lib/ledger";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
@@ -14,10 +14,11 @@ export const record = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "financeOfficer");
     await assertRenterVisible(ctx, u, a.renterId);
-    if (a.amount <= 0) fail("invalid_amount");
+    assertSantim(a.amount);
     if (!a.reference.trim()) fail("reference_required");
-    const dupe = (await ctx.db.query("payments").withIndex("by_renter", (q) => q.eq("renterId", a.renterId)).collect())
-      .find((p) => p.method === a.method && p.reference === a.reference && p.status !== "voided");
+    // A bank or Telebirr reference identifies one transfer in the whole mall, whichever renter it is booked to.
+    const dupe = (await ctx.db.query("payments").withIndex("by_reference", (q) => q.eq("method", a.method).eq("reference", a.reference)).collect())
+      .find((p) => p.status !== "voided");
     if (dupe) fail("duplicate_payment_reference");
     const id = await ctx.db.insert("payments", { ...a, status: "recorded", recordedBy: u._id });
     await audit(ctx, u, "payment.record", "payments", id, `${a.amount}`);
@@ -67,20 +68,27 @@ export const apply = mutation({
 
     let plan: { invoiceId: Id<"invoices">; amount: number }[] = [];
     if (allocations) {
+      // total per invoice, so repeating an invoice id cannot be used to over-apply
+      const perInvoice = new Map<string, number>();
+      for (const al of allocations) perInvoice.set(al.invoiceId, (perInvoice.get(al.invoiceId) ?? 0) + al.amount);
       for (const al of allocations) {
+        assertSantim(al.amount);
         const inv = (await ctx.db.get(al.invoiceId)) ?? fail("not_found");
         if (inv.renterId !== p.renterId || inv.status !== "issued") fail("invoice_not_payable");
         await assertUnitVisible(ctx, u, inv.unitId);
         const bal = await invoiceBalance(ctx, inv);
-        if (al.amount <= 0 || al.amount > bal.due) fail("allocation_exceeds_balance");
+        if ((perInvoice.get(al.invoiceId) ?? 0) > bal.due) fail("allocation_exceeds_balance");
       }
       plan = allocations;
       if (plan.reduce((s, x) => s + x.amount, 0) > p.amount) fail("allocation_exceeds_payment");
     } else {
       let left = p.amount;
-      const open = (await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect())
+      const candidates = (await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect())
         .filter((i) => i.status === "issued")
         .sort((a, b) => a.dueAt - b.dueAt);
+      // only bills in buildings this user may see: money cannot be moved onto another building's bills
+      const open = [];
+      for (const i of candidates) { const un = await ctx.db.get(i.unitId); if (un && canSeeBuilding(u, un.buildingId)) open.push(i); }
       for (const inv of open) {
         if (left <= 0) break;
         const bal = await invoiceBalance(ctx, inv);

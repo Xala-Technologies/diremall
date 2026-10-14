@@ -49,7 +49,7 @@ export const createUnit = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
     assertBuilding(u, a.buildingId);
-    if (a.areaM2 <= 0 || a.ratePerM2 < 0) fail("invalid_amount");
+    if (!(Number.isFinite(a.areaM2) && a.areaM2 > 0) || !Number.isSafeInteger(a.ratePerM2) || a.ratePerM2 < 0) fail("invalid_amount");
     const floor = await ctx.db.get(a.floorId);
     if (!floor || floor.buildingId !== a.buildingId) fail("floor_not_in_building");
     const dupe = await ctx.db.query("units").withIndex("by_building_number", (q) => q.eq("buildingId", a.buildingId).eq("number", a.number)).first();
@@ -67,7 +67,9 @@ export const updateUnit = mutation({
     const unit = (await ctx.db.get(unitId)) ?? fail("not_found");
     assertBuilding(u, unit.buildingId);
     // A rate change on a leased unit must go through an agreement term, so issued bills never move.
-    if (unit.status === "occupied" && patch.ratePerM2 !== undefined) fail("use_agreement_term_for_rate_change");
+    if (unit.status === "occupied" && (patch.ratePerM2 !== undefined || patch.areaM2 !== undefined)) fail("use_agreement_term_for_rate_change");
+    if (patch.areaM2 !== undefined && !(Number.isFinite(patch.areaM2) && patch.areaM2 > 0)) fail("invalid_amount");
+    if (patch.ratePerM2 !== undefined && !(Number.isSafeInteger(patch.ratePerM2) && patch.ratePerM2 >= 0)) fail("invalid_amount");
     await ctx.db.patch(unitId, patch);
     await audit(ctx, u, "unit.update", "units", unitId, JSON.stringify(patch));
   },

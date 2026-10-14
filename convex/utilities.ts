@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { READ_ROLES, assertBuilding, assertDifferentPerson, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
+import { READ_ROLES, assertBuilding, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
 import { allocateSharedCost } from "./lib/billing";
 import { assertUnitVisible } from "./lib/scope";
 
@@ -36,11 +36,13 @@ export const enterReading = mutation({
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
     const meter = (await ctx.db.get(a.meterId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, meter.unitId);
-    if (a.value < 0) fail("invalid_value");
+    if (!Number.isFinite(a.value) || a.value < 0) fail("invalid_value");
     const prior = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", a.meterId)).collect()).filter((r) => r.status !== "flagged" && r.readAt < a.readAt);
     const prev = prior.at(-1);
     const prev2 = prior.at(-2);
     let status: "draft" | "flagged" = "draft";
+    // A meter reset skips the usage checks, so it always needs an approver's decision.
+    if (a.isReset) status = "flagged";
     if (prev && !a.isReset) {
       const delta = a.value - prev.value;
       if (delta < 0) status = "flagged";
@@ -79,7 +81,7 @@ export const reviewFlagged = mutation({
     await assertUnitVisible(ctx, u, meter.unitId);
     if (r.status !== "flagged") fail("not_flagged");
     assertDifferentPerson(r.enteredBy, u._id);
-    if (decision === "accept") {
+    if (decision === "accept" && !r.isReset) {
       const prev = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", r.meterId)).collect()).filter((x) => x.status === "approved" && x.readAt < r.readAt).at(-1);
       if (prev && r.value < prev.value) fail("lower_than_previous_requires_reset");
     }
@@ -119,7 +121,8 @@ export const createSharedCost = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "financeOfficer");
     assertBuilding(u, a.buildingId);
-    if (a.total <= 0) fail("invalid_amount");
+    assertPeriod(a.period);
+    assertSantim(a.total);
     const dupe = (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", a.buildingId).eq("period", a.period)).collect()).find((c) => c.kind === a.kind);
     if (dupe) fail("shared_cost_exists");
     const units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", a.buildingId)).collect();

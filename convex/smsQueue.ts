@@ -3,6 +3,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { READ_ROLES, audit, canSeeBuilding, fail, getSetting, requireRole } from "./lib/access";
 import { invoiceBalance } from "./lib/ledger";
 import { assertRenterVisible } from "./lib/scope";
+import { refreshUnitStatus } from "./lib/units";
 
 const DAY = 86_400_000;
 const fmt = (s: number) => `ETB ${(s / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -55,7 +56,7 @@ export const expireAgreements = internalMutation({
     let n = 0;
     for (const ag of (await ctx.db.query("agreements").collect()).filter((a) => a.status === "active" && a.endsAt < Date.now())) {
       await ctx.db.patch(ag._id, { status: "expired" });
-      await ctx.db.patch(ag.unitId, { status: "vacant" });
+      await refreshUnitStatus(ctx, ag.unitId);
       n++;
     }
     return n;
@@ -75,6 +76,7 @@ export const claimQueued = internalMutation({
       }
       const renter = await ctx.db.get(m.renterId);
       if (!renter?.phone) { await ctx.db.patch(m._id, { status: "failed" }); continue; }
+      await ctx.db.patch(m._id, { status: "sending" }); // claimed: an overlapping run cannot send it again
       out.push({ id: m._id, to: renter.phone, body: m.body });
     }
     return out;
@@ -84,6 +86,17 @@ export const claimQueued = internalMutation({
 export const setStatus = internalMutation({
   args: { id: v.id("smsMessages"), status: v.union(v.literal("accepted"), v.literal("delivered"), v.literal("failed"), v.literal("uncertain")) },
   handler: async (ctx, { id, status }) => { await ctx.db.patch(id, { status }); },
+});
+
+/** Gateway delivery receipt. Only messages already handed to the gateway can change, and a delivered message never goes back. */
+export const deliveryReceipt = internalMutation({
+  args: { id: v.id("smsMessages"), status: v.union(v.literal("delivered"), v.literal("failed")) },
+  handler: async (ctx, { id, status }) => {
+    const m = await ctx.db.get(id);
+    if (!m || !["accepted", "uncertain", "sending"].includes(m.status)) return false;
+    await ctx.db.patch(id, { status });
+    return true;
+  },
 });
 
 export const list = query({

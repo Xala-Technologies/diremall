@@ -42,9 +42,20 @@ export const setAccess = mutation({
   },
   handler: async (ctx, a) => {
     const actor = await requireRole(ctx, "accessAdmin");
+    const target = (await ctx.db.get(a.userId)) ?? fail("not_found");
+    const actorIsSuper = (actor.roles ?? []).includes("superAdmin");
+    const targetIsSuper = (target.roles ?? []).includes("superAdmin");
     if (a.userId === actor._id && !a.active) fail("cannot_deactivate_self");
-    // Only a super admin can hand out the super admin role.
-    if (a.roles.includes("superAdmin") && !hasRole(actor, "superAdmin")) fail("forbidden");
+    // Access admins manage other people's access. They cannot change their own roles, touch a super admin, or create one.
+    if (!actorIsSuper) {
+      if (a.userId === actor._id) fail("cannot_change_own_access");
+      if (targetIsSuper || a.roles.includes("superAdmin")) fail("forbidden");
+    }
+    // The last super admin cannot be demoted or deactivated.
+    if (targetIsSuper && (!a.roles.includes("superAdmin") || !a.active)) {
+      const supers = (await ctx.db.query("users").collect()).filter((u) => u.active && (u.roles ?? []).includes("superAdmin"));
+      if (supers.length <= 1) fail("last_super_admin");
+    }
     await ctx.db.patch(a.userId, { roles: a.roles, buildingScope: a.buildingScope, active: a.active });
     if (!a.active) {
       // A departed member loses existing sessions immediately.

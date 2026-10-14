@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { READ_ROLES, assertDifferentPerson, audit, canSeeBuilding, fail, getSetting, nextSeq, requireRole } from "./lib/access";
+import { READ_ROLES, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, nextSeq, requireRole } from "./lib/access";
 import { monthlyRent } from "./lib/billing";
 import { invoiceBalance, termAt } from "./lib/ledger";
 import { etb, formatEtb } from "./lib/money";
@@ -19,7 +19,9 @@ export const generate = mutation({
   args: { period: v.string(), buildingId: v.optional(v.id("buildings")) },
   handler: async (ctx, { period, buildingId }) => {
     const u = await requireRole(ctx, "financeOfficer");
+    assertPeriod(period);
     const { start, end, days } = periodRange(period);
+    if (start > Date.now() + 31 * 86_400_000) fail("period_in_future");
     const tariffElectricity = await getSetting(ctx, "tariff.electricity", etb(6));
     const tariffWater = await getSetting(ctx, "tariff.water", 0);
 
@@ -49,8 +51,11 @@ export const generate = mutation({
       const rentAmount = covered === days ? monthly : Math.round((monthly * covered) / days);
       lines.push({ kind: "rent", description: `Rent ${period}`, amount: rentAmount, calcNote: covered === days ? basis : `${basis}; ${covered}/${days} days = ${formatEtb(rentAmount)}` });
 
-      // Utilities from approved sub-meter readings.
-      const meters = await ctx.db.query("meters").withIndex("by_unit", (q) => q.eq("unitId", unit._id)).collect();
+      // Utilities and shared costs belong to the unit, not the lease. When two leases share a period only the later one carries them,
+      // so the same electricity or generator share is never billed twice.
+      const sameUnit = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", unit._id)).collect();
+      const supersededByLater = sameUnit.some((o) => o._id !== ag._id && (o.status === "active" || o.status === "expired" || o.status === "terminated") && o.startsAt > ag.startsAt && coveredDays(period, o.startsAt, o.endsAt) > 0);
+      const meters = supersededByLater ? [] : await ctx.db.query("meters").withIndex("by_unit", (q) => q.eq("unitId", unit._id)).collect();
       for (const m of meters) {
         const readings = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", m._id)).collect()).filter((r) => r.status === "approved");
         const inPeriod = readings.filter((r) => r.readAt >= start && r.readAt < end);
@@ -67,7 +72,7 @@ export const generate = mutation({
       }
 
       // Shared costs approved for this building and period.
-      const costs = (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", unit.buildingId).eq("period", period)).collect()).filter((c) => c.approvedBy);
+      const costs = supersededByLater ? [] : (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", unit.buildingId).eq("period", period)).collect()).filter((c) => c.approvedBy);
       for (const c of costs) {
         const alloc = (await ctx.db.query("sharedCostAllocations").withIndex("by_cost", (q) => q.eq("sharedCostId", c._id)).collect()).find((x) => x.unitId === unit._id);
         if (alloc && alloc.amount > 0) lines.push({ kind: c.kind, description: `${c.kind} ${period}`, amount: alloc.amount, calcNote: `share of ${formatEtb(c.total)} by ${c.basis}` });
@@ -96,6 +101,8 @@ export const addDraftLine = mutation({
     const inv = (await ctx.db.get(invoiceId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, inv.unitId);
     if (inv.status !== "draft") fail("invoice_already_issued");
+    // Manual lines can only add charges. Discounts go through an approved correction, so no one can quietly reduce a renter's bill.
+    assertSantim(line.amount);
     await ctx.db.insert("invoiceLines", { invoiceId, ...line });
     await ctx.db.patch(invoiceId, { total: await recomputeTotal(ctx as any, invoiceId) });
     await audit(ctx, u, "invoice.addLine", "invoices", invoiceId, line.description);
@@ -144,7 +151,9 @@ export const requestAdjustment = mutation({
     const inv = (await ctx.db.get(a.invoiceId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, inv.unitId);
     if (inv.status !== "issued") fail("only_issued_invoices");
-    if (!a.reason.trim() || a.delta === 0) fail("reason_and_amount_required");
+    if (!a.reason.trim()) fail("reason_and_amount_required");
+    assertSantim(a.delta, { allowNegative: true });
+    if (a.delta === 0) fail("reason_and_amount_required");
     const id = await ctx.db.insert("invoiceAdjustments", { invoiceId: a.invoiceId, delta: a.delta, reason: a.reason, requestedBy: u._id });
     await audit(ctx, u, "invoice.adjustRequest", "invoices", a.invoiceId, a.reason);
     return id;

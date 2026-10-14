@@ -61,3 +61,13 @@ export async function nextSeq(ctx: MutationCtx, key: string): Promise<number> {
   await ctx.db.insert("settings", { key, value: 1 });
   return 1;
 }
+
+/** Money arguments are whole santim. Rejects NaN, Infinity and fractions before they reach the ledger. */
+export function assertSantim(n: number, opts: { allowZero?: boolean; allowNegative?: boolean } = {}) {
+  if (!Number.isSafeInteger(n)) fail("invalid_amount");
+  if (!opts.allowNegative && (opts.allowZero ? n < 0 : n <= 0)) fail("invalid_amount");
+}
+
+export function assertPeriod(period: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) fail("invalid_period");
+}

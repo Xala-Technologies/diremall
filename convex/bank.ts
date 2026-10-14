@@ -1,13 +1,22 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { READ_ROLES, audit, fail, requireRole } from "./lib/access";
+import { assertSantim, audit, fail, requireRole } from "./lib/access";
 import { assertRenterVisible } from "./lib/scope";
 
 /** Statement lines are evidence only. Importing or matching never creates a payment. */
+/** Bank statements are mall-wide, so only staff with access to every building may import or match them. */
+async function bankUser(ctx: Parameters<typeof requireRole>[0]) {
+  const u = await requireRole(ctx, "financeOfficer", "approver");
+  if (u.buildingScope !== "all") fail("forbidden_building");
+  return u;
+}
+
 export const importStatement = mutation({
   args: { batch: v.string(), entries: v.array(v.object({ postedAt: v.number(), amount: v.number(), reference: v.string() })) },
   handler: async (ctx, { batch, entries }) => {
-    const u = await requireRole(ctx, "financeOfficer");
+    const u = await bankUser(ctx);
+    if (entries.length > 500) fail("too_many_lines_per_import");
+    for (const e of entries) assertSantim(e.amount);
     if ((await ctx.db.query("bankStatementEntries").withIndex("by_batch", (q) => q.eq("importBatch", batch)).first())) fail("batch_already_imported");
     for (const e of entries) await ctx.db.insert("bankStatementEntries", { importBatch: batch, ...e });
     await audit(ctx, u, "bank.import", "bankStatementEntries", batch, `${entries.length} lines`);
@@ -19,7 +28,7 @@ export const importStatement = mutation({
 export const suggestions = query({
   args: { batch: v.string() },
   handler: async (ctx, { batch }) => {
-    const u = await requireRole(ctx, ...READ_ROLES);
+    const u = await bankUser(ctx);
     const entries = (await ctx.db.query("bankStatementEntries").withIndex("by_batch", (q) => q.eq("importBatch", batch)).collect()).filter((e) => !e.matchedPaymentId);
     const payments = (await ctx.db.query("payments").collect()).filter((p) => p.status !== "voided");
     const matched = new Set((await ctx.db.query("bankStatementEntries").collect()).map((e) => e.matchedPaymentId).filter(Boolean));
@@ -42,9 +51,10 @@ export const suggestions = query({
 export const confirmMatch = mutation({
   args: { entryId: v.id("bankStatementEntries"), paymentId: v.id("payments") },
   handler: async (ctx, { entryId, paymentId }) => {
-    const u = await requireRole(ctx, "financeOfficer");
+    const u = await bankUser(ctx);
     const e = (await ctx.db.get(entryId)) ?? fail("not_found");
     const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    if (p.status === "voided") fail("payment_voided");
     await assertRenterVisible(ctx, u, p.renterId);
     if (e.matchedPaymentId) fail("entry_already_matched");
     if (e.amount !== p.amount) fail("amount_differs");
@@ -58,7 +68,7 @@ export const confirmMatch = mutation({
 export const unmatched = query({
   args: {},
   handler: async (ctx) => {
-    await requireRole(ctx, ...READ_ROLES);
+    await bankUser(ctx);
     return (await ctx.db.query("bankStatementEntries").collect()).filter((e) => !e.matchedPaymentId);
   },
 });

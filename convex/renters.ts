@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { READ_ROLES, audit, fail, requireRole } from "./lib/access";
+import { READ_ROLES, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
 import { assertRenterVisible, renterVisible } from "./lib/scope";
 
 const fields = {
@@ -30,6 +30,7 @@ export const update = mutation({
   handler: async (ctx, { renterId, patch }) => {
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
     await assertRenterVisible(ctx, u, renterId);
+    if ((patch.name !== undefined && !patch.name.trim()) || (patch.phone !== undefined && !patch.phone.trim())) fail("name_and_phone_required");
     await ctx.db.patch(renterId, patch);
     await audit(ctx, u, "renter.update", "renters", renterId, JSON.stringify(patch));
   },
@@ -56,7 +57,9 @@ export const get = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     await assertRenterVisible(ctx, u, renterId);
     const renter = (await ctx.db.get(renterId)) ?? fail("not_found");
-    const agreements = await ctx.db.query("agreements").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect();
+    const all = await ctx.db.query("agreements").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect();
+    const agreements = [];
+    for (const ag of all) { const un = await ctx.db.get(ag.unitId); if (un && canSeeBuilding(u, un.buildingId)) agreements.push(ag); }
     const docs = await ctx.db.query("renterDocuments").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect();
     const documents = await Promise.all(docs.map(async (d) => ({ _id: d._id, kind: d.kind, url: await ctx.storage.getUrl(d.fileId) })));
     return { renter, agreements, documents };
