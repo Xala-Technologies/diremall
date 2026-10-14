@@ -71,6 +71,9 @@ export const EN: Record<string, string> = {
   "bill.dueDate": "Due date",
   theme: "Theme", "theme.auto": "Automatic", "theme.light": "Light", "theme.dark": "Dark",
   "empty.default": "Nothing here yet", "empty.bills": "No bills for this period. Choose a month and click Prepare bills.", "empty.payments": "No payments yet. Record a payment when money arrives.", "empty.utilities": "No readings waiting for review.", "empty.bank": "No statement lines to match. Import the bank's CSV statement.", "empty.messages": "No messages yet. Reminders appear here once bills fall due.", "empty.agreements": "No agreements yet.", inactive: "Inactive",
+  discard: "Discard draft", "confirm.discardBody": "This draft bill will be deleted. Issued bills can never be deleted, only corrected.", confirm: "Confirm",
+  "nf.title": "Page not found", "nf.body": "The page may have moved, or the link is wrong.", "nf.home": "Back to overview",
+  "err.title": "Something went wrong", "err.body": "Nothing was lost. Try again, and tell the office if it keeps happening.", "err.retry": "Try again",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -119,6 +122,9 @@ export const AM: Record<string, string> = {
   "bill.dueDate": "የመክፈያ ቀን",
   theme: "ገጽታ", "theme.auto": "ራስ-ሰር", "theme.light": "ብሩህ", "theme.dark": "ጨለማ",
   "empty.default": "እስካሁን ምንም የለም", "empty.bills": "ለዚህ ወር ደረሰኝ የለም። ወር ይምረጡና «ደረሰኞችን አዘጋጅ» ይጫኑ።", "empty.payments": "እስካሁን ክፍያ የለም። ገንዘብ ሲደርስ ክፍያ ይመዝግቡ።", "empty.utilities": "ለግምገማ የሚጠብቅ ንባብ የለም።", "empty.bank": "የሚመሳከር የባንክ መስመር የለም። የባንኩን CSV መግለጫ ያስገቡ።", "empty.messages": "እስካሁን መልእክት የለም። ደረሰኞች ጊዜያቸው ሲደርስ ማስታወሻዎች እዚህ ይታያሉ።", "empty.agreements": "እስካሁን ውል የለም።", inactive: "የማይሰራ",
+  discard: "ረቂቁን ሰርዝ", "confirm.discardBody": "ይህ ረቂቅ ደረሰኝ ይሰረዛል። የተሰጠ ደረሰኝ በጭራሽ አይሰረዝም፣ ይታረማል ብቻ።", confirm: "አረጋግጥ",
+  "nf.title": "ገጹ አልተገኘም", "nf.body": "ገጹ ተንቀሳቅሷል ወይም አገናኙ ትክክል አይደለም።", "nf.home": "ወደ አጠቃላይ እይታ ተመለስ",
+  "err.title": "ችግር ተፈጥሯል", "err.body": "ምንም አልጠፋም። እንደገና ይሞክሩ፤ ከቀጠለ ለቢሮው ይንገሩ።", "err.retry": "እንደገና ሞክር",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

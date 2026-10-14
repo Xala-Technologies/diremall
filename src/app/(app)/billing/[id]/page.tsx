@@ -1,10 +1,10 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Card, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -17,7 +17,7 @@ export default function InvoicePage() {
   const issue = useMutation(api.billing.issue); const discard = useMutation(api.billing.discardDraft);
   const reqAdj = useMutation(api.billing.requestAdjustment); const appAdj = useMutation(api.billing.approveAdjustment);
   const useCredit = useMutation(api.payments.useCredit);
-  const { run, error, notice } = useRun(); const [dlg, setDlg] = useState(false);
+  const { run, error, notice } = useRun(); const [dlg, setDlg] = useState(false); const [confirmDiscard, setConfirmDiscard] = useState(false); const router = useRouter();
   if (!d) return <p className="muted">{t("loading")}</p>;
   const inv = d.invoice; const b = d.balance;
   return (
@@ -27,7 +27,7 @@ export default function InvoicePage() {
         <button className="btn no-print" onClick={() => window.print()}>{t("print")}</button>
         {inv.status === "draft" && can("financeOfficer") && <>
           <button className="btn primary" onClick={() => void run(() => issue({ invoiceIds: [invoiceId] }), t("saved"))}>{t("bill.issue")}</button>
-          <button className="btn danger" onClick={() => void run(() => discard({ invoiceId }))}>{t("cancel")}</button></>}
+          <button className="btn danger" onClick={() => setConfirmDiscard(true)}>{t("discard")}</button></>}
         {inv.status === "issued" && can("financeOfficer") && <button className="btn" onClick={() => setDlg(true)}>{t("bill.adjust")}</button>}
         {inv.status === "issued" && can("financeOfficer") && (credit ?? 0) > 0 && b.due > 0 && <button className="btn" onClick={() => void run(() => useCredit({ invoiceId }), t("saved"))}>{t("pay.useCredit")} (<Money v={credit ?? 0} />)</button>}
       </PageHeader>
@@ -47,6 +47,7 @@ export default function InvoicePage() {
       {d.adjustments.length > 0 && <Card title={t("bill.adjustments")}><Table rows={d.adjustments} cols={[
         { head: t("amount"), cell: (a) => <Money v={a.delta} /> }, { head: t("reason"), cell: (a) => a.reason, text: true },
         { head: t("status"), cell: (a) => (a.approvedBy ? t("approved") : can("approver") && a.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appAdj({ adjustmentId: a._id }), t("saved"))}>{t("bill.approve")}</button> : t("inReview")) }]} /></Card>}
+      {confirmDiscard && <ConfirmDialog title={t("discard")} message={t("confirm.discardBody")} confirmLabel={t("discard")} danger onClose={() => setConfirmDiscard(false)} onConfirm={async () => { const ok = await run(() => discard({ invoiceId })); if (ok !== undefined) router.push("/billing"); }} />}
       {dlg && <AdjustDialog onClose={() => setDlg(false)} onSave={(delta, reason) => run(() => reqAdj({ invoiceId, delta, reason }))} />}
     </div>
   );

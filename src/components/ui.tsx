@@ -36,6 +36,8 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 export function PageHeader({ title, sub, children }: { title: string; sub?: string; children?: ReactNode }) {
+  // each screen names its browser tab, so several open tabs stay distinguishable
+  useEffect(() => { document.title = `${title} · Dire Mall Rentals`; }, [title]);
   return <div className="page-header"><div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div><div className="toolbar">{children}</div></div>;
 }
 
@@ -256,5 +258,20 @@ export function ExportMenu({ name, rows }: { name: string; rows: Record<string, 
       <button className="btn sm" disabled={rows.length === 0} onClick={() => downloadCsv(`${name}.csv`, rows)}>CSV</button>
       <button className="btn sm" onClick={() => window.print()}><Icon name="print" size={15} />PDF</button>
     </div>
+  );
+}
+
+/** "Are you sure?" for actions that cannot be undone. */
+export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClose }: { title: string; message: string; confirmLabel: string; danger?: boolean; onConfirm: () => Promise<unknown> | unknown; onClose: () => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal title={title} onClose={onClose} narrow>
+      <p style={{ marginBottom: 20 }}>{message}</p>
+      <div className="row" style={{ justifyContent: "flex-end" }}>
+        <button className="btn ghost" onClick={onClose}>{t("cancel")}</button>
+        <button className={`btn ${danger ? "danger" : "primary"}`} disabled={busy} onClick={async () => { setBusy(true); await onConfirm(); setBusy(false); onClose(); }}>{confirmLabel}</button>
+      </div>
+    </Modal>
   );
 }
