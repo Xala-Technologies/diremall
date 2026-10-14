@@ -41,15 +41,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  "agreements": typeof agreements;
-  "audit": typeof audit;
-  "auth": typeof auth;
-  "bank": typeof bank;
-  "billing": typeof billing;
-  "crons": typeof crons;
-  "deposits": typeof deposits;
-  "files": typeof files;
-  "http": typeof http;
+  agreements: typeof agreements;
+  audit: typeof audit;
+  auth: typeof auth;
+  bank: typeof bank;
+  billing: typeof billing;
+  crons: typeof crons;
+  deposits: typeof deposits;
+  files: typeof files;
+  http: typeof http;
   "lib/access": typeof lib_access;
   "lib/billing": typeof lib_billing;
   "lib/ethiopianCalendar": typeof lib_ethiopianCalendar;
@@ -57,22 +57,38 @@ declare const fullApi: ApiFromModules<{
   "lib/money": typeof lib_money;
   "lib/period": typeof lib_period;
   "lib/scope": typeof lib_scope;
-  "payments": typeof payments;
-  "properties": typeof properties;
-  "renters": typeof renters;
-  "reports": typeof reports;
-  "settings": typeof settings;
-  "smsQueue": typeof smsQueue;
-  "smsSend": typeof smsSend;
-  "users": typeof users;
-  "utilities": typeof utilities;
+  payments: typeof payments;
+  properties: typeof properties;
+  renters: typeof renters;
+  reports: typeof reports;
+  settings: typeof settings;
+  smsQueue: typeof smsQueue;
+  smsSend: typeof smsSend;
+  users: typeof users;
+  utilities: typeof utilities;
 }>;
 
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
 
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
