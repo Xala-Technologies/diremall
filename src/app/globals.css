@@ -1,6 +1,6 @@
 /* Dire Mall Rentals — a ledger-style back office. Calm neutrals, one accent, numbers first. */
 :root {
-  --bg: #e9edf0; --panel: #ffffff; --sunken: #f1f4f6; --ink: #0c1216; --ink-2: #26323b; --muted: #475760;
+  --bg: #f4f5f6; --panel: #ffffff; --sunken: #eef0f2; --ink: #0c1216; --ink-2: #26323b; --muted: #475760;
   --line: #d5dce1; --line-2: #b9c4cb;
   --accent: #0d6a57; --accent-ink: #ffffff; --accent-soft: #e3f1ed; --accent-strong: #0a5444;
   --good: #1b7a4b; --good-bg: #e2f3ea; --warn: #8a5800; --warn-bg: #fbeed0; --bad: #b3261e; --bad-bg: #fbe7e5; --info: #1f4f8f; --info-bg: #e4edf9;
@@ -11,7 +11,7 @@
   --z-side: 20; --z-modal: 50; --z-toast: 60;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0a0e11; --panel: #151c21; --sunken: #1c242a; --ink: #f1f5f7; --ink-2: #d3dce1; --muted: #a9b6bf; --line: #2a343b; --line-2: #42505a;
+  :root { --bg: #0e1215; --panel: #151b1f; --sunken: #1b2227; --ink: #f1f5f7; --ink-2: #d3dce1; --muted: #a9b6bf; --line: #2a343b; --line-2: #42505a;
     --accent: #4cc2a3; --accent-ink: #062018; --accent-soft: #12302a; --accent-strong: #6fd3b8;
     --good: #5fd39a; --good-bg: #122f20; --warn: #f0c060; --warn-bg: #352a0f; --bad: #ff8f84; --bad-bg: #3a1815; --info: #8ab8f5; --info-bg: #14243d;
     --shadow-1: 0 1px 2px rgb(0 0 0 / .4), 0 0 0 1px rgb(255 255 255 / .04); --shadow-2: 0 16px 48px rgb(0 0 0 / .6), 0 0 0 1px rgb(255 255 255 / .08); }
