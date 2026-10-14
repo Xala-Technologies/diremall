@@ -10,7 +10,7 @@ export const EN: Record<string, string> = {
   "nav.dashboard": "Overview", "nav.properties": "Buildings & units", "nav.renters": "Renters", "nav.agreements": "Agreements",
   "nav.billing": "Bills", "nav.payments": "Payments", "nav.utilities": "Utilities", "nav.reports": "Reports", "nav.bank": "Bank matching",
   "nav.messages": "SMS", "nav.users": "Staff access", "nav.audit": "History", "nav.settings": "Settings",
-  signIn: "Sign in", signUp: "Create account", signOut: "Sign out", email: "Email", password: "Password", name: "Full name",
+  signIn: "Sign in", signUp: "Create account", signOut: "Sign out", email: "Email", password: "Password", name: "Name",
   pendingActivation: "Your account is waiting for an administrator to give you access.",
   loading: "Loading…", save: "Save", cancel: "Cancel", add: "Add", create: "Create", search: "Search", export: "Export", print: "Print", close: "Close", back: "Back",
   none: "None", yes: "Yes", no: "No", actions: "Actions", status: "Status", total: "Total", amount: "Amount", date: "Date", reason: "Reason", notes: "Notes",
@@ -69,6 +69,7 @@ export const EN: Record<string, string> = {
   "rep.monthEnd": "Month-end pack", "me.title": "Month-end pack", "me.summary": "Summary", "me.bills": "Bills issued", "me.payments": "Payments received", "me.exportAll": "Export all to Excel", "me.note": "One pack for finance to review and close the month. Figures come from the same records as every other screen.",
   "contract.title": "Lease contract", "contract.draft": "Draft template. Dire Mall's lawyer should check the wording against Proclamation No. 1320/2024 before it is signed.", "ag.escalation": "Yearly rent increase", "ag.escPct": "Increase (%)", "ag.escEvery": "Every (months)", "ag.reservedFrom": "Reserved from",
   "bill.dueDate": "Due date",
+  theme: "Theme", "theme.auto": "Automatic", "theme.light": "Light", "theme.dark": "Dark",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -115,6 +116,7 @@ export const AM: Record<string, string> = {
   "rep.monthEnd": "የወር መጨረሻ ማጠቃለያ", "me.title": "የወር መጨረሻ ማጠቃለያ", "me.summary": "ማጠቃለያ", "me.bills": "የተሰጡ ደረሰኞች", "me.payments": "የደረሱ ክፍያዎች", "me.exportAll": "ሁሉንም ወደ ኤክሴል አውጣ", "me.note": "ፋይናንስ ወሩን ለመገምገምና ለመዝጋት የሚጠቀምበት አንድ ማጠቃለያ።",
   "contract.title": "የኪራይ ውል", "contract.draft": "ረቂቅ ቅጽ። ከመፈረሙ በፊት የድሬ ሞል ጠበቃ ጽሑፉን ከአዋጅ ቁጥር 1320/2024 ጋር ማመሳከር አለበት።", "ag.escalation": "ዓመታዊ የኪራይ ጭማሪ", "ag.escPct": "ጭማሪ (%)", "ag.escEvery": "በየ (ወር)", "ag.reservedFrom": "የተያዘው ከ",
   "bill.dueDate": "የመክፈያ ቀን",
+  theme: "ገጽታ", "theme.auto": "ራስ-ሰር", "theme.light": "ብሩህ", "theme.dark": "ጨለማ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

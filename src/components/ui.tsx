@@ -1,5 +1,7 @@
 "use client";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Building2 } from "lucide-react";
+import { FilterSelect } from "./FilterSelect";
 import { useI18n } from "@/lib/i18n";
 import { formatDate, formatEtb, parseEtb } from "@/lib/format";
 import { Icon } from "./icons";
@@ -19,8 +21,10 @@ export function DateText({ ms }: { ms: number | null | undefined }) {
   return <span>{formatDate(ms, calendar, lang)}</span>;
 }
 
+const TONE: Record<string, string> = { good: "success", warn: "warning", bad: "danger", info: "info", muted: "neutral" };
 export function Badge({ tone, children }: { tone?: "good" | "warn" | "bad" | "info" | "muted"; children: ReactNode }) {
-  return <span className={`badge ${tone ?? "muted"}`}>{children}</span>;
+  const t = TONE[tone ?? "muted"];
+  return <span className={`status status-${t}`}>{t === "success" ? <Icon name="check" size={13} /> : <span className="status-dot" />}{children}</span>;
 }
 
 export const statusTone = (s: string) =>
@@ -64,18 +68,20 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
 
 export function Modal({ title, onClose, children, narrow }: { title: string; onClose: () => void; children: ReactNode; narrow?: boolean }) {
   const { t } = useI18n();
+  const ref = useRef<HTMLDialogElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
+    opener.current = document.activeElement as HTMLElement | null;
+    const d = ref.current!;
+    d.showModal();
+    return () => { d.close(); opener.current?.focus?.(); };
+  }, []);
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${narrow ? "narrow" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
-        <header className="card-h"><h2>{title}</h2><button className="btn ghost sm icon-only" onClick={onClose} aria-label={t("close")}><Icon name="close" /></button></header>
-        {children}
-      </div>
-    </div>
+    <dialog className={`modal ${narrow ? "narrow" : ""}`} ref={ref} aria-labelledby="modal-title"
+      onCancel={(e) => { e.preventDefault(); onClose(); }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <header><h2 id="modal-title">{title}</h2><button className="btn ghost icon-only" onClick={onClose} aria-label={t("close")}><Icon name="close" size={20} /></button></header>
+      {children}
+    </dialog>
   );
 }
 
@@ -84,8 +90,8 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export function Message({ error, notice }: { error?: string | null; notice?: string | null }) {
-  if (error) return <div className="msg bad" role="alert">{error}</div>;
-  if (notice) return <div className="msg good" role="status">{notice}</div>;
+  if (error) return <div className="msg bad" role="alert"><Icon name="alert" />{error}</div>;
+  if (notice) return <div className="msg good" role="status"><Icon name="check" />{notice}</div>;
   return null;
 }
 
@@ -143,15 +149,13 @@ const formatPeriodLabel = (p: string, lang: "en" | "am") => formatPeriod(p, "eth
 export function BuildingSelect({ buildings, value, onChange }: { buildings: { _id: string; name: string }[] | undefined; value: string; onChange: (v: string) => void }) {
   const { t } = useI18n();
   return (
-    <select aria-label={t("building")} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{t("allBuildings")}</option>
-      {buildings?.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}
-    </select>
+    <FilterSelect label={t("building")} value={value} onChange={onChange}
+      options={[{ value: "", label: t("allBuildings"), icon: <Building2 size={16} /> }, ...(buildings ?? []).map((b) => ({ value: b._id, label: b.name, icon: <Building2 size={16} /> }))]} />
   );
 }
 
 export function Tabs({ tabs, value, onChange }: { tabs: [string, string][]; value: string; onChange: (v: string) => void }) {
-  return <div className="tabs" role="tablist">{tabs.map(([k, label]) => <button key={k} role="tab" aria-selected={value === k} className={value === k ? "on" : ""} onClick={() => onChange(k)}>{label}</button>)}</div>;
+  return <div className="pill-tabs" role="group">{tabs.map(([k, label]) => <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)}>{label}</button>)}</div>;
 }
 
 export function Skeleton({ lines = 4 }: { lines?: number }) {
@@ -159,7 +163,7 @@ export function Skeleton({ lines = 4 }: { lines?: number }) {
 }
 
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
-  return <div className="empty"><b>{title}</b>{hint && <span>{hint}</span>}{action}</div>;
+  return <div className="empty-state"><div className="empty-icon"><Icon name="inbox" size={26} /></div><b>{title}</b>{hint && <span>{hint}</span>}{action}</div>;
 }
 
 /** Ask for a reason (void, return, terminate…) without a browser prompt. */
@@ -216,7 +220,7 @@ export function BarChart({ data, labelA, labelB }: { data: { label: string; a: n
           );
         })}
       </svg>
-      <div className="legend" style={{ marginTop: 6 }}><span><i className="dot" style={{ background: "color-mix(in srgb, var(--accent) 30%, var(--panel))" }} />{labelA}</span><span><i className="dot" style={{ background: "var(--accent)" }} />{labelB}</span></div>
+      <div className="legend" style={{ marginTop: 6 }}><span><i className="dot" style={{ background: "var(--ds-color-accent-surface-tinted)" }} />{labelA}</span><span><i className="dot" style={{ background: "var(--viz)" }} />{labelB}</span></div>
     </div>
   );
 }
@@ -240,9 +244,9 @@ export function Donut({ parts, size = 120 }: { parts: { value: number; color: st
 
 export function ViewToggle({ value, onChange, labels }: { value: "grid" | "table"; onChange: (v: "grid" | "table") => void; labels: [string, string] }) {
   return (
-    <div className="seg-ctl" role="group" aria-label="View">
-      <button aria-pressed={value === "grid"} onClick={() => onChange("grid")}>{labels[0]}</button>
-      <button aria-pressed={value === "table"} onClick={() => onChange("table")}>{labels[1]}</button>
+    <div className="pill-tabs tight" role="group" aria-label="View">
+      <button type="button" aria-pressed={value === "grid"} onClick={() => onChange("grid")}>{labels[0]}</button>
+      <button type="button" aria-pressed={value === "table"} onClick={() => onChange("table")}>{labels[1]}</button>
     </div>
   );
 }

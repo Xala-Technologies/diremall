@@ -58,11 +58,11 @@ export default function Dashboard() {
             <Card title={t("dash.occupancy")}>
               <div className="donut-wrap">
                 <div style={{ position: "relative" }}>
-                  <Donut size={150} parts={[{ value: d.occupied, color: "var(--accent)", label: t("occupied") }, { value: Math.max(0, vacant), color: "var(--line-2)", label: t("vacant") }]} />
+                  <Donut size={150} parts={[{ value: d.occupied, color: "var(--viz)", label: t("occupied") }, { value: Math.max(0, vacant), color: "var(--line-2)", label: t("vacant") }]} />
                   <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><span className="donut-n num">{pct(d.occupancyRate)}</span></div>
                 </div>
                 <div className="legend" style={{ flexDirection: "column", gap: 10 }}>
-                  <span><i className="dot" style={{ background: "var(--accent)" }} />{t("occupied")}: <b className="num">{d.occupied}</b></span>
+                  <span><i className="dot" style={{ background: "var(--viz)" }} />{t("occupied")}: <b className="num">{d.occupied}</b></span>
                   <span><i className="dot" style={{ background: "var(--line-2)" }} />{t("dash.vacant")}: <b className="num">{vacant}</b></span>
                 </div>
               </div>

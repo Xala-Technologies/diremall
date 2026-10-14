@@ -7,6 +7,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Icon, Mark } from "@/components/icons";
 import { Skeleton } from "@/components/ui";
+import { FilterSelect } from "@/components/FilterSelect";
+import { useScheme, type Scheme } from "@/lib/theme";
 import { useI18n } from "@/lib/i18n";
 
 type Item = { href: string; key: string; icon: string; roles?: string[] };
@@ -34,8 +36,6 @@ const GROUPS: { label: string; items: Item[] }[] = [
   ] },
 ];
 
-const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
@@ -44,9 +44,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   const { t, lang, setLang, calendar, setCalendar } = useI18n();
+  const { scheme, setScheme } = useScheme();
   const [open, setOpen] = useState(false);
-  const [rail, setRail] = useState(false);
-  useEffect(() => setRail(read("rail") === "1"), []);
   useEffect(() => { if (!isLoading && !isAuthenticated) router.replace("/login"); }, [isLoading, isAuthenticated, router]);
   useEffect(() => setOpen(false), [path]);
 
@@ -56,50 +55,43 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   );
   const allowed = (i: Item) => !i.roles || me.roles.includes("superAdmin") || i.roles.some((r) => me.roles.includes(r as never));
   const initials = (me.name || me.email || "?").split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("");
-  const toggleRail = () => { setRail(!rail); write("rail", rail ? "0" : "1"); };
 
   return (
-    <div className={`shell ${rail ? "rail" : ""}`}>
-      {open && <div className="scrim" onClick={() => setOpen(false)} />}
-      <aside className={`side ${open ? "open" : ""}`} aria-label="Main">
-        <div className="brand"><Mark /><span className="brand-text">Dire Mall<small>{t("appSub")}</small></span></div>
-        <div className="tibeb" aria-hidden="true" />
-        <nav className="nav-scroll">
-          {GROUPS.map((g) => {
-            const items = g.items.filter(allowed);
-            if (items.length === 0) return null;
-            return (
-              <div key={g.label} className="nav-group">
-                <div className="nav-label">{t(g.label)}</div>
-                {items.map((i) => {
-                  const on = i.href === "/" ? path === "/" : path.startsWith(i.href);
-                  return (
-                    <Link key={i.href} href={i.href} className="nav" aria-current={on ? "page" : undefined} title={rail ? t(i.key) : undefined}>
-                      <Icon name={i.icon} /><span className="nav-text">{t(i.key)}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </nav>
-        <div className="side-foot">
-          <div className="who"><div className="avatar" aria-hidden="true">{initials}</div><div className="side-foot-text"><b>{me.name || me.email}</b><span>{me.roles.map((r) => t(r)).join(", ")}</span></div></div>
-          <div className="side-foot-text row">
-            <select aria-label={t("language")} value={lang} onChange={(e) => setLang(e.target.value as "en" | "am")}><option value="en">English</option><option value="am">አማርኛ</option></select>
-            <select aria-label={t("calendar")} value={calendar} onChange={(e) => setCalendar(e.target.value as "gregorian" | "ethiopian")}><option value="gregorian">{t("gregorian")}</option><option value="ethiopian">{t("ethiopian")}</option></select>
-          </div>
-          <div className="row">
-            <button className="btn sm grow" onClick={() => void signOut()}><span className="side-foot-text">{t("signOut")}</span><span className="sr-only">{t("signOut")}</span></button>
-            <button className="btn sm icon-only no-print" onClick={toggleRail} aria-expanded={!rail} aria-label={rail ? "Expand menu" : "Collapse menu"} style={{ display: "none" }} id="rail-toggle"><Icon name="collapse" /></button>
-          </div>
+    <>
+      <header className="app-header">
+        <button className="btn ghost icon-only menu-btn" onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open}><Icon name="menu" size={20} /></button>
+        <Link href="/" className="brand"><Mark size={34} /><span className="brand-mark-name">Dire Mall<small>{t("appSub")}</small></span></Link>
+        <div className="header-tools">
+          <FilterSelect label={t("language")} value={lang} onChange={(v) => setLang(v as "en" | "am")} options={[{ value: "en", label: "English", icon: <Icon name="globe" size={16} /> }, { value: "am", label: "አማርኛ", icon: <Icon name="globe" size={16} /> }]} />
+          <FilterSelect label={t("calendar")} value={calendar} onChange={(v) => setCalendar(v as "gregorian" | "ethiopian")} options={[{ value: "gregorian", label: t("gregorian"), icon: <Icon name="calendar" size={16} /> }, { value: "ethiopian", label: t("ethiopian"), icon: <Icon name="calendar" size={16} /> }]} />
+          <FilterSelect label={t("theme")} value={scheme} onChange={(v) => setScheme(v as Scheme)} options={[{ value: "auto", label: t("theme.auto"), icon: <Icon name="monitor" size={16} /> }, { value: "light", label: t("theme.light"), icon: <Icon name="sun" size={16} /> }, { value: "dark", label: t("theme.dark"), icon: <Icon name="moon" size={16} /> }]} />
         </div>
-      </aside>
-      <div className="main">
-        <header className="topbar"><button className="btn icon-only" onClick={() => setOpen(true)} aria-label="Menu" aria-expanded={open}><Icon name="menu" /></button><b>Dire Mall</b></header>
-        <main id="main" className="content" tabIndex={-1} key={path}>{children}</main>
+      </header>
+      <div className="admin-layout">
+        {open && <div className="scrim" onClick={() => setOpen(false)} />}
+        <aside className={`admin-sidebar ${open ? "open" : ""}`} aria-label="Main">
+          <nav>
+            {GROUPS.map((g) => {
+              const items = g.items.filter(allowed);
+              if (items.length === 0) return null;
+              return (
+                <div key={g.label} className="nav-group">
+                  <div className="nav-label">{t(g.label)}</div>
+                  {items.map((i) => {
+                    const on = i.href === "/" ? path === "/" : path.startsWith(i.href);
+                    return <Link key={i.href} href={i.href} className="nav" aria-current={on ? "page" : undefined}><Icon name={i.icon} /><span>{t(i.key)}</span></Link>;
+                  })}
+                </div>
+              );
+            })}
+          </nav>
+          <div className="side-foot">
+            <div className="who"><div className="avatar" aria-hidden="true">{initials}</div><div><b>{me.name || me.email}</b><span>{me.roles.map((r) => t(r)).join(", ")}</span></div></div>
+            <button className="btn sm" onClick={() => void signOut()}>{t("signOut")}</button>
+          </div>
+        </aside>
+        <div className="main"><main id="main" className="content" tabIndex={-1} key={path}>{children}</main></div>
       </div>
-      <style>{`@media (min-width: 861px) { #rail-toggle { display: inline-flex !important; } }`}</style>
-    </div>
+    </>
   );
 }
