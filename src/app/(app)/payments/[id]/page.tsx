@@ -23,7 +23,7 @@ export default function Receipt() {
       {!issued && <div className="msg bad no-print">{t("receipt.notYet")} <StatusBadge status={p.status} /></div>}
       <article className="paper" aria-label={t("receipt.title")}>
         <header className="paper-h">
-          <div className="brand" style={{ padding: 0 }}><Mark size={40} /><span className="brand-text">Dire Mall<small>Dire Dawa</small></span></div>
+          <div className="brand" style={{ padding: 0 }}><Mark size={40} /><span className="brand-mark-name">Dire Mall<small>Dire Dawa</small></span></div>
           <div style={{ textAlign: "right" }}><div className="paper-title">{t("receipt.title")}</div><div className="num strong">{p.receiptNumber ?? "—"}</div></div>
         </header>
         <dl className="dl paper-dl">

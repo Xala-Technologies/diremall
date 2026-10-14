@@ -30,7 +30,7 @@ export default function Contract() {
       </PageHeader>
       <div className="draft-mark no-print">{t("contract.draft")}</div>
       <article className="paper">
-        <header className="paper-h"><div className="brand" style={{ padding: 0 }}><Mark size={40} /><span className="brand-text">Dire Mall<small>Dire Dawa</small></span></div><div className="paper-title">{t("contract.title")}</div></header>
+        <header className="paper-h"><div className="brand" style={{ padding: 0 }}><Mark size={40} /><span className="brand-mark-name">Dire Mall<small>Dire Dawa</small></span></div><div className="paper-title">{t("contract.title")}</div></header>
         <p>This lease is made on {dual(Date.now())} between <b>Dire Mall</b> (the Lessor) and <b>{renter?.name}</b>{renter?.tin ? `, TIN ${renter.tin}` : ""}{renter?.businessLicenseNo ? `, business licence ${renter.businessLicenseNo}` : ""}{renter?.legalRepresentative ? `, represented by ${renter.legalRepresentative}` : ""} (the Lessee).</p>
         <ol>
           <li><h3>Premises</h3>Unit <b>{unit.number}</b> in {building}, {unit.areaM2} m², used as {unit.category} space.</li>

@@ -248,7 +248,7 @@ fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; } legend {
 .auth-art { background: #003057; color: #eaf2fb; padding: 44px 48px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
 .auth-art::after { content: ""; position: absolute; inset: auto -40px -60px auto; width: 520px; height: 520px; background: conic-gradient(from 45deg at 50% 50%, rgb(255 255 255 / .08) 0 25%, transparent 0 50%, rgb(255 255 255 / .08) 0 75%, transparent 0) 0 0 / 52px 52px; transform: rotate(-8deg); mask-image: radial-gradient(circle at 70% 70%, #000 10%, transparent 70%); }
 .auth-art h2 { font-size: clamp(26px, 3vw, 38px); line-height: 1.15; letter-spacing: -.02em; max-width: 14em; font-weight: 500; position: relative; z-index: 1; } .auth-art p { color: #b8cde3; max-width: 30em; margin-top: 12px; position: relative; z-index: 1; }
-.auth-art .brand, .auth-art .brand-mark-name { color: #fff; } .auth-art .brand-mark-name small { color: #b8cde3; }
+.auth-art .brand, .auth-art .brand-mark-name { color: #fff; } .auth-art .mark rect { fill: #fff; } .auth-art .mark path { fill: #003057; } .auth-art .brand-mark-name small { color: #b8cde3; }
 .auth-form { display: grid; place-items: center; padding: 32px 20px; } .auth { width: min(400px, 100%); display: grid; gap: 16px; } .auth h1 { font-size: 1.875rem; }
 @media (max-width: 860px) { .auth-page { grid-template-columns: 1fr; } .auth-art { display: none; } }
 .center { min-height: 100dvh; display: grid; place-items: center; padding: 16px; }

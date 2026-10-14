@@ -20,7 +20,7 @@ export default function Login() {
   return (
     <div className="auth-page">
       <section className="auth-art" aria-hidden="true">
-        <div className="brand"><Mark size={38} /><span className="brand-text">Dire Mall<small>Dire Dawa</small></span></div>
+        <div className="brand"><Mark size={38} /><span className="brand-mark-name">Dire Mall<small>Dire Dawa</small></span></div>
         <div>
           <h2>{lang === "am" ? "ኪራይ፣ ደረሰኝና ክፍያ በአንድ ቦታ።" : "Rent, bills and payments, in one place."}</h2>
           <p>{lang === "am" ? "እያንዳንዱ ቁጥር ወደ ውሉና ወደ ክፍያው ይመራል።" : "Every figure opens the agreement and the payments behind it."}</p>
