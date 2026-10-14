@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
+import { failures, nonNegative, req } from "@/lib/validate";
 
 export default function Properties() {
   const { t } = useI18n();
@@ -83,12 +84,16 @@ export default function Properties() {
 
 function BuildingForm({ onClose }: { onClose: () => void }) {
   const { t } = useI18n(); const create = useMutation(api.properties.createBuilding); const { run, error, busy } = useRun();
-  const [name, setName] = useState(""); const [address, setAddress] = useState("");
+  const [name, setName] = useState(""); const [address, setAddress] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
   return (
     <Modal title={t("prop.addBuilding")} onClose={onClose}>
-      <form className="form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => create({ name, address: address || undefined }))) onClose(); }}>
-        <Field label={t("name")}><input required value={name} onChange={(e) => setName(e.target.value)} /></Field>
-        <Field label={t("prop.address")}><input value={address} onChange={(e) => setAddress(e.target.value)} /></Field>
+      <form className="form" noValidate onSubmit={async (e) => {
+        e.preventDefault();
+        const found = failures({ name: req(name, t) }); setErrs(found); if (Object.keys(found).length) return;
+        if (await run(() => create({ name: name.trim(), address: address.trim() || undefined }), t("saved"))) onClose();
+      }}>
+        <Field label={t("name")} error={errs.name}><input autoFocus value={name} onChange={(e) => { setName(e.target.value); setErrs({}); }} /></Field>
+        <Field label={t("prop.address")} hint={t("optional")}><input value={address} onChange={(e) => setAddress(e.target.value)} /></Field>
         <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
       </form>
     </Modal>
@@ -96,11 +101,16 @@ function BuildingForm({ onClose }: { onClose: () => void }) {
 }
 
 function FloorForm({ buildingId, onClose }: { buildingId: Id<"buildings">; onClose: () => void }) {
-  const { t } = useI18n(); const add = useMutation(api.properties.addFloor); const { run, error, busy } = useRun(); const [label, setLabel] = useState("");
+  const { t } = useI18n(); const add = useMutation(api.properties.addFloor); const { run, error, busy } = useRun();
+  const [label, setLabel] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
   return (
     <Modal title={t("prop.addFloor")} onClose={onClose}>
-      <form className="form" onSubmit={async (e) => { e.preventDefault(); if (await run(() => add({ buildingId, label }))) onClose(); }}>
-        <Field label={t("prop.floor")}><input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ground, 1st, 2nd…" /></Field>
+      <form className="form" noValidate onSubmit={async (e) => {
+        e.preventDefault();
+        const found = failures({ label: req(label, t) }); setErrs(found); if (Object.keys(found).length) return;
+        if (await run(() => add({ buildingId, label: label.trim() }), t("saved"))) onClose();
+      }}>
+        <Field label={t("prop.floor")} error={errs.label}><input autoFocus value={label} onChange={(e) => { setLabel(e.target.value); setErrs({}); }} placeholder="Ground, 1st, 2nd…" /></Field>
         <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
       </form>
     </Modal>
@@ -111,18 +121,22 @@ function UnitForm({ buildingId, floors, onClose }: { buildingId: Id<"buildings">
   const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const { run, error, busy } = useRun();
   const [floorId, setFloorId] = useState(floors[0]?._id ?? ""); const [number, setNumber] = useState(""); const [area, setArea] = useState("");
   const [category, setCategory] = useState<"office" | "retail" | "storage" | "residential">("retail"); const [rate, setRate] = useState<number | null>(null);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  const clear = (k: string) => errs[k] && setErrs({ ...errs, [k]: "" });
   return (
     <Modal title={t("prop.addUnit")} onClose={onClose}>
-      <form className="form" onSubmit={async (e) => {
-        e.preventDefault(); if (rate == null) return;
-        if (await run(() => create({ buildingId, floorId: floorId as Id<"floors">, number, areaM2: Number(area), category, ratePerM2: rate }))) onClose();
+      <form className="form" noValidate onSubmit={async (e) => {
+        e.preventDefault();
+        const found = failures({ floor: floorId ? null : t("v.pick"), number: req(number, t), area: Number(area) > 0 ? null : t("v.positive"), rate: nonNegative(rate, t) });
+        setErrs(found); if (Object.keys(found).length) return;
+        if (await run(() => create({ buildingId, floorId: floorId as Id<"floors">, number: number.trim(), areaM2: Number(area), category, ratePerM2: rate! }), t("saved"))) onClose();
       }}>
-        <Field label={t("prop.floor")}><select required value={floorId} onChange={(e) => setFloorId(e.target.value as Id<"floors">)}>{floors.map((f) => <option key={f._id} value={f._id}>{f.label}</option>)}</select></Field>
-        <Field label={t("prop.unitNumber")}><input required value={number} onChange={(e) => setNumber(e.target.value)} /></Field>
-        <Field label={t("prop.area")}><input required inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} /></Field>
+        <Field label={t("prop.floor")} error={errs.floor}><select value={floorId} onChange={(e) => { setFloorId(e.target.value as Id<"floors">); clear("floor"); }}>{floors.length === 0 && <option value="">—</option>}{floors.map((f) => <option key={f._id} value={f._id}>{f.label}</option>)}</select></Field>
+        <Field label={t("prop.unitNumber")} error={errs.number}><input autoFocus value={number} onChange={(e) => { setNumber(e.target.value); clear("number"); }} /></Field>
+        <Field label={t("prop.area")} error={errs.area}><input inputMode="decimal" value={area} onChange={(e) => { setArea(e.target.value); clear("area"); }} /></Field>
         <Field label={t("prop.category")}><select value={category} onChange={(e) => setCategory(e.target.value as typeof category)}>{(["office", "retail", "storage", "residential"] as const).map((c) => <option key={c} value={c}>{t(c)}</option>)}</select></Field>
-        <Field label={t("prop.rate")}><MoneyInput value={rate} onChange={setRate} /></Field>
-        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy || rate == null || !(Number(area) > 0)}>{t("create")}</button></div>
+        <Field label={t("prop.rate")} error={errs.rate}><MoneyInput value={rate} onChange={(v) => { setRate(v); clear("rate"); }} /></Field>
+        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
       </form>
     </Modal>
   );

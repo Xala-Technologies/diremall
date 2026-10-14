@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, Message, Modal, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Card, ConfirmDialog, Message, Modal, PageHeader, StatusBadge, Table } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useRun } from "@/lib/useRun";
 
@@ -25,8 +25,9 @@ export default function Users() {
 
 function Edit({ user, onClose }: { user: { _id: Id<"users">; name: string; roles: string[]; buildingScope: "all" | Id<"buildings">[]; active: boolean }; onClose: () => void }) {
   const { t } = useI18n(); const buildings = useQuery(api.properties.listBuildings); const set = useMutation(api.users.setAccess); const { run, error, busy } = useRun();
-  const [roles, setRoles] = useState<Set<string>>(new Set(user.roles)); const [active, setActive] = useState(user.active);
+  const [roles, setRoles] = useState<Set<string>>(new Set(user.roles)); const [active, setActive] = useState(user.active); const [confirm, setConfirm] = useState(false);
   const [all, setAll] = useState(user.buildingScope === "all"); const [scope, setScope] = useState<Set<string>>(new Set(Array.isArray(user.buildingScope) ? user.buildingScope : []));
+  const save = async () => { if (await run(() => set({ userId: user._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]), active }), t("saved"))) onClose(); };
   const flip = <T,>(s: Set<T>, v: T) => { const n = new Set(s); n.has(v) ? n.delete(v) : n.add(v); return n; };
   return (
     <Modal title={user.name || t("users.roles")} onClose={onClose}>
@@ -37,7 +38,8 @@ function Edit({ user, onClose }: { user: { _id: Id<"users">; name: string; roles
           {!all && buildings?.map((b) => <label key={b._id} className="row"><input type="checkbox" checked={scope.has(b._id)} onChange={() => setScope(flip(scope, b._id))} />{b.name}</label>)}</fieldset>
         <label className="row"><input type="checkbox" checked={active} onChange={() => setActive(!active)} />{t("users.active")}</label>
         <Message error={error} />
-        <button className="btn primary" disabled={busy} onClick={async () => { if (await run(() => set({ userId: user._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]), active }))) onClose(); }}>{t("save")}</button>
+        <button className="btn primary" disabled={busy} onClick={() => { if (user.active && !active) setConfirm(true); else void save(); }}>{t("save")}</button>
+        {confirm && <ConfirmDialog title={t("confirm.deactivateTitle")} message={t("confirm.deactivateBody")} confirmLabel={t("save")} danger onClose={() => setConfirm(false)} onConfirm={save} />}
       </div>
     </Modal>
   );

@@ -5,12 +5,13 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Card, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
+import { Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 import { useUpload } from "@/lib/useUpload";
+import { failures, inRange, positive, req } from "@/lib/validate";
 
 export default function AgreementPage() {
   const { id } = useParams<{ id: string }>(); const agreementId = id as Id<"agreements">;
@@ -23,7 +24,7 @@ export default function AgreementPage() {
   const receive = useMutation(api.deposits.receive); const refund = useMutation(api.deposits.refund);
   const reqDed = useMutation(api.deposits.requestDeduction); const appDed = useMutation(api.deposits.approveDeduction);
   const upload = useUpload(); const { run, error, notice } = useRun();
-  const [dlg, setDlg] = useState<null | "terms" | "handover" | "deduct" | "refund" | "receive" | "terminate" | "return">(null);
+  const [dlg, setDlg] = useState<null | "terms" | "handover" | "deduct" | "refund" | "receive" | "terminate" | "return" | "approve">(null);
   if (!d) return <p className="muted">{t("loading")}</p>;
   const a = d.agreement; const mine = me?._id === a.createdBy;
   const rentOf = (term: (typeof d.terms)[number]) => monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: d.unit.areaM2, ratePerM2: term.rent.ratePerM2 });
@@ -36,7 +37,7 @@ export default function AgreementPage() {
           <label className="btn sm">{t("ag.attach")}<input type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => attach({ agreementId, fileId: await upload(f) }), t("saved")); e.target.value = ""; }} /></label>)}
         {can("propertyManager") && a.status === "draft" && <button className="btn sm primary" onClick={() => void run(() => submit({ agreementId }), t("saved"))}>{t("ag.submit")}</button>}
         {can("approver") && a.status === "inReview" && <>
-          <button className="btn sm primary" disabled={mine} title={mine ? t("err.same_person_cannot_approve") : ""} onClick={() => void run(() => approve({ agreementId }), t("saved"))}>{t("ag.approve")}</button>
+          <button className="btn sm primary" disabled={mine} title={mine ? t("err.same_person_cannot_approve") : ""} onClick={() => setDlg("approve")}>{t("ag.approve")}</button>
           <button className="btn sm" onClick={() => setDlg("return")}>{t("ag.return")}</button></>}
         {can("approver") && a.status === "active" && <><button className="btn sm" onClick={() => setDlg("terms")}>{t("ag.renew")}</button><button className="btn sm danger" onClick={() => setDlg("terminate")}>{t("ag.terminate")}</button></>}
       </>}>
@@ -63,32 +64,41 @@ export default function AgreementPage() {
         <Table rows={d.handovers} empty="—" cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition, text: true }]} />
       </Card>
       {dlg === "terms" && <TermsDialog onClose={() => setDlg(null)} agreementId={agreementId} endsAt={a.endsAt} />}
-      {dlg === "handover" && <HandoverDialog onClose={() => setDlg(null)} onSave={(v) => run(() => handover({ agreementId, ...v }))} />}
-      {dlg === "terminate" && <ReasonDialog title={t("ag.terminate")} onClose={() => setDlg(null)} onSave={(reason) => run(() => terminate({ agreementId, reason }), t("saved"))} />}
-      {dlg === "return" && <ReasonDialog title={t("ag.return")} onClose={() => setDlg(null)} onSave={(reason) => run(() => back({ agreementId, reason }), t("saved"))} />}
-      {dlg === "deduct" && <AmountDialog title={t("dep.deduct")} reason onClose={() => setDlg(null)} onSave={(amount, reason) => run(() => reqDed({ agreementId, amount, reason: reason! }))} />}
-      {dlg === "receive" && <AmountDialog title={t("dep.receive")} onClose={() => setDlg(null)} onSave={(amount) => run(() => receive({ agreementId, amount }))} />}
-      {dlg === "refund" && <AmountDialog title={t("dep.refund")} onClose={() => setDlg(null)} onSave={(amount) => run(() => refund({ agreementId, amount }))} />}
+      {dlg === "handover" && <HandoverDialog error={error} onClose={() => setDlg(null)} onSave={(v) => run(() => handover({ agreementId, ...v }))} />}
+      {dlg === "terminate" && <ReasonDialog title={t("ag.terminate")} error={error} onClose={() => setDlg(null)} onSave={(reason) => run(() => terminate({ agreementId, reason }), t("saved"))} />}
+      {dlg === "approve" && <ConfirmDialog title={t("confirm.approveTitle")} message={t("confirm.approveBody")} confirmLabel={t("ag.approve")} onClose={() => setDlg(null)} onConfirm={async () => { await run(() => approve({ agreementId }), t("saved")); }} />}
+      {dlg === "return" && <ReasonDialog title={t("ag.return")} error={error} onClose={() => setDlg(null)} onSave={(reason) => run(() => back({ agreementId, reason }), t("saved"))} />}
+      {dlg === "deduct" && <AmountDialog title={t("dep.deduct")} reason error={error} onClose={() => setDlg(null)} onSave={(amount, reason) => run(() => reqDed({ agreementId, amount, reason: reason! }))} />}
+      {dlg === "receive" && <AmountDialog title={t("dep.receive")} error={error} onClose={() => setDlg(null)} onSave={(amount) => run(() => receive({ agreementId, amount }))} />}
+      {dlg === "refund" && <AmountDialog title={t("dep.refund")} error={error} onClose={() => setDlg(null)} onSave={(amount) => run(() => refund({ agreementId, amount }))} />}
     </div>
   );
 }
 
-function AmountDialog({ title, reason, onClose, onSave }: { title: string; reason?: boolean; onClose: () => void; onSave: (amount: number, reason?: string) => Promise<unknown> }) {
-  const { t } = useI18n(); const [amount, setAmount] = useState<number | null>(null); const [r, setR] = useState("");
-  return <Modal title={title} onClose={onClose}><form className="form" onSubmit={async (e) => { e.preventDefault(); if (amount && (await onSave(amount, r)) !== undefined) onClose(); }}>
-    <Field label={`${t("amount")} (ETB)`}><MoneyInput value={amount} onChange={setAmount} /></Field>
-    {reason && <Field label={t("reason")}><input required value={r} onChange={(e) => setR(e.target.value)} /></Field>}
-    <div className="wide"><button className="btn primary" disabled={!amount}>{t("save")}</button></div></form></Modal>;
+function AmountDialog({ title, reason, error, onClose, onSave }: { title: string; reason?: boolean; error?: string | null; onClose: () => void; onSave: (amount: number, reason?: string) => Promise<unknown> }) {
+  const { t } = useI18n(); const [amount, setAmount] = useState<number | null>(null); const [r, setR] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
+  return <Modal title={title} onClose={onClose}><form className="form" noValidate onSubmit={async (e) => {
+    e.preventDefault();
+    const found = failures({ amount: positive(amount, t), reason: reason ? req(r, t) : null }); setErrs(found); if (Object.keys(found).length) return;
+    if ((await onSave(amount!, r.trim())) !== undefined) onClose();
+  }}>
+    <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
+    {reason && <Field label={t("reason")} error={errs.reason}><input value={r} onChange={(e) => { setR(e.target.value); setErrs({ ...errs, reason: "" }); }} /></Field>}
+    <div className="wide"><Message error={error} /><button className="btn primary">{t("save")}</button></div></form></Modal>;
 }
 
-function HandoverDialog({ onClose, onSave }: { onClose: () => void; onSave: (v: { kind: "moveIn" | "moveOut"; keys: number; condition: string; readings?: string }) => Promise<unknown> }) {
-  const { t } = useI18n(); const [kind, setKind] = useState<"moveIn" | "moveOut">("moveIn"); const [keys, setKeys] = useState(1); const [condition, setCondition] = useState(""); const [readings, setReadings] = useState("");
-  return <Modal title={t("ag.handover")} onClose={onClose}><form className="form" onSubmit={async (e) => { e.preventDefault(); if (await onSave({ kind, keys, condition, readings: readings || undefined }) !== undefined) onClose(); }}>
+function HandoverDialog({ error, onClose, onSave }: { error?: string | null; onClose: () => void; onSave: (v: { kind: "moveIn" | "moveOut"; keys: number; condition: string; readings?: string }) => Promise<unknown> }) {
+  const { t } = useI18n(); const [kind, setKind] = useState<"moveIn" | "moveOut">("moveIn"); const [keys, setKeys] = useState(1); const [condition, setCondition] = useState(""); const [readings, setReadings] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
+  return <Modal title={t("ag.handover")} onClose={onClose}><form className="form" noValidate onSubmit={async (e) => {
+    e.preventDefault();
+    const found = failures({ condition: req(condition, t), keys: inRange(keys, 0, 99, t("v.nonneg")) }); setErrs(found); if (Object.keys(found).length) return;
+    if (await onSave({ kind, keys, condition: condition.trim(), readings: readings.trim() || undefined }) !== undefined) onClose();
+  }}>
     <Field label={t("status")}><select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}><option value="moveIn">{t("ag.moveIn")}</option><option value="moveOut">{t("ag.moveOut")}</option></select></Field>
-    <Field label={t("ag.keys")}><input type="number" min={0} value={keys} onChange={(e) => setKeys(Number(e.target.value))} /></Field>
-    <Field label={t("ag.condition")}><input required value={condition} onChange={(e) => setCondition(e.target.value)} /></Field>
-    <Field label={t("util.reading")}><input value={readings} onChange={(e) => setReadings(e.target.value)} /></Field>
-    <div className="wide"><button className="btn primary">{t("save")}</button></div></form></Modal>;
+    <Field label={t("ag.keys")} error={errs.keys}><input type="number" min={0} value={keys} onChange={(e) => setKeys(Number(e.target.value))} /></Field>
+    <Field label={t("ag.condition")} error={errs.condition}><input value={condition} onChange={(e) => { setCondition(e.target.value); setErrs({ ...errs, condition: "" }); }} /></Field>
+    <Field label={t("util.reading")} hint={t("optional")}><input value={readings} onChange={(e) => setReadings(e.target.value)} /></Field>
+    <div className="wide"><Message error={error} /><button className="btn primary">{t("save")}</button></div></form></Modal>;
 }
 
 function TermsDialog({ onClose, agreementId, endsAt }: { onClose: () => void; agreementId: Id<"agreements">; endsAt: number }) {

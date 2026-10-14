@@ -83,8 +83,8 @@ export function Modal({ title, onClose, children, narrow }: { title: string; onC
   );
 }
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
-  return <label className="field"><span>{label}</span>{children}{hint && <small className="muted">{hint}</small>}</label>;
+export function Field({ label, children, hint, error }: { label: string; children: ReactNode; hint?: string; error?: string }) {
+  return <label className={`field ${error ? "invalid" : ""}`}><span>{label}</span>{children}{error ? <small className="field-error" role="alert"><Icon name="alert" size={14} />{error}</small> : hint && <small className="muted">{hint}</small>}</label>;
 }
 
 export function Message({ error, notice }: { error?: string | null; notice?: string | null }) {
@@ -165,14 +165,15 @@ export function Empty({ title, hint, action }: { title: string; hint?: string; a
 }
 
 /** Ask for a reason (void, return, terminate…) without a browser prompt. */
-export function ReasonDialog({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: (reason: string) => Promise<unknown> }) {
+export function ReasonDialog({ title, error, onClose, onSave }: { title: string; error?: string | null; onClose: () => void; onSave: (reason: string) => Promise<unknown> }) {
   const { t } = useI18n();
   const [r, setR] = useState("");
   const [busy, setBusy] = useState(false);
   return (
     <Modal title={title} onClose={onClose} narrow>
       <form className="form" onSubmit={async (e) => { e.preventDefault(); setBusy(true); const ok = await onSave(r.trim()); setBusy(false); if (ok !== undefined) onClose(); }}>
-        <div className="wide"><Field label={t("reason")}><input autoFocus required value={r} onChange={(e) => setR(e.target.value)} /></Field></div>
+        <div className="wide"><Field label={t("reason")}><input autoFocus value={r} onChange={(e) => setR(e.target.value)} /></Field></div>
+        <div className="wide"><Message error={error} /></div>
         <div className="wide row" style={{ justifyContent: "flex-end" }}><button type="button" className="btn ghost" onClick={onClose}>{t("cancel")}</button><button className="btn primary" disabled={busy || !r.trim()}>{t("save")}</button></div>
       </form>
     </Modal>

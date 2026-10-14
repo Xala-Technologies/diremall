@@ -9,6 +9,7 @@ import { downloadCsv } from "@/lib/csv";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
+import { email, failures, normalizePhone, phone, req, tin } from "@/lib/validate";
 import { useUpload } from "@/lib/useUpload";
 
 export default function Renters() {
@@ -48,21 +49,25 @@ export default function Renters() {
 function RenterForm({ onClose }: { onClose: () => void }) {
   const { t } = useI18n(); const create = useMutation(api.renters.create); const { run, error, busy } = useRun();
   const [f, setF] = useState({ kind: "company" as "company" | "individual", name: "", tin: "", businessLicenseNo: "", phone: "", email: "", legalRepresentative: "" });
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => { setF({ ...f, [k]: e.target.value }); if (errs[k]) setErrs({ ...errs, [k]: "" }); };
   return (
     <Modal title={t("renter.add")} onClose={onClose}>
-      <form className="form" onSubmit={async (e) => {
+      <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
+        const found = failures({ name: req(f.name, t), phone: req(f.phone, t) ?? phone(f.phone, t), tin: f.kind === "company" ? (req(f.tin, t) ?? tin(f.tin, t)) : (f.tin.trim() ? tin(f.tin, t) : null), email: email(f.email, t) });
+        setErrs(found);
+        if (Object.keys(found).length) return;
         const opt = (s: string) => (s.trim() ? s.trim() : undefined);
-        if (await run(() => create({ kind: f.kind, name: f.name, phone: f.phone, tin: opt(f.tin), businessLicenseNo: opt(f.businessLicenseNo), email: opt(f.email), legalRepresentative: opt(f.legalRepresentative) }))) onClose();
+        if (await run(() => create({ kind: f.kind, name: f.name.trim(), phone: normalizePhone(f.phone), tin: opt(f.tin)?.replace(/\s/g, ""), businessLicenseNo: opt(f.businessLicenseNo), email: opt(f.email), legalRepresentative: opt(f.legalRepresentative) }), t("saved"))) onClose();
       }}>
         <Field label={t("renter.kind")}><select value={f.kind} onChange={set("kind")}><option value="company">{t("company")}</option><option value="individual">{t("individual")}</option></select></Field>
-        <Field label={t("name")}><input required value={f.name} onChange={set("name")} /></Field>
-        <Field label={t("renter.tin")}><input value={f.tin} onChange={set("tin")} required={f.kind === "company"} /></Field>
+        <Field label={t("name")} error={errs.name}><input autoFocus value={f.name} onChange={set("name")} /></Field>
+        <Field label={t("renter.tin")} error={errs.tin} hint={f.kind === "company" ? undefined : t("optional")}><input inputMode="numeric" value={f.tin} onChange={set("tin")} /></Field>
         <Field label={t("renter.license")}><input value={f.businessLicenseNo} onChange={set("businessLicenseNo")} /></Field>
-        <Field label={t("renter.phone")}><input required type="tel" value={f.phone} onChange={set("phone")} placeholder="+2519…" /></Field>
-        <Field label={t("email")}><input type="email" value={f.email} onChange={set("email")} /></Field>
-        <Field label={t("renter.rep")}><input value={f.legalRepresentative} onChange={set("legalRepresentative")} /></Field>
+        <Field label={t("renter.phone")} error={errs.phone}><input type="tel" value={f.phone} onChange={set("phone")} placeholder="0911 20 01 01" /></Field>
+        <Field label={t("email")} error={errs.email} hint={t("optional")}><input type="email" value={f.email} onChange={set("email")} /></Field>
+        <Field label={t("renter.rep")} hint={t("optional")}><input value={f.legalRepresentative} onChange={set("legalRepresentative")} /></Field>
         <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
       </form>
     </Modal>

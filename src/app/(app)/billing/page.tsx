@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, DateText, Message, Money, PageHeader, PeriodPicker, StatusBadge, Table, TableFoot } from "@/components/ui";
+import { BuildingSelect, Card, ConfirmDialog, DateText, Message, Money, PageHeader, PeriodPicker, StatusBadge, Table, TableFoot } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { downloadCsv } from "@/lib/csv";
 import { currentPeriod } from "@/lib/format";
@@ -15,7 +15,7 @@ import { useRun } from "@/lib/useRun";
 export default function Billing() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
   const [period, setPeriod] = useState(currentPeriod()); const [building, setBuilding] = useState("");
-  const [picked, setPicked] = useState<Set<Id<"invoices">>>(new Set());
+  const [picked, setPicked] = useState<Set<Id<"invoices">>>(new Set()); const [confirmIssue, setConfirmIssue] = useState<Id<"invoices">[] | null>(null);
   const buildings = useQuery(api.properties.listBuildings);
   const rows = useQuery(api.billing.list, { period });
   const generate = useMutation(api.billing.generate); const issue = useMutation(api.billing.issue);
@@ -31,11 +31,12 @@ export default function Billing() {
         <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
         {can("financeOfficer") && <>
           <button className="btn" onClick={async () => { const r = await run(() => generate({ period, buildingId: (building || undefined) as Id<"buildings"> | undefined })); if (r) setPicked(new Set()); r && toast(`${r.created} ${t("bill.created")}${r.skipped.length ? `, ${r.skipped.length} ${t("bill.skipped")} (${r.skipped.map((s) => s.reason).join(", ")})` : ""}`); }}>{t("bill.generate")}</button>
-          <button className="btn primary" disabled={picked.size === 0} onClick={() => void run(async () => { await issue({ invoiceIds: [...picked] }); setPicked(new Set()); }, t("saved"))}>{t("bill.issue")} ({picked.size})</button>
-          <button className="btn" disabled={drafts.length === 0} onClick={() => void run(() => issue({ invoiceIds: drafts.map((d) => d._id) }), t("saved"))}>{t("bill.issueAll")}</button></>}
+          <button className="btn primary" disabled={picked.size === 0} onClick={() => setConfirmIssue([...picked])}>{t("bill.issue")} ({picked.size})</button>
+          <button className="btn" disabled={drafts.length === 0} onClick={() => setConfirmIssue(drafts.map((d) => d._id))}>{t("bill.issueAll")}</button></>}
         <button className="btn" onClick={() => shown && downloadCsv(`bills-${period}.csv`, shown.map((r) => ({ number: r.number, unit: r.unitNumber, renter: r.renterName, status: r.status, total: (r.total + r.adjustments) / 100, paid: (r.paid + r.creditUsed) / 100, due: r.due / 100 })))}>{t("export")}</button>
       </PageHeader>
       <Message error={error} notice={notice} />
+      {confirmIssue && <ConfirmDialog title={t("confirm.issueTitle")} message={t("confirm.issueBody").replace("{n}", String(confirmIssue.length))} confirmLabel={t("bill.issueN")} onClose={() => setConfirmIssue(null)} onConfirm={async () => { await run(async () => { await issue({ invoiceIds: confirmIssue }); setPicked(new Set()); }, t("saved")); }} />}
       <Card flush>
         <Table rows={shown} empty={t("empty.bills")} onRow={(r) => router.push(`/billing/${r._id}`)} cols={[
           ...(can("financeOfficer") ? [{ head: "", cell: (r: NonNullable<typeof shown>[number]) => r.status === "draft" ? <input type="checkbox" aria-label={r.unitNumber} checked={picked.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} /> : null }] : []),
