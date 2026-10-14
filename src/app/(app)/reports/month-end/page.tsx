@@ -42,12 +42,12 @@ export default function MonthEnd() {
 
   return (
     <div className="stack">
-      <PageHeader title={t("me.title")} sub={t("me.note")}>
-        <Link className="btn ghost no-print" href="/reports">{t("back")}</Link>
-        <PeriodPicker value={period} onChange={setPeriod} />
-        <button className="btn primary no-print" disabled={!ready} onClick={exportAll}><Icon name="download" size={16} />{t("me.exportAll")}</button>
-        <button className="btn no-print" onClick={() => window.print()}><Icon name="print" size={16} />PDF</button>
-      </PageHeader>
+      <Link href="/reports" className="crumb no-print"><Icon name="back" size={16} />{t("nav.reports")}</Link>
+      <PageHeader title={t("me.title")} sub={t("me.note")} filters={<PeriodPicker value={period} onChange={setPeriod} />}
+        actions={<>
+          <button className="btn primary no-print" disabled={!ready} onClick={exportAll}><Icon name="download" size={16} />{t("me.exportAll")}</button>
+          <button className="btn no-print" onClick={() => window.print()}><Icon name="print" size={16} />PDF</button>
+        </>} />
       {!ready ? <Card><Skeleton lines={8} /></Card> : (
         <>
           <div className="kpis kpis-4">

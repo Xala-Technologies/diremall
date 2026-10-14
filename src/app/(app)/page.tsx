@@ -34,10 +34,10 @@ export default function Dashboard() {
 
   return (
     <div className="stack">
-      <PageHeader title={t("dash.title")}>
+      <PageHeader title={t("dash.title")} filters={<>
         <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
         <PeriodPicker value={period} onChange={setPeriod} />
-      </PageHeader>
+      </>} />
 
       {!d ? <div className="kpis kpis-4">{[0, 1, 2, 3].map((i) => <div key={i} className="kpi"><Skeleton lines={3} /></div>)}</div> : (
         <>

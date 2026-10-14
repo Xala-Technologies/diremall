@@ -35,10 +35,20 @@ export function StatusBadge({ status }: { status: string }) {
   return <Badge tone={statusTone(status)}>{status === "paid" ? t("paidFull") : t(status)}</Badge>;
 }
 
-export function PageHeader({ title, sub, children }: { title: string; sub?: string; children?: ReactNode }) {
+/** Title and main buttons on one row; pickers and search on a filter row beneath. Same on every page. */
+export function PageHeader({ title, sub, actions, filters, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; children?: ReactNode }) {
   // each screen names its browser tab, so several open tabs stay distinguishable
   useEffect(() => { document.title = `${title} · Dire Mall Rentals`; }, [title]);
-  return <div className="page-header"><div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div><div className="toolbar">{children}</div></div>;
+  const buttons = actions ?? children;
+  return (
+    <header className="page-head">
+      <div className="page-header">
+        <div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</div>
+        {buttons && <div className="actions">{buttons}</div>}
+      </div>
+      {filters && <div className="filter-bar">{filters}</div>}
+    </header>
+  );
 }
 
 export function Card({ title, children, actions, flush }: { title?: string; children: ReactNode; actions?: ReactNode; flush?: boolean }) {
@@ -155,13 +165,15 @@ export function useBuildingFilter(buildings: { _id: string }[] | undefined) {
 export function PeriodPicker({ value, onChange }: { value: string; onChange: (p: string) => void }) {
   const { calendar, lang, t } = useI18n();
   return (
-    <label className="row"><span className="muted">{t("period")}</span>
-      <input type="month" value={value} onChange={(e) => e.target.value && onChange(e.target.value)} />
-      {calendar === "ethiopian" && <span className="muted">{formatPeriodLabel(value, lang)}</span>}
-    </label>
+    <div className="filter-chip" role="group" aria-label={t("period")}>
+      <button type="button" className="btn ghost sm icon-only" aria-label={t("period.prev")} onClick={() => onChange(shiftPeriod(value, -1))}><Icon name="back" size={16} /></button>
+      <input type="month" value={value} aria-label={t("period")} onChange={(e) => e.target.value && onChange(e.target.value)} />
+      <button type="button" className="btn ghost sm icon-only" aria-label={t("period.next")} onClick={() => onChange(shiftPeriod(value, 1))}><Icon name="chevron" size={16} /></button>
+      {calendar === "ethiopian" && <span className="muted chip-note">{formatPeriodLabel(value, lang)}</span>}
+    </div>
   );
 }
-import { formatPeriod } from "@/lib/format";
+import { formatPeriod, shiftPeriod } from "@/lib/format";
 const formatPeriodLabel = (p: string, lang: "en" | "am") => formatPeriod(p, "ethiopian", lang);
 
 export function BuildingSelect({ buildings, value, onChange }: { buildings: { _id: string; name: string }[] | undefined; value: string; onChange: (v: string) => void }) {

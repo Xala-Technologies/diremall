@@ -27,15 +27,13 @@ export default function Properties() {
 
   return (
     <div className="stack">
-      <PageHeader title={t("nav.properties")}>
-        <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
-        <ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} />
-        {can("propertyManager") && <>
+      <PageHeader title={t("nav.properties")}
+        filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
+        actions={can("propertyManager") ? <>
           <button className="btn" onClick={() => setModal("building")}>{t("prop.addBuilding")}</button>
           {building && <button className="btn" onClick={() => setModal("floor")}>{t("prop.addFloor")}</button>}
           {building && <button className="btn primary" onClick={() => setModal("unit")}>{t("prop.addUnit")}</button>}
-        </>}
-      </PageHeader>
+        </> : undefined} />
       <Message error={error} />
       {view === "grid" ? (
         !units ? <Card><Skeleton lines={4} /></Card> : units.length === 0 ? <Card><Empty title={t("none")} hint={t("first.1")} /></Card> : (

@@ -120,7 +120,13 @@ strong, b { font-weight: 600; } a { color: var(--ds-color-accent-text-subtle); t
 .avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--ds-color-accent-surface-tinted); color: var(--ds-color-accent-text-subtle); display: grid; place-items: center; font-weight: 600; flex: none; font-size: .875rem; }
 .main { min-width: 0; } .content { padding: 32px 36px 64px; max-width: 1360px; margin: 0 auto; animation: rise .28s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.page-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; } .page-header .sub { color: var(--muted); margin-top: 6px; }
+.page-head { display: grid; gap: 18px; margin-bottom: 24px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px 24px; flex-wrap: wrap; } .page-header .sub { color: var(--muted); margin-top: 6px; max-width: 60ch; }
+.page-header .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+.filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } .filter-bar .filter-select { flex: 0 1 17rem; min-width: 12rem; } .filter-bar input[type="search"] { min-width: 15rem; } .filter-bar .spacer { flex: 1 1 0; }
+.filter-chip { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 4px; border: 1px solid var(--ds-color-neutral-border-default); border-radius: var(--r-lg); background: var(--ds-color-neutral-background-default); }
+.filter-chip:focus-within { border-color: var(--ds-color-accent-border-default); box-shadow: 0 0 0 3px var(--ds-color-accent-surface-tinted); }
+.filter-chip input[type="month"] { border: 0; box-shadow: none !important; min-height: 38px; background: transparent; padding: 0 4px; border-radius: var(--r-md); } .filter-chip .chip-note { padding: 0 12px 0 6px; font-size: .875rem; white-space: nowrap; }
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .toolbar .filter-select { flex: 0 1 15rem; min-width: 11rem; } .toolbar label.row { flex-wrap: nowrap; }
 @media (max-width: 860px) {

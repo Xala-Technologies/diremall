@@ -93,6 +93,7 @@ export const EN: Record<string, string> = {
   "bill.item": "Item", "bill.summary": "Summary", "bill.details": "Details", "bill.issuedOn": "Issued on",
   "ag.view": "View", "dep.required": "Required", "dep.held": "Held", "dep.available": "Available", "dep.refunded": "Refunded",
   "err.issue_in_smaller_groups": "Too many bills at once. Issue them in smaller groups.",
+  "period.prev": "Previous month", "period.next": "Next month",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -164,6 +165,7 @@ export const AM: Record<string, string> = {
   "ag.view": "ተመልከት", "dep.required": "የሚያስፈልግ", "dep.held": "የተያዘ", "dep.available": "የሚገኝ", "dep.refunded": "የተመለሰ",
   "err.inactive": "መለያዎ ንቁ አይደለም።", "err.forbidden_building": "ያ ሕንፃ ከመዳረሻዎ ውጭ ነው።", "err.forbidden_renter": "ያ ተከራይ ከመዳረሻዎ ውጭ ነው።", "err.duplicate_payment_reference": "በዚህ የመክፈያ መንገድና ማጣቀሻ ቁጥር ክፍያ አስቀድሞ አለ።", "err.allocation_exceeds_balance": "ደረሰኙ ገና ከሚቀረው በላይ ነው።", "err.unit_number_exists": "ይህ የክፍል ቁጥር በዚህ ሕንፃ ውስጥ አስቀድሞ አለ።",
   "err.issue_in_smaller_groups": "በአንድ ጊዜ ብዙ ደረሰኞች። በትንሽ ቡድኖች ይስጡ።",
+  "period.prev": "ያለፈው ወር", "period.next": "የሚቀጥለው ወር",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

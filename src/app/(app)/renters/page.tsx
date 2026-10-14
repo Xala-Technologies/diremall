@@ -21,11 +21,9 @@ export default function Renters() {
   const setView = (v: "grid" | "table") => { setViewState(v); try { localStorage.setItem("renterView", v); } catch {} };
   return (
     <div className="stack">
-      <PageHeader title={t("nav.renters")}>
-        <input type="search" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("search")} />
-        <ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} />
-        {can("propertyManager", "financeOfficer") && <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button>}
-      </PageHeader>
+      <PageHeader title={t("nav.renters")}
+        filters={<><input type="search" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("search")} /><span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
+        actions={can("propertyManager", "financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button> : undefined} />
       {view === "grid" ? (
         !renters ? <Card><Skeleton lines={4} /></Card> : renters.length === 0 ? <Card><Empty title={t("none")} hint={t("first.2")} /></Card> : (
           <div className="tiles">{renters.map((r) => (
