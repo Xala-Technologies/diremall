@@ -91,6 +91,7 @@ export const EN: Record<string, string> = {
   "err.import_has_errors": "The file still has problems. Nothing was imported.", "err.import_too_many_rows": "Too many rows. Split the file into parts of up to 1,000.", "err.import_empty": "The file has no rows.",
   "pw.show": "Show password", "pw.hide": "Hide password", "pw.hint": "At least 8 characters.",
   "bill.item": "Item", "bill.summary": "Summary", "bill.details": "Details", "bill.issuedOn": "Issued on",
+  "ag.view": "View", "dep.required": "Required", "dep.held": "Held", "dep.available": "Available", "dep.refunded": "Refunded",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -159,6 +160,7 @@ export const AM: Record<string, string> = {
   "err.import_has_errors": "ፋይሉ አሁንም ችግሮች አሉበት። ምንም አልገባም።", "err.import_too_many_rows": "ብዙ ረድፎች። ፋይሉን እስከ 1,000 በሚደርሱ ክፍሎች ይከፋፍሉት።", "err.import_empty": "ፋይሉ ምንም ረድፍ የለውም።",
   "pw.show": "የይለፍ ቃል አሳይ", "pw.hide": "የይለፍ ቃል ደብቅ", "pw.hint": "ቢያንስ 8 ቁምፊዎች።",
   "bill.item": "ዕቃ", "bill.summary": "ማጠቃለያ", "bill.details": "ዝርዝር", "bill.issuedOn": "የተሰጠበት ቀን",
+  "ag.view": "ተመልከት", "dep.required": "የሚያስፈልግ", "dep.held": "የተያዘ", "dep.available": "የሚገኝ", "dep.refunded": "የተመለሰ",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

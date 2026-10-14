@@ -7,6 +7,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
 import { monthlyRent } from "../../../../../convex/lib/billing";
+import { Icon } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -30,39 +31,56 @@ export default function AgreementPage() {
   const rentOf = (term: (typeof d.terms)[number]) => monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: d.unit.areaM2, ratePerM2: term.rent.ratePerM2 });
   return (
     <div className="stack">
-      <PageHeader title={`${d.unit.number} — ${d.renter?.name ?? ""}`}><StatusBadge status={a.status} /><Link className="btn" href={`/agreements/${agreementId}/contract`}>{t("contract.title")}</Link></PageHeader>
-      <Message error={error} notice={notice} />
-      <Card title={t("nav.agreements")} actions={<>
+      <Link href="/agreements" className="crumb"><Icon name="back" size={16} />{t("nav.agreements")}</Link>
+      <PageHeader title={`${d.unit.number} — ${d.renter?.name ?? ""}`}>
+        <StatusBadge status={a.status} />
+        <Link className="btn" href={`/agreements/${agreementId}/contract`}>{t("contract.title")}</Link>
+
         {can("propertyManager") && (a.status === "draft" || a.status === "inReview") && (
-          <label className="btn sm">{t("ag.attach")}<input type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => attach({ agreementId, fileId: await upload(f) }), t("saved")); e.target.value = ""; }} /></label>)}
-        {can("propertyManager") && a.status === "draft" && <button className="btn sm primary" onClick={() => void run(() => submit({ agreementId }), t("saved"))}>{t("ag.submit")}</button>}
+          <label className="btn">{t("ag.attach")}<input type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => attach({ agreementId, fileId: await upload(f) }), t("saved")); e.target.value = ""; }} /></label>)}
+        {can("propertyManager") && a.status === "draft" && <button className="btn primary" onClick={() => void run(() => submit({ agreementId }), t("saved"))}>{t("ag.submit")}</button>}
         {can("approver") && a.status === "inReview" && <>
-          <button className="btn sm primary" disabled={mine} title={mine ? t("err.same_person_cannot_approve") : ""} onClick={() => setDlg("approve")}>{t("ag.approve")}</button>
-          <button className="btn sm" onClick={() => setDlg("return")}>{t("ag.return")}</button></>}
-        {can("approver") && a.status === "active" && <><button className="btn sm" onClick={() => setDlg("terms")}>{t("ag.renew")}</button><button className="btn sm danger" onClick={() => setDlg("terminate")}>{t("ag.terminate")}</button></>}
-      </>}>
-        <div className="row"><span>{t("ag.start")}: <DateText ms={a.startsAt} /></span><span>{t("ag.end")}: <DateText ms={a.endsAt} /></span>
-          <span>{t("ag.signed")}: {d.signedUrl ? <a href={d.signedUrl} target="_blank" rel="noreferrer">✓</a> : "—"}</span></div>
-      </Card>
-      <Card title={t("ag.terms")}><Table rows={d.terms.slice().sort((x, y) => x.effectiveFrom - y.effectiveFrom)} cols={[
+          <button className="btn primary" disabled={mine} title={mine ? t("err.same_person_cannot_approve") : ""} onClick={() => setDlg("approve")}>{t("ag.approve")}</button>
+          <button className="btn" onClick={() => setDlg("return")}>{t("ag.return")}</button></>}
+        {can("approver") && a.status === "active" && <><button className="btn" onClick={() => setDlg("terms")}>{t("ag.renew")}</button><button className="btn danger" onClick={() => setDlg("terminate")}>{t("ag.terminate")}</button></>}
+      
+      </PageHeader>
+      <Message error={error} notice={notice} />
+      <div className="split">
+        <div className="stack">
+      <Card flush title={t("ag.terms")}><Table rows={d.terms.slice().sort((x, y) => x.effectiveFrom - y.effectiveFrom)} cols={[
         { head: t("date"), cell: (x) => <DateText ms={x.effectiveFrom} /> },
         { head: t("ag.rentBasis"), cell: (x) => (x.rent.kind === "fixed" ? t("ag.fixed") : `${t("ag.perM2")} @ ${(x.rent.ratePerM2 / 100).toLocaleString()}`) },
         { head: t("ag.escalation"), cell: (x) => (x.escalation ? `+${x.escalation.percent}% / ${x.escalation.everyMonths} mo` : "—") },
         { head: t("bill.calc"), cell: (x) => <Money v={rentOf(x)} />, right: true, money: true }, { head: t("ag.dueDay"), cell: (x) => x.dueDay, right: true },
       ]} /></Card>
+      <Card flush title={t("ag.handover")} actions={can("propertyManager") && <button className="btn sm" onClick={() => setDlg("handover")}>{t("add")}</button>}>
+        <Table rows={d.handovers} empty="—" cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition, text: true }]} />
+      </Card>
+        </div>
+        <div className="stack">
+          <Card title={t("bill.details")}>
+            <dl className="dl">
+              <div><dt>{t("ag.unit")}</dt><dd>{d.unit.number} · {d.unit.areaM2} m²</dd></div>
+              <div><dt>{t("ag.renter")}</dt><dd>{d.renter?.name}</dd></div>
+              <div><dt>{t("ag.start")}</dt><dd><DateText ms={a.startsAt} /></dd></div>
+              <div><dt>{t("ag.end")}</dt><dd><DateText ms={a.endsAt} /></dd></div>
+              <div><dt>{t("ag.signed")}</dt><dd>{d.signedUrl ? <a href={d.signedUrl} target="_blank" rel="noreferrer">{t("ag.view")}</a> : <span className="muted">—</span>}</dd></div>
+              {d.terms.length > 0 && <div><dt>{t("rent")}</dt><dd><Money v={rentOf(d.terms.slice().sort((x, y) => y.effectiveFrom - x.effectiveFrom)[0]!)} strong /></dd></div>}
+            </dl>
+          </Card>
       {a.status === "active" && dep && <Card title={t("ag.deposit")} actions={<>
         {can("financeOfficer") && <button className="btn sm" onClick={() => setDlg("receive")}>{t("dep.receive")}</button>}
         {can("financeOfficer", "propertyManager") && <button className="btn sm" onClick={() => setDlg("deduct")}>{t("dep.deduct")}</button>}
         {can("approver") && <button className="btn sm" onClick={() => setDlg("refund")}>{t("dep.refund")}</button>}</>}>
-        <div className="row"><span>Required <Money v={dep.required} /></span><span>Held <Money v={dep.held} /></span><span>Available <Money v={dep.available} strong /></span><span>Refunded <Money v={dep.refunded} /></span></div>
+        <dl className="dl"><div><dt>{t("dep.required")}</dt><dd><Money v={dep.required} /></dd></div><div><dt>{t("dep.held")}</dt><dd><Money v={dep.held} /></dd></div><div><dt>{t("dep.available")}</dt><dd><Money v={dep.available} strong /></dd></div><div><dt>{t("dep.refunded")}</dt><dd><Money v={dep.refunded} /></dd></div></dl>
         <Table rows={dep.deductions.map((x, i) => ({ ...x, _id: String(i), i }))} empty="—" cols={[
           { head: t("amount"), cell: (x) => <Money v={x.amount} /> }, { head: t("reason"), cell: (x) => x.reason, text: true },
           { head: t("status"), cell: (x) => (x.approvedBy ? t("approved") : can("approver") && x.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appDed({ agreementId, index: x.i }))}>{t("bill.approve")}</button> : t("inReview")) },
         ]} />
       </Card>}
-      <Card title={t("ag.handover")} actions={can("propertyManager") && <button className="btn sm" onClick={() => setDlg("handover")}>{t("add")}</button>}>
-        <Table rows={d.handovers} empty="—" cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition, text: true }]} />
-      </Card>
+        </div>
+      </div>
       {dlg === "terms" && <TermsDialog onClose={() => setDlg(null)} agreementId={agreementId} endsAt={a.endsAt} />}
       {dlg === "handover" && <HandoverDialog error={error} onClose={() => setDlg(null)} onSave={(v) => run(() => handover({ agreementId, ...v }))} />}
       {dlg === "terminate" && <ReasonDialog title={t("ag.terminate")} error={error} onClose={() => setDlg(null)} onSave={(reason) => run(() => terminate({ agreementId, reason }), t("saved"))} />}
