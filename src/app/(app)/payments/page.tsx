@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table, Tabs } from "@/components/ui";
+import { FilterSelect } from "@/components/FilterSelect";
+import { Banknote, Landmark, Smartphone, ArrowLeftRight, Wallet } from "lucide-react";
+import { Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -15,12 +17,15 @@ type Status = "" | "recorded" | "confirmed" | "applied" | "voided";
 export default function Payments() {
   const { t } = useI18n(); const { can, me } = useMe(); const router = useRouter();
   const [tab, setTab] = useState<Status>(""); const [adding, setAdding] = useState(false); const [voiding, setVoiding] = useState<Id<"payments"> | null>(null); const [applying, setApplying] = useState<Id<"payments"> | null>(null);
-  const rows = useQuery(api.payments.list, { status: tab || undefined });
+  const all = useQuery(api.payments.list, { status: tab || undefined });
+  const [q, setQ] = useState(""); const [method, setMethod] = useState("");
+  const needle = q.trim().toLowerCase();
+  const rows = all?.filter((p) => (!method || p.method === method) && (!needle || `${p.renterName} ${p.reference}`.toLowerCase().includes(needle)));
   const confirm = useMutation(api.payments.confirm); const apply = useMutation(api.payments.apply); const voidP = useMutation(api.payments.voidPayment);
   const { run, error, notice } = useRun();
   return (
     <div className="stack">
-      <PageHeader title={t("nav.payments")} filters={<Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} />} actions={can("financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button> : undefined} />
+      <PageHeader title={t("nav.payments")} filters={<><Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} /><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchPayments")} /><FilterSelect label={t("pay.method")} placeholder={t("pay.method")} value={method} onChange={setMethod} options={[{ value: "", label: t("filter.allMethods"), icon: <Wallet size={16} /> }, { value: "bankDeposit", label: t("bankDeposit"), icon: <Landmark size={16} /> }, { value: "transfer", label: t("transfer"), icon: <ArrowLeftRight size={16} /> }, { value: "telebirr", label: t("telebirr"), icon: <Smartphone size={16} /> }, { value: "cbeBirr", label: t("cbeBirr"), icon: <Smartphone size={16} /> }, { value: "cash", label: t("cash"), icon: <Banknote size={16} /> }]} /></>} actions={can("financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button> : undefined} />
       <Message error={error} notice={notice} />
       <Card flush><Table rows={rows} empty={t("empty.payments")} cols={[
         { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} />, sort: (p) => p.receivedAt }, { head: t("ag.renter"), cell: (p) => p.renterName, sort: (p) => p.renterName },

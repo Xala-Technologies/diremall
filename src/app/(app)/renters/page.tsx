@@ -5,6 +5,8 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Card, DateText, Empty, Field, Message, Modal, Money, PageHeader, SearchInput, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
 import { Badge } from "@/components/ui";
+import { FilterSelect } from "@/components/FilterSelect";
+import { Building2, User, Users } from "lucide-react";
 import { downloadCsv } from "@/lib/csv";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -14,15 +16,16 @@ import { useUpload } from "@/lib/useUpload";
 
 export default function Renters() {
   const { t } = useI18n(); const { can } = useMe();
-  const [search, setSearch] = useState(""); const [adding, setAdding] = useState(false); const [open, setOpen] = useState<Id<"renters"> | null>(null);
-  const renters = useQuery(api.renters.list, { search: search || undefined });
+  const [search, setSearch] = useState(""); const [kind, setKind] = useState(""); const [adding, setAdding] = useState(false); const [open, setOpen] = useState<Id<"renters"> | null>(null);
+  const rentersAll = useQuery(api.renters.list, { search: search || undefined });
+  const renters = rentersAll?.filter((r) => !kind || r.kind === kind);
   const [view, setViewState] = useState<"grid" | "table">("grid");
   useEffect(() => { try { if (localStorage.getItem("renterView") === "table") setViewState("table"); } catch {} }, []);
   const setView = (v: "grid" | "table") => { setViewState(v); try { localStorage.setItem("renterView", v); } catch {} };
   return (
     <div className="stack">
       <PageHeader title={t("nav.renters")}
-        filters={<><SearchInput value={search} onChange={setSearch} placeholder={t("filter.searchRenters")} /><span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
+        filters={<><SearchInput value={search} onChange={setSearch} placeholder={t("filter.searchRenters")} /><FilterSelect label={t("renter.kind")} placeholder={t("renter.kind")} value={kind} onChange={setKind} options={[{ value: "", label: t("filter.allTypes"), icon: <Users size={16} /> }, { value: "company", label: t("company"), icon: <Building2 size={16} /> }, { value: "individual", label: t("individual"), icon: <User size={16} /> }]} />{(search || kind) && <button type="button" className="btn ghost sm" onClick={() => { setSearch(""); setKind(""); }}>{t("filter.clear")}</button>}<span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
         actions={can("propertyManager", "financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button> : undefined} />
       {view === "grid" ? (
         !renters ? <Card><Skeleton lines={4} /></Card> : renters.length === 0 ? <Card><Empty title={t("none")} hint={t("first.2")} /></Card> : (
