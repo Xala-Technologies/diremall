@@ -90,6 +90,7 @@ export const clearPage = internalMutation({
           }
           for (const t of await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", ag._id)).collect()) { await ctx.db.delete(t._id); removed++; }
           for (const d of await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", ag._id)).collect()) { await ctx.db.delete(d._id); removed++; }
+          for (const m of await ctx.db.query("smsMessages").withIndex("by_renter", (q) => q.eq("renterId", ag.renterId)).collect()) { await ctx.db.delete(m._id); removed++; }
           await ctx.db.delete(ag.renterId); await ctx.db.delete(ag._id); removed += 2;
         }
         await ctx.db.delete(unit._id); removed++;
@@ -110,7 +111,8 @@ export const clear = internalAction({
       if (n === 0) break;
     }
     const left: number = await ctx.runMutation(internal.loadtest.dropBuildings, {});
-    return `removed ${total} rows and ${left} buildings`;
+    const reminders: number = await ctx.runMutation(internal.loadtest.dropQueuedReminders, {});
+    return `removed ${total} rows, ${left} buildings and ${reminders} queued reminders`;
   },
 });
 
@@ -121,6 +123,18 @@ export const dropBuildings = internalMutation({
     for (const b of (await ctx.db.query("buildings").collect()).filter((x) => x.name.startsWith("LT Block"))) {
       for (const f of await ctx.db.query("floors").withIndex("by_building", (q) => q.eq("buildingId", b._id)).collect()) await ctx.db.delete(f._id);
       await ctx.db.delete(b._id); n++;
+    }
+    return n;
+  },
+});
+
+/** Reminder messages the daily job queued while testing (nothing is sent in development without a gateway). */
+export const dropQueuedReminders = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let n = 0;
+    for (const m of await ctx.db.query("smsMessages").withIndex("by_status", (q) => q.eq("status", "queued")).take(2000)) {
+      if (m.kind === "dueReminder" || m.kind === "expiryWarning") { await ctx.db.delete(m._id); n++; }
     }
     return n;
   },

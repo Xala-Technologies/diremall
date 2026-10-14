@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { READ_ROLES, audit, canSeeBuilding, fail, getSetting, requireRole } from "./lib/access";
 import { invoiceBalance } from "./lib/ledger";
@@ -16,15 +17,21 @@ async function queueOnce(ctx: any, row: { renterId: any; kind: "dueReminder" | "
   return true;
 }
 
+// The daily jobs below walk a whole table. Convex allows 4,096 lookups per call, so each job handles one page
+// of PAGE rows and schedules itself for the next page until the table is done.
+const PAGE = 250;
+const cursorArg = { cursor: v.optional(v.union(v.string(), v.null())) };
+
 /** Daily: remind about bills falling due, and notice bills past due. Paid bills never trigger a message. */
 export const queueDueReminders = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: cursorArg,
+  handler: async (ctx, { cursor }): Promise<number> => {
     const lead = await getSetting(ctx, "dueReminderDays", 3);
     const now = Date.now();
     let queued = 0;
     // only bills that still owe money
-    for (const inv of await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "issued").gt("due", 0)).collect()) {
+    const page = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "issued").gt("due", 0)).paginate({ numItems: PAGE, cursor: cursor ?? null });
+    for (const inv of page.page) {
       const bal = await invoiceBalance(ctx, inv);
       if (bal.due <= 0) continue;
       if (inv.dueAt >= now && inv.dueAt - now <= lead * DAY) {
@@ -33,42 +40,53 @@ export const queueDueReminders = internalMutation({
         if (await queueOnce(ctx, { renterId: inv.renterId, kind: "dueReminder", invoiceId: inv._id, dedupeKey: `overdue:${inv._id}`, body: `Overdue: bill ${inv.number} of ${fmt(bal.due)} was due on ${date(inv.dueAt)}. Please pay.` })) queued++;
       }
     }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.smsQueue.queueDueReminders, { cursor: page.continueCursor });
     return queued;
   },
 });
 
 export const queueExpiryWarnings = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: cursorArg,
+  handler: async (ctx, { cursor }): Promise<number> => {
     const days = await getSetting(ctx, "expiryWarnDays", 60);
-    const horizon = Date.now() + days * DAY;
+    const now = Date.now();
+    const horizon = now + days * DAY;
     let queued = 0;
-    for (const ag of (await ctx.db.query("agreements").collect()).filter((a) => a.status === "active" && a.endsAt <= horizon && a.endsAt > Date.now())) {
+    const page = await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("status", "active")).paginate({ numItems: PAGE, cursor: cursor ?? null });
+    for (const ag of page.page) {
+      if (ag.endsAt > horizon || ag.endsAt <= now) continue;
       if (await queueOnce(ctx, { renterId: ag.renterId, kind: "expiryWarning", agreementId: ag._id, dedupeKey: `expiry:${ag._id}:${ag.endsAt}`, body: `Your rental agreement ends on ${date(ag.endsAt)}. Please contact the office about renewal.` })) queued++;
     }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.smsQueue.queueExpiryWarnings, { cursor: page.continueCursor });
     return queued;
   },
 });
 
 /** Expire agreements whose end date has passed and free the unit. */
 export const expireAgreements = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  args: cursorArg,
+  handler: async (ctx, { cursor }): Promise<number> => {
     let n = 0;
-    for (const ag of (await ctx.db.query("agreements").collect()).filter((a) => a.status === "active" && a.endsAt < Date.now())) {
+    const now = Date.now();
+    const page = await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("status", "active")).paginate({ numItems: PAGE / 2, cursor: cursor ?? null });
+    for (const ag of page.page) {
+      if (ag.endsAt >= now) continue;
       await ctx.db.patch(ag._id, { status: "expired" });
       await refreshUnitStatus(ctx, ag.unitId);
       n++;
     }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.smsQueue.expireAgreements, { cursor: page.continueCursor });
     return n;
   },
 });
 
 /** Turn reserved units occupied once their lease starts. */
 export const refreshUnits = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    for (const u of await ctx.db.query("units").collect()) await refreshUnitStatus(ctx, u._id);
+  args: cursorArg,
+  handler: async (ctx, { cursor }): Promise<void> => {
+    const page = await ctx.db.query("units").paginate({ numItems: PAGE, cursor: cursor ?? null });
+    for (const u of page.page) await refreshUnitStatus(ctx, u._id);
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.smsQueue.refreshUnits, { cursor: page.continueCursor });
   },
 });
 
