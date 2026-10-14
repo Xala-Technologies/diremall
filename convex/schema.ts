@@ -57,7 +57,7 @@ export default defineSchema({
     phone: v.string(),
     email: v.optional(v.string()),
     legalRepresentative: v.optional(v.string()),
-  }).index("by_name", ["name"]),
+  }).index("by_name", ["name"]).index("by_tin", ["tin"]),
   renterDocuments: defineTable({
     renterId: v.id("renters"),
     kind: v.string(),

@@ -1,9 +1,9 @@
-import { AlertCircle, Building2, CalendarDays, Check, ChevronLeft, ChevronRight, ChartColumn, Download, FileText, Globe, History, Inbox, Landmark, LayoutDashboard, type LucideIcon, Menu, MessageSquare, Monitor, Moon, Plus, Printer, Receipt, Settings, ShieldCheck, Sun, Users, Wallet, X, Zap } from "lucide-react";
+import { AlertCircle, Building2, CalendarDays, Check, ChevronLeft, ChevronRight, ChartColumn, Download, FileText, Globe, History, Inbox, Landmark, LayoutDashboard, type LucideIcon, Menu, MessageSquare, Monitor, Moon, Plus, Printer, Receipt, Settings, ShieldCheck, Sun, Upload, Users, Wallet, X, Zap } from "lucide-react";
 
 const ICONS: Record<string, LucideIcon> = {
   overview: LayoutDashboard, buildings: Building2, renters: Users, agreements: FileText, bills: Receipt, payments: Wallet, bank: Landmark, utilities: Zap,
   reports: ChartColumn, messages: MessageSquare, settings: Settings, access: ShieldCheck, history: History, chevron: ChevronRight, back: ChevronLeft, menu: Menu,
-  check: Check, plus: Plus, close: X, download: Download, print: Printer, inbox: Inbox, alert: AlertCircle, globe: Globe, calendar: CalendarDays, sun: Sun, moon: Moon, monitor: Monitor,
+  upload: Upload, check: Check, plus: Plus, close: X, download: Download, print: Printer, inbox: Inbox, alert: AlertCircle, globe: Globe, calendar: CalendarDays, sun: Sun, moon: Moon, monitor: Monitor,
 };
 
 /** lucide-react icons, 16–18 px inside controls (same icon family as the Møterom app). */
