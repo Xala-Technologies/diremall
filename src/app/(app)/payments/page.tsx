@@ -24,11 +24,14 @@ export default function Payments() {
       <Message error={error} notice={notice} />
       <Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} />
       <Card flush><Table rows={rows} empty={t("empty.payments")} cols={[
-        { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} />, sort: (p) => p.receivedAt }, { head: t("ag.renter"), cell: (p) => p.renterName, sort: (p) => p.renterName }, { head: t("pay.method"), cell: (p) => t(p.method), sort: (p) => p.method },
-        { head: t("pay.reference"), cell: (p) => p.reference }, { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true, sort: (p) => p.amount },
-        { head: t("pay.evidence"), cell: (p) => (p.evidenceUrl ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer">✓</a> : "—") }, { head: t("status"), cell: (p) => <StatusBadge status={p.status} /> },
+        { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} />, sort: (p) => p.receivedAt }, { head: t("ag.renter"), cell: (p) => p.renterName, sort: (p) => p.renterName },
+        { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true, sort: (p) => p.amount },
+        { head: t("pay.method"), cell: (p) => t(p.method), sort: (p) => p.method }, { head: t("pay.reference"), cell: (p) => p.reference, hide: true },
+        { head: t("pay.evidence"), cell: (p) => (p.evidenceUrl ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer">✓</a> : "—"), hide: true },
+        { head: t("status"), cell: (p) => <StatusBadge status={p.status} />, sort: (p) => p.status },
+        // one main action per stage; a receipt exists only once the payment is applied
         { head: "", cell: (p) => <div className="row">
-          <button className="btn sm" onClick={() => router.push(`/payments/${p._id}`)}>{t("pay.receipt")}</button>
+          {p.status === "applied" && <button className="btn sm" onClick={() => router.push(`/payments/${p._id}`)}>{t("pay.receipt")}</button>}
           {p.status === "recorded" && can("approver") && <button className="btn sm primary" disabled={p.recordedBy === me?._id} title={p.recordedBy === me?._id ? t("err.same_person_cannot_approve") : ""} onClick={() => void run(() => confirm({ paymentId: p._id }), t("saved"))}>{t("pay.confirm")}</button>}
           {p.status === "confirmed" && can("financeOfficer") && <button className="btn sm primary" onClick={() => setApplying(p._id)}>{t("pay.apply")}</button>}
           {(p.status === "recorded" || p.status === "confirmed") && can("approver") && <button className="btn sm danger" onClick={() => setVoiding(p._id)}>{t("pay.void")}</button>}</div> },

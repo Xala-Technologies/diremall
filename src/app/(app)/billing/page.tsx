@@ -55,7 +55,7 @@ export default function Billing() {
           ...(can("financeOfficer") ? [{ head: "", cell: (r: NonNullable<typeof shown>[number]) => r.status === "draft" ? <input type="checkbox" aria-label={r.unitNumber} checked={picked.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} /> : null }] : []),
           { head: t("bill.number"), cell: (r) => r.number || t("draft") }, { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName },
           { head: t("bill.dueDate"), cell: (r) => <DateText ms={r.dueAt} />, sort: (r) => r.dueAt }, { head: t("total"), cell: (r) => <Money v={r.total + r.adjustments} />, right: true, money: true, sort: (r) => r.total + r.adjustments },
-          { head: t("bill.paid"), cell: (r) => <Money v={r.paid + r.creditUsed} />, right: true, money: true }, { head: t("bill.due"), cell: (r) => r.status === "issued" ? <Money v={r.due} strong /> : "—", right: true, money: true, sort: (r) => (r.status === "issued" ? r.due : -1) },
+          { head: t("bill.paid"), cell: (r) => <Money v={r.paid + r.creditUsed} />, right: true, money: true, hide: true }, { head: t("bill.due"), cell: (r) => r.status === "issued" ? <Money v={r.due} strong /> : "—", right: true, money: true, sort: (r) => (r.status === "issued" ? r.due : -1) },
           { head: t("status"), cell: (r) => <StatusBadge status={r.payStatus} /> },
         ]} />
         {shown && shown.length > 0 && <TableFoot items={[[t("total"), <Money key="t" v={totals.total} strong />], [t("bill.paid"), <Money key="p" v={totals.paid} strong />], [t("bill.due"), <Money key="d" v={totals.due} strong />]]} />}

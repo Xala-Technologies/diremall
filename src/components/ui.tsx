@@ -45,7 +45,7 @@ export function Card({ title, children, actions, flush }: { title?: string; chil
   return <section className={`card ${flush ? "flush" : ""}`}>{(title || actions) && <header className="card-h"><h2>{title}</h2><div className="row">{actions}</div></header>}{children}</section>;
 }
 
-export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; money?: boolean; text?: boolean; sort?: (r: T) => string | number | null | undefined };
+export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; money?: boolean; text?: boolean; hide?: boolean; sort?: (r: T) => string | number | null | undefined };
 export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: { cols: Col<T>[]; rows: T[] | undefined; onRow?: (r: T) => void; empty?: string }) {
   const { t } = useI18n();
   const [sortCol, setSortCol] = useState<number | null>(null); const [dir, setDir] = useState<1 | -1>(1);
@@ -65,7 +65,7 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
     <div className="table-wrap" tabIndex={0} role="region" aria-label={cols.map((c) => c.head).filter(Boolean).slice(0, 3).join(", ") || t("table")}>
       <table>
         <thead><tr>{cols.map((c, i) => (
-          <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""}`} aria-sort={sortCol === i ? (dir === 1 ? "ascending" : "descending") : c.sort ? "none" : undefined}>
+          <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""} ${c.hide ? "hide-xl" : ""}`} aria-sort={sortCol === i ? (dir === 1 ? "ascending" : "descending") : c.sort ? "none" : undefined}>
             {c.head === "" ? <span className="sr-only">{t("actions")}</span> : c.sort ? (
               <button type="button" className="th-sort" onClick={() => { if (sortCol === i) setDir(dir === 1 ? -1 : 1); else { setSortCol(i); setDir(1); } }}>
                 {c.head}{c.money ? " (ETB)" : ""}<Icon name={sortCol === i ? (dir === 1 ? "sortUp" : "sortDown") : "sort"} size={14} />
@@ -75,7 +75,7 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
         <tbody>{sorted(rows).map((r, i) => (
           <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}
             tabIndex={onRow ? 0 : undefined} onKeyDown={onRow ? (e) => { if (e.key === "Enter") onRow(r); } : undefined}>
-            {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""} ${c.head === "" ? "act" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
+            {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""} ${c.head === "" ? "act" : ""} ${c.hide ? "hide-xl" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
           </tr>))}</tbody>
       </table>
     </div>

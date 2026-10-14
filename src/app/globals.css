@@ -95,7 +95,7 @@ h1 { font-size: 2.25rem; font-weight: 500; line-height: 1.3; letter-spacing: -0.
 strong, b { font-weight: 600; } a { color: var(--ds-color-accent-text-subtle); text-underline-offset: 3px; } p { text-wrap: pretty; }
 .muted, .caption { color: var(--muted); } .caption { font-size: .875rem; } .strong { font-weight: 600; }
 .num { font-variant-numeric: tabular-nums slashed-zero; white-space: nowrap; }
-.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .grow { flex: 1; } .stack { display: grid; gap: 20px; align-content: start; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .grow { flex: 1; } .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-content: start; } /* minmax(0,…) lets wide tables scroll inside their card instead of stretching the page */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip { position: absolute; left: 12px; top: -48px; background: var(--accent); color: var(--accent-ink); padding: 8px 14px; border-radius: var(--r-md); z-index: 100; transition: top .15s; } .skip:focus { top: 12px; }
 .icon { flex: none; }
@@ -171,11 +171,13 @@ strong, b { font-weight: 600; } a { color: var(--ds-color-accent-text-subtle); t
 
 /* ── tables ────────────────────────────────────────────── */
 .table-wrap { overflow-x: auto; } table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .875rem; }
-th { text-align: left; color: var(--muted); font-weight: 600; font-size: .8125rem; padding: 12px 16px; background: var(--ds-color-neutral-background-tinted); border-bottom: 1px solid var(--ds-color-neutral-border-default); white-space: nowrap; position: sticky; top: 0; }
-td { padding: 14px 16px; border-bottom: 1px solid var(--ds-color-neutral-border-subtle); vertical-align: middle; white-space: nowrap; } td.txt { white-space: normal; min-width: 220px; max-width: 460px; } tr:last-child td { border-bottom: 0; }
+th { text-align: left; color: var(--muted); font-weight: 600; font-size: .8125rem; padding: 12px 14px; background: var(--ds-color-neutral-background-tinted); border-bottom: 1px solid var(--ds-color-neutral-border-default); white-space: nowrap; position: sticky; top: 0; }
+td { padding: 14px 14px; border-bottom: 1px solid var(--ds-color-neutral-border-subtle); vertical-align: middle; white-space: nowrap; } td.txt { white-space: normal; min-width: 220px; max-width: 460px; } tr:last-child td { border-bottom: 0; }
 th.r, td.r { text-align: right; }
 .th-sort { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 4px; } .th-sort:hover { color: var(--ink); } .th-sort:focus-visible { outline: 3px solid var(--ds-color-accent-border-default); outline-offset: 2px; } th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--ink); } th.r .th-sort { flex-direction: row-reverse; } td.r { font-variant-numeric: tabular-nums slashed-zero; }
 tr.click { cursor: pointer; } tr.click:hover td { background: var(--ds-color-accent-background-tinted); } tr.click:focus-visible td { background: var(--ds-color-accent-surface-tinted); }
+/* secondary columns step aside on narrower screens so the figures that matter stay visible */
+@media (max-width: 1359px) { .hide-xl { display: none; } }
 .table-wrap td.act .row { flex-wrap: nowrap; } .table-wrap td.act, .table-wrap th.act { position: sticky; right: 0; background: var(--ds-color-neutral-background-default); box-shadow: -8px 0 8px -8px rgb(15 23 42 / .15); } .table-wrap th.act { background: var(--ds-color-neutral-background-tinted); } tr.click:hover td.act { background: var(--ds-color-accent-background-tinted); }
 .table-foot { display: flex; justify-content: flex-end; gap: 28px; flex-wrap: wrap; padding: 16px 20px; border-top: 1px solid var(--ds-color-neutral-border-default); background: var(--ds-color-neutral-background-tinted); } .table-foot span { color: var(--muted); } .table-foot b { margin-left: 8px; color: var(--ink); }
 .skeleton { display: grid; gap: 10px; padding: 8px 2px; } .sk { height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--ds-color-neutral-surface-hover), var(--ds-color-neutral-surface-tinted), var(--ds-color-neutral-surface-hover)); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; } @keyframes shimmer { to { background-position: -200% 0; } }
