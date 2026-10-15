@@ -33,15 +33,15 @@ export default function Contract() {
         <header className="paper-h"><div className="brand" style={{ padding: 0 }}><Mark size={40} /><span className="brand-mark-name">Dire Mall<small>Dire Dawa</small></span></div><div className="paper-title">{t("contract.title")}</div></header>
         <p>This lease is made on {dual(Date.now())} between <b>Dire Mall</b> (the Lessor) and <b>{renter?.name}</b>{renter?.tin ? `, TIN ${renter.tin}` : ""}{renter?.businessLicenseNo ? `, business licence ${renter.businessLicenseNo}` : ""}{renter?.legalRepresentative ? `, represented by ${renter.legalRepresentative}` : ""} (the Lessee).</p>
         <ol>
-          <li><h3>Premises</h3>Unit <b>{unit.number}</b> in {building}, {unit.areaM2} m², used as {unit.category} space.</li>
-          <li><h3>Term</h3>From <b>{dual(a.startsAt)}</b> to <b>{dual(a.endsAt)}</b>.</li>
-          <li><h3>Rent</h3>{formatEtb(rent)} per month ({basis}), payable by day {first?.dueDay} of each month.{first?.escalation ? ` The rent increases by ${first.escalation.percent}% every ${first.escalation.everyMonths} months.` : ""}</li>
-          <li><h3>Deposit</h3>{formatEtb(first?.depositAmount ?? 0)}, held separately from rent and returned at the end of the lease after approved deductions.</li>
-          <li><h3>Utilities and service charges</h3>Water and electricity are charged from the unit's sub-meter readings. Shared costs such as generator, security and cleaning are divided by floor area.</li>
-          <li><h3>Payments</h3>Rent is paid by bank deposit, transfer, Telebirr, CBE Birr or cash, and a receipt is issued for each payment applied.</li>
-          <li><h3>Handover</h3>The parties record keys, condition and meter readings at move-in and move-out.</li>
-          <li><h3>Ending the lease</h3>Either party may end the lease only as the law and this agreement allow. The Lessor stops billing from the date the lease ends.</li>
-          <li><h3>Governing law</h3>This lease is governed by the Property Rental Operations and Control Proclamation No. 1320/2024.</li>
+          <li><h2>Premises</h2>Unit <b>{unit.number}</b> in {building}, {unit.areaM2} m², used as {unit.category} space.</li>
+          <li><h2>Term</h2>From <b>{dual(a.startsAt)}</b> to <b>{dual(a.endsAt)}</b>.</li>
+          <li><h2>Rent</h2>{formatEtb(rent)} per month ({basis}), payable by day {first?.dueDay} of each month.{first?.escalation ? ` The rent increases by ${first.escalation.percent}% every ${first.escalation.everyMonths} months.` : ""}</li>
+          <li><h2>Deposit</h2>{formatEtb(first?.depositAmount ?? 0)}, held separately from rent and returned at the end of the lease after approved deductions.</li>
+          <li><h2>Utilities and service charges</h2>Water and electricity are charged from the unit's sub-meter readings. Shared costs such as generator, security and cleaning are divided by floor area.</li>
+          <li><h2>Payments</h2>Rent is paid by bank deposit, transfer, Telebirr, CBE Birr or cash, and a receipt is issued for each payment applied.</li>
+          <li><h2>Handover</h2>The parties record keys, condition and meter readings at move-in and move-out.</li>
+          <li><h2>Ending the lease</h2>Either party may end the lease only as the law and this agreement allow. The Lessor stops billing from the date the lease ends.</li>
+          <li><h2>Governing law</h2>This lease is governed by the Property Rental Operations and Control Proclamation No. 1320/2024.</li>
         </ol>
         <footer className="paper-f"><div><span className="muted">Lessor</span><div className="sign" /><b>Dire Mall</b></div><div><span className="muted">Lessee</span><div className="sign" /><b>{renter?.name}</b></div></footer>
       </article>
