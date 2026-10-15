@@ -15,6 +15,8 @@ export function FilterSelect({
   disabled = false,
   title,
   placeholder,
+  iconOnly = false,
+  badge,
 }: {
   label: string;
   value: string;
@@ -24,6 +26,10 @@ export function FilterSelect({
   title?: string;
   /** shown (muted) instead of the first option while nothing is chosen, e.g. "Building" instead of "All buildings" */
   placeholder?: string;
+  /** a compact icon button (for the header): the current option's icon, its full name in the tooltip and the menu */
+  iconOnly?: boolean;
+  /** a short tag shown beside the icon in icon-only mode, e.g. "EN" */
+  badge?: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -85,7 +91,7 @@ export function FilterSelect({
 
   return (
     <div
-      className={`filter-select${open ? " is-open" : ""}${disabled ? " is-disabled" : ""}`}
+      className={`filter-select${open ? " is-open" : ""}${disabled ? " is-disabled" : ""}${iconOnly ? " is-icon" : ""}`}
       ref={rootRef}
     >
       <button
@@ -97,7 +103,7 @@ export function FilterSelect({
         aria-expanded={open}
         aria-controls={listId}
         disabled={disabled}
-        title={title}
+        title={title ?? (iconOnly ? `${label}: ${selected?.label ?? ""}` : undefined)}
         onClick={() => {
           if (disabled) return;
           setOpen((current) => !current);
@@ -112,8 +118,10 @@ export function FilterSelect({
         <span className="filter-select-icon" aria-hidden="true">
           {selected?.icon}
         </span>
-        <span className={`filter-select-value ${placeholder && value === "" ? "is-placeholder" : ""}`}>{placeholder && value === "" ? placeholder : selected?.label}</span>
-        <ChevronDown size={16} aria-hidden="true" />
+        {iconOnly ? (badge ? <span className="filter-select-badge" aria-hidden="true">{badge}</span> : null) : <>
+          <span className={`filter-select-value ${placeholder && value === "" ? "is-placeholder" : ""}`}>{placeholder && value === "" ? placeholder : selected?.label}</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </>}
       </button>
       {open && (
         <div

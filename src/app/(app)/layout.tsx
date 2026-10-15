@@ -64,11 +64,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <>
       <header className="app-header">
         <button className="btn ghost icon-only menu-btn" onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open}><Icon name="menu" size={20} /></button>
-        <Link href="/" className="brand"><Mark size={34} /><span className="brand-mark-name">Dire Mall<small>{t("appSub")}</small></span></Link>
+        <Link href="/" className="brand" aria-label={t("appName")}><Mark size={34} /><span className="brand-mark-name">Dire Mall<small>{t("appSub")}</small></span></Link>
         <div className="header-tools">
-          <FilterSelect label={t("language")} value={lang} onChange={(v) => setLang(v as "en" | "am")} options={[{ value: "en", label: "English", icon: <Icon name="globe" size={16} /> }, { value: "am", label: "አማርኛ", icon: <Icon name="globe" size={16} /> }]} />
-          <FilterSelect label={t("calendar")} value={calendar} onChange={(v) => setCalendar(v as "gregorian" | "ethiopian")} options={[{ value: "gregorian", label: t("gregorian"), icon: <Icon name="calendar" size={16} /> }, { value: "ethiopian", label: t("ethiopian"), icon: <Icon name="calendar" size={16} /> }]} />
-          <FilterSelect label={t("theme")} value={scheme} onChange={(v) => setScheme(v as Scheme)} options={[{ value: "auto", label: t("theme.auto"), icon: <Icon name="monitor" size={16} /> }, { value: "light", label: t("theme.light"), icon: <Icon name="sun" size={16} /> }, { value: "dark", label: t("theme.dark"), icon: <Icon name="moon" size={16} /> }]} />
+          <FilterSelect iconOnly badge={lang === "am" ? "አማ" : "EN"} label={t("language")} value={lang} onChange={(v) => setLang(v as "en" | "am")} options={[{ value: "en", label: "English", icon: <Icon name="globe" size={16} /> }, { value: "am", label: "አማርኛ", icon: <Icon name="globe" size={16} /> }]} />
+          <FilterSelect iconOnly label={t("calendar")} value={calendar} onChange={(v) => setCalendar(v as "gregorian" | "ethiopian")} options={[{ value: "gregorian", label: t("gregorian"), icon: <Icon name="calendar" size={16} /> }, { value: "ethiopian", label: t("ethiopian"), icon: <Icon name="calendar" size={16} /> }]} />
+          <FilterSelect iconOnly label={t("theme")} value={scheme} onChange={(v) => setScheme(v as Scheme)} options={[{ value: "auto", label: t("theme.auto"), icon: <Icon name="monitor" size={16} /> }, { value: "light", label: t("theme.light"), icon: <Icon name="sun" size={16} /> }, { value: "dark", label: t("theme.dark"), icon: <Icon name="moon" size={16} /> }]} />
         </div>
       </header>
       <div className="admin-layout">
