@@ -3,10 +3,11 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, fail, getSetting, requireRole } from "./lib/access";
 import { refreshUnitStatus } from "./lib/units";
-import { renterMap, unitMap } from "./lib/bulk";
+import { renterMap, termsByAgreement, unitMap } from "./lib/bulk";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 import { assertUploadOk } from "./files";
-import { rangesOverlap } from "./lib/billing";
+import { escalatedRent, monthlyRent, monthsBetween, rangesOverlap } from "./lib/billing";
+import { invoiceBalance } from "./lib/ledger";
 
 const escalation = v.optional(v.object({ percent: v.number(), everyMonths: v.number() }));
 function assertEscalation(e?: { percent: number; everyMonths: number }) {
@@ -168,12 +169,18 @@ export const list = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     const all = status ? await ctx.db.query("agreements").collect().then((r) => r.filter((x) => x.status === status)) : await ctx.db.query("agreements").collect();
     // units and renters are read once as a whole (Convex allows 4,096 lookups per call)
-    const [units, renters] = await Promise.all([unitMap(ctx), renterMap(ctx)]);
+    const [units, renters, terms] = await Promise.all([unitMap(ctx), renterMap(ctx), termsByAgreement(ctx)]);
     const out = [];
+    const monthStart = (() => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); })();
     for (const ag of all) {
       const unit = units.get(ag.unitId);
       if (!unit || (u.buildingScope !== "all" && !(Array.isArray(u.buildingScope) && u.buildingScope.includes(unit.buildingId)))) continue;
-      out.push({ ...ag, unitNumber: unit.number, buildingId: unit.buildingId, renterName: renters.get(ag.renterId)?.name ?? "" });
+      // the monthly rent being charged now (or at the end of the lease for one that has ended), with any yearly increase applied
+      const mine = (terms.get(ag._id) ?? []).sort((a, b) => a.effectiveFrom - b.effectiveFrom);
+      const at = Math.min(Date.now(), ag.endsAt);
+      const cur = mine.filter((x) => x.effectiveFrom <= at).at(-1) ?? mine[0];
+      const rent = cur ? escalatedRent(monthlyRent(cur.rent.kind === "fixed" ? { kind: "fixed", amount: cur.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: cur.rent.ratePerM2 }), cur.escalation, cur.effectiveFrom, Math.min(monthStart, ag.endsAt)).amount : 0;
+      out.push({ ...ag, unitNumber: unit.number, buildingId: unit.buildingId, renterName: renters.get(ag.renterId)?.name ?? "", rent });
     }
     return out;
   },
@@ -188,7 +195,38 @@ export const get = query({
     const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).collect();
     const handovers = await ctx.db.query("handovers").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).collect();
     const deposit = await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).unique();
-    return { agreement: ag, unit, renter: await ctx.db.get(ag.renterId), terms, handovers, deposit, hasSigned: !!ag.signedFileId };
+    const nameOf = async (id?: Id<"users">) => (id ? (await ctx.db.get(id))?.name ?? "" : undefined);
+
+    // what this lease has been billed, paid and still owes
+    const bills = (await ctx.db.query("invoices").withIndex("by_agreement_period", (q) => q.eq("agreementId", agreementId)).collect()).filter((i) => i.status === "issued");
+    const now = Date.now();
+    const rows = [];
+    for (const inv of bills) { const b = await invoiceBalance(ctx, inv); rows.push({ _id: inv._id, number: inv.number, period: inv.period, dueAt: inv.dueAt, total: b.total + b.adjustments, paid: b.paid + b.creditUsed, due: b.due }); }
+    rows.sort((a, b) => b.dueAt - a.dueAt);
+    const account = {
+      billed: rows.reduce((s, r) => s + r.total, 0), paid: rows.reduce((s, r) => s + r.paid, 0), due: rows.reduce((s, r) => s + r.due, 0),
+      overdue: rows.filter((r) => r.due > 0 && r.dueAt < now).reduce((s, r) => s + r.due, 0), count: rows.length, bills: rows.slice(0, 12),
+    };
+
+    // the rent being charged today, and the next yearly increase if the lease has one
+    const sorted = terms.slice().sort((a, b) => a.effectiveFrom - b.effectiveFrom);
+    const current = sorted.filter((t) => t.effectiveFrom <= now).at(-1) ?? sorted[0];
+    let rentNow: number | null = null; let nextIncrease: { at: number; amount: number } | null = null;
+    if (current) {
+      const monthly = monthlyRent(current.rent.kind === "fixed" ? { kind: "fixed", amount: current.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: current.rent.ratePerM2 });
+      const d = new Date(now); const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+      const esc = current.escalation;
+      rentNow = escalatedRent(monthly, esc, current.effectiveFrom, monthStart).amount;
+      if (esc) {
+        const steps = Math.floor(monthsBetween(current.effectiveFrom, monthStart) / esc.everyMonths);
+        const e = new Date(current.effectiveFrom); const at = Date.UTC(e.getUTCFullYear(), e.getUTCMonth() + (steps + 1) * esc.everyMonths, 1);
+        if (at < ag.endsAt && ag.status === "active") nextIncrease = { at, amount: escalatedRent(monthly, esc, current.effectiveFrom, at).amount };
+      }
+    }
+    return {
+      agreement: ag, unit, renter: await ctx.db.get(ag.renterId), terms, handovers, deposit, hasSigned: !!ag.signedFileId,
+      createdByName: await nameOf(ag.createdBy), approvedByName: await nameOf(ag.approvedBy), account, rentNow, nextIncrease,
+    };
   },
 });
 

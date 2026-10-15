@@ -1,11 +1,12 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
+import { Badge, Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
+import { formatEtb, periodText } from "@/lib/format";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { Icon } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
@@ -17,9 +18,9 @@ import { failures, inRange, positive, req } from "@/lib/validate";
 
 export default function AgreementPage() {
   const { id } = useParams<{ id: string }>(); const agreementId = id as Id<"agreements">;
-  const { t } = useI18n(); const { can, me } = useMe();
+  const { t } = useI18n(); const { can, me } = useMe(); const router = useRouter();
   const d = useQuery(api.agreements.get, { agreementId });
-  const dep = useQuery(api.deposits.get, d?.agreement.status === "active" ? { agreementId } : "skip");
+  const dep = useQuery(api.deposits.get, d && ["active", "expired", "terminated"].includes(d.agreement.status) ? { agreementId } : "skip");
   const attach = useMutation(api.agreements.attachSignedCopy); const submit = useMutation(api.agreements.submitForReview);
   const approve = useMutation(api.agreements.approve); const back = useMutation(api.agreements.returnForCorrection);
   const terminate = useMutation(api.agreements.terminate); const handover = useMutation(api.agreements.recordHandover);
@@ -29,6 +30,7 @@ export default function AgreementPage() {
   const [dlg, setDlg] = useState<null | "terms" | "handover" | "deduct" | "refund" | "receive" | "terminate" | "return" | "approve">(null);
   if (!d) return <p className="muted">{t("loading")}</p>;
   const a = d.agreement; const mine = me?._id === a.createdBy;
+  const nowMs = Date.now(); const daysLeft = Math.ceil((a.endsAt - nowMs) / 86400000); const progress = Math.min(1, Math.max(0, (nowMs - a.startsAt) / Math.max(1, a.endsAt - a.startsAt)));
   const rentOf = (term: (typeof d.terms)[number]) => monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: d.unit.areaM2, ratePerM2: term.rent.ratePerM2 });
   return (
     <div className="stack">
@@ -47,8 +49,27 @@ export default function AgreementPage() {
       
       </PageHeader>
       <Message error={error} notice={notice} />
+      <div className="lease-line">
+        <div className="lease-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label={t("ag.progress")}><span style={{ width: `${progress * 100}%` }} /></div>
+        <div className="lease-meta"><span><DateText ms={a.startsAt} /></span>
+          {a.status === "active" || a.status === "expired" || a.status === "terminated" ? <Badge tone={a.status !== "active" ? "muted" : daysLeft <= 60 ? "warn" : "good"}>{a.status !== "active" ? t("ag.endedAgo").replace("{n}", String(Math.max(0, -daysLeft))) : t("ag.daysLeft").replace("{n}", String(Math.max(0, daysLeft)))}</Badge> : null}
+          <span><DateText ms={a.endsAt} /></span></div>
+      </div>
+      {dep && a.status !== "active" && d.account.due > 0 && <div className="msg bad" role="status"><Icon name="alert" size={16} />{t("ag.depositOwed").replace("{x}", formatEtb(d.account.due))}</div>}
       <div className="split">
         <div className="stack">
+      <Card title={t("ag.account")}>
+        <div className="acct">
+          <div><span>{t("ag.billed")}</span><b className="num">{formatEtb(d.account.billed)}</b></div>
+          <div><span>{t("bill.paid")}</span><b className="num">{formatEtb(d.account.paid)}</b></div>
+          <div className={d.account.due > 0 ? "warn" : ""}><span>{t("ag.stillOwed")}</span><b className="num">{formatEtb(d.account.due)}</b></div>
+          <div className={d.account.overdue > 0 ? "bad" : ""}><span>{t("overdue")}</span><b className="num">{formatEtb(d.account.overdue)}</b></div>
+        </div>
+        <Table rows={d.account.bills} empty={t("ag.noBills")} onRow={(b) => router.push(`/billing/${b._id}`)} cols={[
+          { head: t("bill.number"), cell: (b) => b.number }, { head: t("period"), cell: (b) => periodText(b.period, t) }, { head: t("bill.dueDate"), cell: (b) => <DateText ms={b.dueAt} /> },
+          { head: t("total"), cell: (b) => <Money v={b.total} />, right: true, money: true }, { head: t("bill.due"), cell: (b) => <Money v={b.due} strong />, right: true, money: true },
+        ]} />
+      </Card>
       <Card flush title={t("ag.terms")}><Table rows={d.terms.slice().sort((x, y) => x.effectiveFrom - y.effectiveFrom)} cols={[
         { head: t("date"), cell: (x) => <DateText ms={x.effectiveFrom} /> },
         { head: t("ag.rentBasis"), cell: (x) => (x.rent.kind === "fixed" ? t("ag.fixed") : `${t("ag.perM2")} @ ${(x.rent.ratePerM2 / 100).toLocaleString()}`) },
@@ -67,11 +88,16 @@ export default function AgreementPage() {
               <div><dt>{t("ag.start")}</dt><dd><DateText ms={a.startsAt} /></dd></div>
               <div><dt>{t("ag.end")}</dt><dd><DateText ms={a.endsAt} /></dd></div>
               <div><dt>{t("ag.signed")}</dt><dd>{d.hasSigned ? <button type="button" className="linklike" onClick={() => void openFile("signed", d.agreement._id)}>{t("ag.view")}</button> : <span className="muted">—</span>}</dd></div>
-              {d.terms.length > 0 && <div><dt>{t("rent")}</dt><dd><Money v={rentOf(d.terms.slice().sort((x, y) => y.effectiveFrom - x.effectiveFrom)[0]!)} strong /></dd></div>}
+              {d.rentNow != null && <div><dt>{t("ag.rentNow")}</dt><dd><Money v={d.rentNow} strong /></dd></div>}
+              {d.nextIncrease && <div><dt>{t("ag.nextIncrease")}</dt><dd><DateText ms={d.nextIncrease.at} /> → <Money v={d.nextIncrease.amount} /></dd></div>}
+              {d.createdByName && <div><dt>{t("ag.preparedBy")}</dt><dd>{d.createdByName}</dd></div>}
+              {d.approvedByName && <div><dt>{t("ag.approvedBy")}</dt><dd>{d.approvedByName}</dd></div>}
+              {a.importedAt && <div><dt>{t("ag.source")}</dt><dd>{t("ag.imported")} · <DateText ms={a.importedAt} /></dd></div>}
+              {a.status === "terminated" && a.terminationReason && <div><dt>{t("ag.endedEarly")}</dt><dd>{a.terminationReason}</dd></div>}
             </dl>
           </Card>
-      {a.status === "active" && dep && <Card title={t("ag.deposit")} actions={<>
-        {can("financeOfficer") && <button className="btn sm" onClick={() => setDlg("receive")}>{t("dep.receive")}</button>}
+      {dep && <Card title={t("ag.deposit")} actions={<>
+        {can("financeOfficer") && a.status === "active" && <button className="btn sm" onClick={() => setDlg("receive")}>{t("dep.receive")}</button>}
         {can("financeOfficer", "propertyManager") && <button className="btn sm" onClick={() => setDlg("deduct")}>{t("dep.deduct")}</button>}
         {can("approver") && <button className="btn sm" onClick={() => setDlg("refund")}>{t("dep.refund")}</button>}</>}>
         <dl className="dl"><div><dt>{t("dep.required")}</dt><dd><Money v={dep.required} /></dd></div><div><dt>{t("dep.held")}</dt><dd><Money v={dep.held} /></dd></div><div><dt>{t("dep.available")}</dt><dd><Money v={dep.available} strong /></dd></div><div><dt>{t("dep.refunded")}</dt><dd><Money v={dep.refunded} /></dd></div></dl>

@@ -170,6 +170,10 @@ export const EN: Record<string, string> = {
   "bill.backToMonth": "Back to months",
   "pay.dup.title": "A similar payment was already recorded", "pay.dup.hint": "Same renter, same amount, within two weeks. If the cash was later deposited in the bank, do not record the deposit again: match the bank line to the payment in Bank matching.",
   "pay.dup.different": "This is a different payment", "pay.dup.confirm": "Tick the box to confirm this is a different payment.", "err.possible_duplicate": "A similar payment (same renter, same amount, within two weeks) already exists. Confirm it is a different one.",
+  "ag.account": "Lease account", "ag.billed": "Billed", "ag.stillOwed": "Still owed", "ag.noBills": "No bills have been issued for this lease yet.", "ag.progress": "Lease progress", "ag.daysLeft": "{n} days left", "ag.endedAgo": "Ended {n} days ago",
+  "ag.rentNow": "Rent today", "ag.nextIncrease": "Next increase", "ag.preparedBy": "Prepared by", "ag.approvedBy": "Approved by", "ag.source": "Source", "ag.imported": "Brought in from the old records", "ag.endedEarly": "Ended early because",
+  "ag.depositOwed": "The renter still owes {x} on this lease. Request a deduction for it before refunding the deposit.",
+  "ag.endingSoon": "Ending in 60 days", "ag.rentMonth": "Rent / month",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -318,6 +322,10 @@ export const AM: Record<string, string> = {
   "bill.backToMonth": "ወደ ወራት ተመለስ",
   "pay.dup.title": "ተመሳሳይ ክፍያ አስቀድሞ ተመዝግቧል", "pay.dup.hint": "ተመሳሳይ ተከራይ፣ ተመሳሳይ መጠን፣ በሁለት ሳምንት ውስጥ። ጥሬ ገንዘቡ በኋላ ባንክ ከገባ ገቢውን እንደገና አይመዝግቡ፤ በባንክ ማዛመድ ውስጥ የባንክ መስመሩን ከክፍያው ጋር ያዛምዱ።",
   "pay.dup.different": "ይህ የተለየ ክፍያ ነው", "pay.dup.confirm": "ይህ የተለየ ክፍያ መሆኑን ለማረጋገጥ ሳጥኑን ምልክት ያድርጉ።", "err.possible_duplicate": "ተመሳሳይ ክፍያ (ተመሳሳይ ተከራይ፣ ተመሳሳይ መጠን፣ በሁለት ሳምንት ውስጥ) አስቀድሞ አለ። የተለየ መሆኑን ያረጋግጡ።",
+  "ag.account": "የውሉ ሂሳብ", "ag.billed": "የተከፈለ ደረሰኝ", "ag.stillOwed": "አሁንም ያለበት", "ag.noBills": "ለዚህ ውል እስካሁን ደረሰኝ አልወጣም።", "ag.progress": "የውሉ ሂደት", "ag.daysLeft": "{n} ቀናት ቀርተዋል", "ag.endedAgo": "ከ{n} ቀናት በፊት አብቅቷል",
+  "ag.rentNow": "የዛሬ ኪራይ", "ag.nextIncrease": "ቀጣይ ጭማሪ", "ag.preparedBy": "ያዘጋጀው", "ag.approvedBy": "ያጸደቀው", "ag.source": "ምንጭ", "ag.imported": "ከቀድሞ መዛግብት የገባ", "ag.endedEarly": "ቀድሞ ያበቃበት ምክንያት",
+  "ag.depositOwed": "ተከራዩ በዚህ ውል አሁንም {x} ዕዳ አለበት። ዋስትናውን ከመመለስዎ በፊት ለዚህ ተቀናሽ ይጠይቁ።",
+  "ag.endingSoon": "በ60 ቀን ውስጥ የሚያበቃ", "ag.rentMonth": "ኪራይ / ወር",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

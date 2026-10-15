@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateField, DateText, Field, Message, Modal, MoneyInput, PageHeader, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Badge, Card, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -13,22 +13,23 @@ import { failures, inRange, nonNegative } from "@/lib/validate";
 export default function Agreements() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
   const [tab, setTab] = useState<"" | "draft" | "inReview" | "active" | "expired" | "terminated">("");
-  const [adding, setAdding] = useState(false); const [preset, setPreset] = useState(""); const [q, setQ] = useState("");
+  const [ending, setEnding] = useState(false); const [adding, setAdding] = useState(false); const [preset, setPreset] = useState(""); const [q, setQ] = useState("");
   // "New agreement" from a vacant unit card arrives as /agreements?new=<unit id>
   useEffect(() => { const id = new URLSearchParams(window.location.search).get("new"); if (id) { setPreset(id); setAdding(true); window.history.replaceState(null, "", "/agreements"); } }, []);
   const listAll = useQuery(api.agreements.list, { status: tab || undefined });
   const needle = q.trim().toLowerCase();
-  const list = listAll?.filter((a) => !needle || `${a.unitNumber} ${a.renterName}`.toLowerCase().includes(needle));
-  const expiring = useQuery(api.agreements.expiring, {});
+  const soon = Date.now() + 60 * 86400000;
+  const endingSoon = (a: { status: string; endsAt: number }) => a.status === "active" && a.endsAt <= soon;
+  const list = listAll?.filter((a) => (!ending || endingSoon(a)) && (!needle || `${a.unitNumber} ${a.renterName}`.toLowerCase().includes(needle)));
   return (
     <div className="stack">
-      <PageHeader title={t("nav.agreements")} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchAgreements")} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} /></>}
+      <PageHeader title={t("nav.agreements")} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchAgreements")} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["", t("all")], ["draft", t("draft")], ["inReview", t("inReview")], ["active", t("active")], ["expired", t("expired")], ["terminated", t("terminated")]]} /><button type="button" className={`chip-toggle ${ending ? "on" : ""}`} aria-pressed={ending} onClick={() => setEnding(!ending)}>{t("ag.endingSoon")}{listAll ? ` (${listAll.filter(endingSoon).length})` : ""}</button></>}
         actions={can("propertyManager") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("ag.new")}</button> : undefined} />
-      {expiring && expiring.length > 0 && <Card title={t("att.expiringAgreements")}><Table rows={expiring.map((e) => ({ ...e, _id: e.agreementId }))} onRow={(e) => router.push(`/agreements/${e.agreementId}`)} cols={[
-        { head: t("ag.unit"), cell: (e) => e.unitNumber }, { head: t("ag.end"), cell: (e) => <DateText ms={e.endsAt} /> }]} /></Card>}
       <Card flush><Table rows={list} empty={t("empty.agreements")} onRow={(a) => router.push(`/agreements/${a._id}`)} cols={[
         { head: t("ag.unit"), cell: (a) => <strong>{a.unitNumber}</strong>, sort: (a) => a.unitNumber }, { head: t("ag.renter"), cell: (a) => a.renterName, sort: (a) => a.renterName },
-        { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} />, sort: (a) => a.startsAt }, { head: t("ag.end"), cell: (a) => <DateText ms={a.endsAt} />, sort: (a) => a.endsAt },
+        { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} />, sort: (a) => a.startsAt },
+        { head: t("ag.end"), cell: (a) => <div className="two-line"><DateText ms={a.endsAt} />{a.status === "active" && <Badge tone={endingSoon(a) ? "warn" : "muted"}>{t("ag.daysLeft").replace("{n}", String(Math.max(0, Math.ceil((a.endsAt - Date.now()) / 86400000))))}</Badge>}</div>, sort: (a) => a.endsAt },
+        { head: t("ag.rentMonth"), cell: (a) => <Money v={a.rent} />, right: true, money: true, sort: (a) => a.rent },
         { head: t("ag.signed"), cell: (a) => (a.signedFileId ? "✓" : "—") }, { head: t("status"), cell: (a) => <StatusBadge status={a.status} /> },
       ]} /></Card>
       {adding && <NewAgreement presetUnit={preset} onClose={() => setAdding(false)} onCreated={(id) => router.push(`/agreements/${id}`)} />}
