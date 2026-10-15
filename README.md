@@ -108,3 +108,7 @@ Staff access → **Invite person**: enter their email, choose roles and building
 ## Training
 
 [docs/STAFF_GUIDE.md](docs/STAFF_GUIDE.md) explains each role's daily tasks in plain language, for training sessions.
+
+## Moving from the old records
+
+[docs/MIGRATION.md](docs/MIGRATION.md): the order to import units, renters, leases and opening balances, how to prove the numbers match the old books, and what is not carried over.

@@ -7,7 +7,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
-import { formatEtb } from "@/lib/format";
+import { formatEtb, periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useOpenFile } from "@/lib/useOpenFile";
@@ -132,7 +132,7 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
           <div className="wide open-bills">
             <div className="open-bills-h"><b>{t("pay.openBills")}</b>{bills.length > 0 && <><span className="muted">{t("pay.totalDue")}: {formatEtb(totalDue)}</span><button type="button" className="btn ghost sm" onClick={() => setAmount(totalDue)}>{t("pay.useTotal")}</button></>}</div>
             {bills.length === 0 ? <p className="muted">{t("pay.noOpenBills")}</p> : (
-              <ul>{bills.map((b) => <li key={b.invoiceId}><span>{b.number}</span><span className="muted">{b.unitNumber} · {b.period}</span><span className="muted">{t("bill.dueDate")} <DateText ms={b.dueAt} /></span><Money v={b.due} /></li>)}</ul>)}
+              <ul>{bills.map((b) => <li key={b.invoiceId}><span>{b.number}</span><span className="muted">{b.unitNumber} · {periodText(b.period, t)}</span><span className="muted">{t("bill.dueDate")} <DateText ms={b.dueAt} /></span><Money v={b.due} /></li>)}</ul>)}
           </div>)}
         <Field label={t("pay.method")}><select value={method} onChange={(e) => setMethod(e.target.value as Method)}>{METHODS.map((m) => <option key={m} value={m}>{t(m)}</option>)}</select></Field>
         <Field label={t("pay.reference")} error={errs.reference}><input value={reference} onChange={(e) => { setReference(e.target.value); clear("reference"); }} /></Field>
@@ -170,7 +170,7 @@ function ApplyDialog({ paymentId, onClose }: { paymentId: Id<"payments">; onClos
             <div className="alloc-h"><span>{t("bill.number")}</span><span className="r">{t("bill.due")}</span><span className="r">{t("pay.apply.pay")}</span></div>
             {bills.map((b) => (
               <div key={b.invoiceId} className="alloc-row">
-                <span><b>{b.number}</b><small className="muted"> {b.unitNumber} · {b.period} · {t("bill.dueDate")} <DateText ms={b.dueAt} /></small></span>
+                <span><b>{b.number}</b><small className="muted"> {b.unitNumber} · {periodText(b.period, t)} · {t("bill.dueDate")} <DateText ms={b.dueAt} /></small></span>
                 <span className="r num">{formatEtb(b.due)}</span>
                 <span className="r"><MoneyInput key={`${b.invoiceId}-${amounts[b.invoiceId] ?? ""}`} value={amounts[b.invoiceId] ?? null} onChange={(v) => setAmounts({ ...amounts, [b.invoiceId]: v })} /></span>
               </div>))}
@@ -224,7 +224,7 @@ function PaymentDetail({ paymentId, onClose, onApply, onVoid }: { paymentId: Id<
             {step(t("pay.t.voided"), tl.voidedByName, tl.voidedAt, tl.voidReason)}
           </ol></div>
         {d.lines.length > 0 && <div><h3 className="section-h">{t("pay.allocations")}</h3>
-          <ul className="open-bills-list">{d.lines.map((l, i) => <li key={i}><span>{l.invoiceNumber}</span><span className="muted">{l.unitNumber} · {l.period}</span><Money v={l.amount} /></li>)}
+          <ul className="open-bills-list">{d.lines.map((l, i) => <li key={i}><span>{l.invoiceNumber}</span><span className="muted">{l.unitNumber} · {periodText(l.period, t)}</span><Money v={l.amount} /></li>)}
             {d.credit > 0 && <li><span>{t("pay.credit")}</span><span /><Money v={d.credit} /></li>}</ul></div>}
         <Message error={error} />
         <div className="row" style={{ justifyContent: "flex-end" }}>

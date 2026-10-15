@@ -56,7 +56,9 @@ export const attachSignedCopy = mutation({
     const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
     await assertUnitVisible(ctx, u, ag.unitId);
     // Replacing the signed copy on a live agreement would bypass review; only drafts and agreements in review may change it.
-    if (ag.status !== "draft" && ag.status !== "inReview") fail("signed_copy_locked");
+    // (a lease brought in from the old records has no scan yet; it may be attached once, without reopening the lease)
+    const scanLater = !!ag.importedAt && !ag.signedFileId;
+    if (ag.status !== "draft" && ag.status !== "inReview" && !scanLater) fail("signed_copy_locked");
     await assertUploadOk(ctx, fileId);
     await ctx.db.patch(agreementId, { signedFileId: fileId });
     await audit(ctx, u, "agreement.signedCopy", "agreements", agreementId);

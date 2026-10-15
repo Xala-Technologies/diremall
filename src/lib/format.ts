@@ -45,3 +45,6 @@ export function shiftPeriod(period: string, n: number): string {
   const d = new Date(Date.UTC(y, m - 1 + n, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** A bill period for people: "2026-09" as is, the carried-in balances as "Opening balance". */
+export const periodText = (p: string, t: (k: string) => string) => (p === "opening" ? t("bill.opening") : p);

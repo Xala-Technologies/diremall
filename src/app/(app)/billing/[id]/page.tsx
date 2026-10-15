@@ -9,7 +9,7 @@ import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput
 import { Icon } from "@/components/icons";
 import { OrgHeader } from "@/components/OrgHeader";
 import { etbInWords } from "@/lib/words";
-import { formatEtb } from "@/lib/format";
+import { formatEtb, periodText } from "@/lib/format";
 import { useToast } from "@/components/toast";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -75,7 +75,7 @@ export default function InvoicePage() {
             <dl className="dl">
               <div><dt>{t("ag.renter")}</dt><dd>{d.renter?.name}</dd></div>
               <div><dt>{t("ag.unit")}</dt><dd>{d.unit.number}</dd></div>
-              <div><dt>{t("period")}</dt><dd>{inv.period}</dd></div>
+              <div><dt>{t("period")}</dt><dd>{periodText(inv.period, t)}</dd></div>
               <div><dt>{t("bill.dueDate")}</dt><dd><DateText ms={inv.dueAt} /></dd></div>
               {inv.issuedAt && <div><dt>{t("bill.issuedOn")}</dt><dd><DateText ms={inv.issuedAt} /></dd></div>}
             </dl>
@@ -100,7 +100,7 @@ export default function InvoicePage() {
           </header>
           <div className="invoice-meta">
             <div><span className="muted">{t("bill.billTo")}</span><b>{d.renter?.name}</b>{d.renter?.tin && <span>TIN {d.renter.tin}</span>}{d.renter?.address && <span>{d.renter.address}</span>}<span>{d.renter?.phone}</span></div>
-            <div><span className="muted">{t("ag.unit")}</span><b>{d.unit.number}</b>{building && <span>{building}</span>}<span>{t("period")} {inv.period}</span></div>
+            <div><span className="muted">{t("ag.unit")}</span><b>{d.unit.number}</b>{building && <span>{building}</span>}<span>{t("period")} {periodText(inv.period, t)}</span></div>
             <div><span className="muted">{t("bill.issuedOn")}</span><b>{inv.issuedAt ? <DateText ms={inv.issuedAt} /> : "—"}</b><span className="muted">{t("bill.dueDate")}</span><b><DateText ms={inv.dueAt} /></b></div>
           </div>
           <table className="paper-table">

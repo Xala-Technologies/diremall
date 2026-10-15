@@ -16,10 +16,10 @@ import { formatEtb } from "@/lib/format";
 
 export default function Billing() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
-  const [period, setPeriod] = usePeriod(); const [building, setBuilding] = useState("");
+  const [period, setPeriod] = usePeriod(); const [building, setBuilding] = useState(""); const [opening, setOpening] = useState(false); // the balances carried in from the old records
   const [picked, setPicked] = useState<Set<Id<"invoices">>>(new Set()); const [confirmIssue, setConfirmIssue] = useState<Id<"invoices">[] | null>(null);
   const buildings = useQuery(api.properties.listBuildings);
-  const rows = useQuery(api.billing.list, { period });
+  const rows = useQuery(api.billing.list, { period: opening ? "opening" : period });
   const generate = useMutation(api.billing.generate); const issue = useMutation(api.billing.issue);
   const { run, error, notice } = useRun(); const toast = useToast();
   const [tab, setTab] = useState(""); const [q, setQ] = useState("");
@@ -44,16 +44,18 @@ export default function Billing() {
         filters={<>
           <SearchInput value={q} onChange={setQ} placeholder={t("filter.searchBills")} />
           <BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />
-          <PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} />
+          {opening
+            ? <><Badge tone="info">{t("bill.opening")}</Badge><button className="btn ghost sm" onClick={() => setOpening(false)}>{t("bill.backToMonth")}</button></>
+            : <><PeriodPicker value={period} onChange={(p) => { setPeriod(p); setPicked(new Set()); }} /><button className="btn ghost sm" onClick={() => { setOpening(true); setPicked(new Set()); }}>{t("bill.opening")}</button></>}
         </>}
         actions={<>
           {can("financeOfficer") && <>
-          <button className="btn primary" onClick={async () => { const r = await run(async () => {
+          {!opening && <button className="btn primary" onClick={async () => { const r = await run(async () => {
               // large malls are billed in batches; keep going until the server says it is done
               let created = 0; const skipped: { agreementId: string; reason: string }[] = [];
               for (let i = 0; i < 40; i++) { const part = await generate({ period, buildingId: (building || undefined) as Id<"buildings"> | undefined }); created += part.created; skipped.push(...part.skipped); if (part.done) break; }
               return { created, skipped };
-            }); if (r) setPicked(new Set()); r && toast(`${r.created} ${t("bill.created")}${r.skipped.length ? `, ${r.skipped.length} ${t("bill.skipped")} (${r.skipped.map((s) => s.reason).join(", ")})` : ""}`); }}>{t("bill.generate")}</button>
+            }); if (r) setPicked(new Set()); r && toast(`${r.created} ${t("bill.created")}${r.skipped.length ? `, ${r.skipped.length} ${t("bill.skipped")} (${r.skipped.map((s) => s.reason).join(", ")})` : ""}`); }}>{t("bill.generate")}</button>}
           {picked.size > 0 && <button className="btn primary" onClick={() => setConfirmIssue([...picked])}>{t("bill.issue")} ({picked.size})</button>}
           <button className="btn" disabled={drafts.length === 0} onClick={() => setConfirmIssue(drafts.map((d) => d._id))}>{t("bill.issueAll")}{drafts.length > 0 ? ` (${drafts.length})` : ""}</button>
           </>}

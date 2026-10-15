@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Users } from "lucide-react";
 import { FilterSelect } from "@/components/FilterSelect";
 import { currentPeriod } from "@/lib/format";
+import { periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 export default function Reports() {
@@ -61,7 +62,7 @@ function Revenue({ b }: { b?: Id<"buildings"> }) {
   return <Card title={t("rep.revenue")} actions={<><input type="month" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} /><input type="month" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
     <ExportMenu name="revenue" rows={d ? d.rows.map((r) => ({ period: r.period, billed: r.billed / 100, collected: r.collected / 100, outstanding: r.outstanding / 100 })) : []} /></>}>
     <Table rows={d?.rows.map((r) => ({ ...r, _id: r.period }))} empty={t("empty.rep.revenue")} cols={[
-      { head: t("period"), cell: (r) => r.period }, { head: t("dash.billed"), cell: (r) => <Money v={r.billed} />, right: true, money: true }, { head: "Collected", cell: (r) => <Money v={r.collected} />, right: true, money: true }, { head: t("outstanding"), cell: (r) => <Money v={r.outstanding} />, right: true, money: true }]} />
+      { head: t("period"), cell: (r) => periodText(r.period, t) }, { head: t("dash.billed"), cell: (r) => <Money v={r.billed} />, right: true, money: true }, { head: "Collected", cell: (r) => <Money v={r.collected} />, right: true, money: true }, { head: t("outstanding"), cell: (r) => <Money v={r.outstanding} />, right: true, money: true }]} />
     {d && <p className="row" style={{ justifyContent: "flex-end" }}><span>{t("dash.billed")} <Money v={d.totals.billed} strong /></span><span>Collected <Money v={d.totals.collected} strong /></span><span>{t("outstanding")} <Money v={d.totals.outstanding} strong /></span></p>}
     <p className="muted">{t("rep.collectedNote")}</p>
   </Card>;

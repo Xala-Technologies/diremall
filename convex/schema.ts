@@ -87,6 +87,7 @@ export default defineSchema({
     createdBy: v.id("users"),
     approvedBy: v.optional(v.id("users")), // must differ from createdBy
     terminationReason: v.optional(v.string()),
+    importedAt: v.optional(ts), // brought in from the old records at go-live: active without going through review
   }).index("by_unit", ["unitId", "status"]).index("by_renter", ["renterId"]).index("by_status", ["status"]),
 
   // Effective-dated terms: a later rent change never alters already-issued bills.
@@ -166,7 +167,7 @@ export default defineSchema({
   paymentAllocations: defineTable({ paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
     .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]),
   // positive = credit created from an overpayment, negative = credit consumed by a bill
-  renterCredits: defineTable({ renterId: v.id("renters"), paymentId: v.optional(v.id("payments")), invoiceId: v.optional(v.id("invoices")), amount: money })
+  renterCredits: defineTable({ renterId: v.id("renters"), paymentId: v.optional(v.id("payments")), invoiceId: v.optional(v.id("invoices")), amount: money, openingKey: v.optional(v.string()) })
     .index("by_renter", ["renterId"]).index("by_invoice", ["invoiceId"]),
 
   deposits: defineTable({
