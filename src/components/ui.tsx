@@ -87,7 +87,7 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
         <tbody>{sorted(rows).map((r, i) => (
           <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}
             tabIndex={onRow ? 0 : undefined} onKeyDown={onRow ? (e) => { if (e.key === "Enter") onRow(r); } : undefined}>
-            {cols.map((c, j) => <td key={j} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""} ${c.head === "" ? "act" : ""} ${c.hide ? "hide-xl" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
+            {cols.map((c, j) => <td key={j} data-label={c.head || undefined} className={`${c.right ? "r" : ""} ${c.text ? "txt" : ""} ${c.head === "" ? "act" : ""} ${c.hide ? "hide-xl" : ""}`}><InTable.Provider value={!!c.money}>{c.cell(r)}</InTable.Provider></td>)}
           </tr>))}</tbody>
       </table>
     </div>
