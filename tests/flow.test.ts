@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etb, utc, world } from "./helpers";
+import { etb, utc, world, storePdf } from "./helpers";
 
 describe("rental cycle", () => {
   it("bills 150 m² × 2,300 = 345,000, is idempotent, and applies partial payment", async () => {
@@ -83,7 +83,7 @@ describe("rental cycle", () => {
     const u2 = await w.unit("B-201", 100);
     const r2 = await w.renter("Late Starter");
     const ag2 = await w.pm.mutation(w.api.agreements.createDraft, { unitId: u2, renterId: r2, startsAt: utc(2026, 9, 16), endsAt: utc(2027, 9), rent: { kind: "fixed", amount: etb(30000) }, dueDay: 5, depositAmount: 0 });
-    const f = await w.t.run((c) => c.storage.store(new Blob(["s"])));
+    const f = await w.t.run((c) => storePdf(c as never));
     await w.pm.mutation(w.api.agreements.attachSignedCopy, { agreementId: ag2, fileId: f });
     await w.pm.mutation(w.api.agreements.submitForReview, { agreementId: ag2 });
     await w.ap.mutation(w.api.agreements.approve, { agreementId: ag2 });
@@ -108,7 +108,7 @@ describe("controls", () => {
 
     await w.activeAgreement(unitId, renterId);
     const second = await w.pm.mutation(w.api.agreements.createDraft, { unitId, renterId, startsAt: utc(2027, 1), endsAt: utc(2028, 1), rent: { kind: "fixed", amount: 1 }, dueDay: 5, depositAmount: 0 });
-    const f = await w.t.run((c) => c.storage.store(new Blob(["s"])));
+    const f = await w.t.run((c) => storePdf(c as never));
     await w.pm.mutation(w.api.agreements.attachSignedCopy, { agreementId: second, fileId: f });
     await w.pm.mutation(w.api.agreements.submitForReview, { agreementId: second });
     await expect(w.ap.mutation(w.api.agreements.approve, { agreementId: second })).rejects.toThrow(/overlapping_active_agreement/);

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { assertUploadOk } from "./files";
 import { mutation, query } from "./_generated/server";
 import { READ_ROLES, assertBuilding, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
 import { activeAgreementsByUnit, renterMap } from "./lib/bulk";
@@ -29,6 +30,7 @@ export const addFloor = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
     assertBuilding(u, a.buildingId);
+    if (a.planFileId) await assertUploadOk(ctx, a.planFileId);
     const id = await ctx.db.insert("floors", a);
     await audit(ctx, u, "floor.create", "floors", id, a.label);
     return id;

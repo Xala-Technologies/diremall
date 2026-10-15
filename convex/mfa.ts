@@ -7,6 +7,9 @@ import { newRecoveryCode, newSecret, otpauthUri, sha256Hex, verifyTotp } from ".
 
 const MAX_FAILURES = 5;
 const LOCK_MS = 5 * 60 * 1000;
+const MAX_LOCK_MS = 24 * 60 * 60 * 1000;
+/** 5 min, 10, 20, 40 … up to a day: a stolen password cannot be used to guess codes around the clock. */
+export const lockDuration = (lockouts: number) => Math.min(LOCK_MS * 2 ** lockouts, MAX_LOCK_MS);
 
 const mine = (ctx: MutationCtx, userId: Doc<"users">["_id"]) => ctx.db.query("mfaSecrets").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
 
@@ -79,10 +82,10 @@ export const verify = mutation({
     }
     if (!used) {
       const failures = row.failures + 1;
-      await ctx.db.patch(row._id, failures >= MAX_FAILURES ? { failures: 0, lockedUntil: Date.now() + LOCK_MS } : { failures });
+      await ctx.db.patch(row._id, failures >= MAX_FAILURES ? { failures: 0, lockouts: (row.lockouts ?? 0) + 1, lockedUntil: Date.now() + lockDuration(row.lockouts ?? 0) } : { failures });
       return { ok: false as const, locked: failures >= MAX_FAILURES };
     }
-    await ctx.db.patch(row._id, { ...used, failures: 0, lockedUntil: undefined });
+    await ctx.db.patch(row._id, { ...used, failures: 0, lockedUntil: undefined, lockouts: 0 });
     await markVerified(ctx, u._id);
     return { ok: true as const };
   },

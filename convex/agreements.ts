@@ -5,6 +5,7 @@ import { READ_ROLES, assertDifferentPerson, assertSantim, audit, fail, getSettin
 import { refreshUnitStatus } from "./lib/units";
 import { renterMap, unitMap } from "./lib/bulk";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
+import { assertUploadOk } from "./files";
 import { rangesOverlap } from "./lib/billing";
 
 const escalation = v.optional(v.object({ percent: v.number(), everyMonths: v.number() }));
@@ -56,6 +57,7 @@ export const attachSignedCopy = mutation({
     await assertUnitVisible(ctx, u, ag.unitId);
     // Replacing the signed copy on a live agreement would bypass review; only drafts and agreements in review may change it.
     if (ag.status !== "draft" && ag.status !== "inReview") fail("signed_copy_locked");
+    await assertUploadOk(ctx, fileId);
     await ctx.db.patch(agreementId, { signedFileId: fileId });
     await audit(ctx, u, "agreement.signedCopy", "agreements", agreementId);
   },

@@ -203,6 +203,7 @@ export default defineSchema({
     recovery: v.array(v.string()), // sha-256 of unused recovery codes
     failures: v.number(),
     lockedUntil: v.optional(v.number()),
+    lockouts: v.optional(v.number()), // consecutive lockouts; each one lasts longer
   }).index("by_user", ["userId"]),
   mfaSessions: defineTable({ sessionId: v.string(), userId: v.id("users") }).index("by_session", ["sessionId"]).index("by_user", ["userId"]),
 

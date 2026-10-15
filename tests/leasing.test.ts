@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { escalatedRent, monthsBetween } from "../convex/lib/billing";
-import { etb, utc, world } from "./helpers";
+import { etb, utc, world, storePdf } from "./helpers";
 
 describe("rent escalation", () => {
   it("raises rent by the percentage every interval, compounding", () => {
@@ -16,7 +16,7 @@ describe("rent escalation", () => {
     const w = await world();
     const unitId = await w.unit("A-1", 10); const renterId = await w.renter("R");
     const id = await w.pm.mutation(w.api.agreements.createDraft, { unitId, renterId, startsAt: utc(2025, 9), endsAt: utc(2028, 9), rent: { kind: "fixed", amount: etb(100000) }, dueDay: 5, depositAmount: 0, escalation: { percent: 10, everyMonths: 12 } });
-    const f = await w.t.run((c) => c.storage.store(new Blob(["s"])));
+    const f = await w.t.run((c) => storePdf(c as never));
     await w.pm.mutation(w.api.agreements.attachSignedCopy, { agreementId: id, fileId: f });
     await w.pm.mutation(w.api.agreements.submitForReview, { agreementId: id });
     await w.ap.mutation(w.api.agreements.approve, { agreementId: id });
@@ -37,7 +37,7 @@ describe("unit reservation and receipts", () => {
     const next = new Date(); next.setUTCMonth(next.getUTCMonth() + 2);
     const start = Date.UTC(next.getUTCFullYear(), next.getUTCMonth(), 1);
     const id = await w.pm.mutation(w.api.agreements.createDraft, { unitId, renterId, startsAt: start, endsAt: start + 365 * 86_400_000, rent: { kind: "fixed", amount: etb(1000) }, dueDay: 5, depositAmount: 0 });
-    const f = await w.t.run((c) => c.storage.store(new Blob(["s"])));
+    const f = await w.t.run((c) => storePdf(c as never));
     await w.pm.mutation(w.api.agreements.attachSignedCopy, { agreementId: id, fileId: f });
     await w.pm.mutation(w.api.agreements.submitForReview, { agreementId: id });
     await w.ap.mutation(w.api.agreements.approve, { agreementId: id });

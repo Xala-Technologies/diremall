@@ -3,6 +3,12 @@ import schema from "../convex/schema";
 import type { Id } from "../convex/_generated/dataModel";
 
 export const modules = import.meta.glob("../convex/**/*.ts");
+/** Stores a small PDF. convex-test does not record the content type the way Convex does, so it is set here. */
+export async function storePdf(ctx: { storage: { store: (b: Blob) => Promise<never> }; db: unknown }, type = "application/pdf") {
+  const id = await ctx.storage.store(new Blob(["s"], { type }));
+  await (ctx.db as { patch: (id: unknown, v: object) => Promise<void> }).patch(id, { contentType: type });
+  return id as never;
+}
 export const etb = (n: number) => Math.round(n * 100);
 export const utc = (y: number, m: number, d = 1) => Date.UTC(y, m - 1, d);
 
@@ -28,7 +34,7 @@ export async function world() {
   /** Draft → signed → review → approved agreement running Sep 2026 – Aug 2027. */
   async function activeAgreement(unitId: Id<"units">, renterId: Id<"renters">, rent: { kind: "perM2"; ratePerM2: number } | { kind: "fixed"; amount: number } = { kind: "perM2", ratePerM2: etb(2300) }) {
     const agreementId = await pm.mutation(api.agreements.createDraft, { unitId, renterId, startsAt: utc(2026, 9), endsAt: utc(2027, 9), rent, dueDay: 5, depositAmount: etb(50000) });
-    const fileId = await t.run((ctx) => ctx.storage.store(new Blob(["signed"])));
+    const fileId = await t.run((ctx) => storePdf(ctx as never));
     await pm.mutation(api.agreements.attachSignedCopy, { agreementId, fileId });
     await pm.mutation(api.agreements.submitForReview, { agreementId });
     await ap.mutation(api.agreements.approve, { agreementId });

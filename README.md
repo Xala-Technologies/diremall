@@ -94,7 +94,7 @@ Read the whole related table once and use a map (see `convex/lib/bulk.ts`). Bill
 Authenticator-app codes (TOTP, RFC 6238) plus eight one-time recovery codes. Anyone can turn it on under **Settings → Two-step sign-in**. An access admin can switch on **Require for finance, approvers and admins** (only after enrolling themselves), and can reset a colleague who lost their phone from **Staff access**.
 
 - Each new sign-in must pass the second step; until then the server rejects every request (`mfa_required`).
-- A code can be used once; five wrong codes lock the second step for five minutes.
+- A code can be used once; five wrong codes lock the second step, for 5 minutes at first and twice as long after each repeat (up to a day).
 - Enrolling, disabling, recovery-code use and resets are written to the audit log.
 
 ## Backup and restore

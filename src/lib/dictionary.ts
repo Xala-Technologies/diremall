@@ -101,7 +101,7 @@ export const EN: Record<string, string> = {
   "filter.searchAudit": "Search user, action or record", "filter.allActions": "All actions", "filter.searchMessages": "Search renter or message", "filter.allStatuses": "All statuses", "filter.searchUsers": "Search name or email", "filter.allRoles": "All roles", "filter.searchBank": "Search reference or amount",
   "mfa.title": "Two-step sign-in", "mfa.on": "On", "mfa.off": "Off", "mfa.start": "Set up", "mfa.enable": "Turn on", "mfa.disable": "Turn off", "mfa.code": "Code", "mfa.verify": "Verify",
   "mfa.verify.title": "Enter your code", "mfa.verify.hint": "Open your authenticator app and enter the 6-digit code. If you lost your phone, enter one of your recovery codes.",
-  "mfa.wrong": "That code did not work. Try again.", "mfa.locked": "Too many attempts. Wait 5 minutes and try again.",
+  "mfa.wrong": "That code did not work. Try again.", "mfa.locked": "Too many attempts. Wait a while and try again.",
   "mfa.setup.title": "Set up two-step sign-in", "mfa.setup.hint": "Scan the QR code with an authenticator app such as Google Authenticator, Microsoft Authenticator or 1Password, then enter the 6-digit code it shows.",
   "mfa.setupRequired": "Your role needs two-step sign-in. Set it up to continue.", "mfa.secret": "Or type this key into the app", "mfa.qrAlt": "QR code for the authenticator app",
   "mfa.recovery.title": "Save your recovery codes", "mfa.recovery.hint": "Each code works once if you lose your phone. They are shown only now.", "mfa.copy": "Copy codes", "mfa.done": "I have saved them", "mfa.recoveryLeft": "Recovery codes left",
@@ -109,6 +109,7 @@ export const EN: Record<string, string> = {
   "mfa.reset": "Reset two-step sign-in", "mfa.resetDone": "Reset. They will set it up again at next sign-in.",
   "err.mfa_required": "Enter your two-step code to continue.", "err.mfa_setup_required": "Set up two-step sign-in to continue.", "err.mfa_already_enabled": "Two-step sign-in is already on.", "err.mfa_not_started": "Start the setup first.",
   "err.mfa_required_for_role": "Your role must keep two-step sign-in on.", "err.mfa_enroll_first": "Set up your own two-step sign-in first, so you are not locked out.", "err.cannot_reset_own_mfa": "Ask another admin to reset yours.",
+  "err.file_too_large": "That file is larger than 15 MB.", "err.file_type_not_allowed": "Only PDF, PNG, JPG or WebP files are accepted.", "err.file_missing": "The uploaded file was not found. Try again.",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -188,7 +189,7 @@ export const AM: Record<string, string> = {
   "filter.searchAudit": "ተጠቃሚ፣ ድርጊት ወይም መዝገብ ፈልግ", "filter.allActions": "ሁሉም ድርጊቶች", "filter.searchMessages": "ተከራይ ወይም መልዕክት ፈልግ", "filter.allStatuses": "ሁሉም ሁኔታዎች", "filter.searchUsers": "ስም ወይም ኢሜይል ፈልግ", "filter.allRoles": "ሁሉም ሚናዎች", "filter.searchBank": "ማጣቀሻ ወይም መጠን ፈልግ",
   "mfa.title": "ባለ ሁለት ደረጃ መግቢያ", "mfa.on": "በርቷል", "mfa.off": "ጠፍቷል", "mfa.start": "አዋቅር", "mfa.enable": "አብራ", "mfa.disable": "አጥፋ", "mfa.code": "ኮድ", "mfa.verify": "አረጋግጥ",
   "mfa.verify.title": "ኮድዎን ያስገቡ", "mfa.verify.hint": "የማረጋገጫ መተግበሪያዎን ከፍተው ባለ 6 አሃዝ ኮዱን ያስገቡ። ስልክዎ ከጠፋ ከመልሶ ማግኛ ኮዶችዎ አንዱን ያስገቡ።",
-  "mfa.wrong": "ኮዱ አልሰራም። እንደገና ይሞክሩ።", "mfa.locked": "ብዙ ሙከራዎች። 5 ደቂቃ ጠብቀው እንደገና ይሞክሩ።",
+  "mfa.wrong": "ኮዱ አልሰራም። እንደገና ይሞክሩ።", "mfa.locked": "ብዙ ሙከራዎች። ጥቂት ጠብቀው እንደገና ይሞክሩ።",
   "mfa.setup.title": "ባለ ሁለት ደረጃ መግቢያ አዋቅር", "mfa.setup.hint": "የQR ኮዱን እንደ Google Authenticator ወይም Microsoft Authenticator ባለ የማረጋገጫ መተግበሪያ ይቃኙ፣ ከዚያ የሚያሳየውን ባለ 6 አሃዝ ኮድ ያስገቡ።",
   "mfa.setupRequired": "ሚናዎ ባለ ሁለት ደረጃ መግቢያ ይፈልጋል። ለመቀጠል ያዋቅሩት።", "mfa.secret": "ወይም ይህን ቁልፍ በመተግበሪያው ውስጥ ይጻፉ", "mfa.qrAlt": "ለማረጋገጫ መተግበሪያ የQR ኮድ",
   "mfa.recovery.title": "የመልሶ ማግኛ ኮዶችዎን ያስቀምጡ", "mfa.recovery.hint": "ስልክዎ ቢጠፋ እያንዳንዱ ኮድ አንድ ጊዜ ይሰራል። አሁን ብቻ ይታያሉ።", "mfa.copy": "ኮዶችን ቅዳ", "mfa.done": "አስቀምጫለሁ", "mfa.recoveryLeft": "የቀሩ የመልሶ ማግኛ ኮዶች",
@@ -196,6 +197,7 @@ export const AM: Record<string, string> = {
   "mfa.reset": "ባለ ሁለት ደረጃ መግቢያ ዳግም አስጀምር", "mfa.resetDone": "ዳግም ተጀምሯል። በሚቀጥለው መግቢያ እንደገና ያዋቅሩታል።",
   "err.mfa_required": "ለመቀጠል ባለ ሁለት ደረጃ ኮድዎን ያስገቡ።", "err.mfa_setup_required": "ለመቀጠል ባለ ሁለት ደረጃ መግቢያ ያዋቅሩ።", "err.mfa_already_enabled": "ባለ ሁለት ደረጃ መግቢያ አስቀድሞ በርቷል።", "err.mfa_not_started": "መጀመሪያ ማዋቀሩን ይጀምሩ።",
   "err.mfa_required_for_role": "ሚናዎ ባለ ሁለት ደረጃ መግቢያን ማቆየት አለበት።", "err.mfa_enroll_first": "እንዳይቆለፉ መጀመሪያ የራስዎን ባለ ሁለት ደረጃ መግቢያ ያዋቅሩ።", "err.cannot_reset_own_mfa": "የእርስዎን ሌላ አስተዳዳሪ ያስጀምር።",
+  "err.file_too_large": "ፋይሉ ከ15 ሜባ ይበልጣል።", "err.file_type_not_allowed": "PDF፣ PNG፣ JPG ወይም WebP ፋይሎች ብቻ ይቀበላሉ።", "err.file_missing": "የተጫነው ፋይል አልተገኘም። እንደገና ይሞክሩ።",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

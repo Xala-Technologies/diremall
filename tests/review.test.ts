@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etb, utc, world } from "./helpers";
+import { etb, utc, world, storePdf } from "./helpers";
 
 async function issuedInvoice(w: Awaited<ReturnType<typeof world>>, rent = 100000, area = 10) {
   const unitId = await w.unit("A-1", area);
@@ -61,7 +61,7 @@ describe("review fixes: money", () => {
   it("two leases in one period do not both carry the month's electricity", async () => {
     const w = await world();
     const unitId = await w.unit("A-1", 10); const r1 = await w.renter("First"); const r2 = await w.renter("Second");
-    const f = () => w.t.run((c) => c.storage.store(new Blob(["s"])));
+    const f = () => w.t.run((c) => storePdf(c as never));
     const lease = async (renterId: any, from: number, to: number) => {
       const id = await w.pm.mutation(w.api.agreements.createDraft, { unitId, renterId, startsAt: from, endsAt: to, rent: { kind: "fixed", amount: etb(3000) }, dueDay: 5, depositAmount: 0 });
       await w.pm.mutation(w.api.agreements.attachSignedCopy, { agreementId: id, fileId: await f() });
@@ -146,7 +146,7 @@ describe("review fixes: access", () => {
   it("assorted state guards: signed copy locked after activation, termination keeps unit status right, meter reset needs review", async () => {
     const w = await world();
     const { agreementId, unitId } = await issuedInvoice(w);
-    const f = await w.t.run((c) => c.storage.store(new Blob(["x"])));
+    const f = await w.t.run((c) => storePdf(c as never));
     await expect(w.pm.mutation(w.api.agreements.attachSignedCopy, { agreementId, fileId: f })).rejects.toThrow(/signed_copy_locked/);
     expect((await w.pm.query(w.api.properties.getUnit, { unitId })).unit.status).toBe("occupied");
     await w.ap.mutation(w.api.agreements.terminate, { agreementId, reason: "x" });
