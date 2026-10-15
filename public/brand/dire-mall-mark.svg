@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dire Mall">
+  <title>Dire Mall</title>
+  <rect width="64" height="64" rx="14" fill="#003057"/>
+  <defs><clipPath id="dm-counter"><path d="M25 20H33C39.5 20 44 24.5 44 32C44 39.5 39.5 44 33 44H25Z"/></clipPath></defs>
+  <path fill="#fff" fill-rule="evenodd" d="M16 11H33C46.5 11 54 19.5 54 32C54 44.5 46.5 53 33 53H16ZM25 20V44H33C39.5 44 44 39.5 44 32C44 24.5 39.5 20 33 20Z"/>
+  <g clip-path="url(#dm-counter)"><rect x="22" y="22.5" width="26" height="3" fill="#fff"/><rect x="22" y="30.5" width="26" height="3" fill="#F5A623"/><rect x="22" y="38.5" width="26" height="3" fill="#fff"/></g>
+</svg>

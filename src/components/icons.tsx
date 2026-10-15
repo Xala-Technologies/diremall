@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { AlertCircle, ArrowDown, Eye, EyeOff, ArrowUp, ArrowUpDown, Building2, CalendarDays, Check, ChevronLeft, ChevronRight, ChartColumn, Download, FileText, Globe, History, Inbox, Landmark, LayoutDashboard, type LucideIcon, Menu, MessageSquare, Monitor, Moon, Plus, Printer, Receipt, Search, Settings, ShieldCheck, Sun, Upload, Users, Wallet, X, Zap } from "lucide-react";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -12,12 +13,15 @@ export function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return <C className="icon" size={size} strokeWidth={1.75} aria-hidden="true" />;
 }
 
-/** Three columns of different heights: units in a building. */
+/** The Dire Mall mark: a "D" whose opening holds the gallery floors of the atrium, one of them lit. */
 export function Mark({ size = 36 }: { size?: number }) {
+  const id = `dm-${useId().replace(/:/g, "")}`;
   return (
-    <svg className="mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="var(--accent)" />
-      <path d="M8 24V13h4v11zm6 0V8h4v16zm6 0V16h4v8z" fill="var(--accent-ink)" />
+    <svg className="mark" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <defs><clipPath id={id}><path d="M25 20H33C39.5 20 44 24.5 44 32C44 39.5 39.5 44 33 44H25Z" /></clipPath></defs>
+      <rect width="64" height="64" rx="14" fill="var(--accent)" />
+      <path fill="var(--accent-ink)" fillRule="evenodd" d="M16 11H33C46.5 11 54 19.5 54 32C54 44.5 46.5 53 33 53H16ZM25 20V44H33C39.5 44 44 39.5 44 32C44 24.5 39.5 20 33 20Z" />
+      <g clipPath={`url(#${id})`}><rect x="22" y="22.5" width="26" height="3" fill="var(--accent-ink)" /><rect x="22" y="30.5" width="26" height="3" fill="#F5A623" /><rect x="22" y="38.5" width="26" height="3" fill="var(--accent-ink)" /></g>
     </svg>
   );
 }
