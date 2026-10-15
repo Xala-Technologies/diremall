@@ -157,7 +157,7 @@ export const list = query({
       if (a.status && p.status !== a.status) continue;
       try { await assertRenterVisible(ctx, u, p.renterId); } catch { continue; }
       const renter = await ctx.db.get(p.renterId);
-      out.push({ ...p, renterName: renter?.name ?? "", evidenceUrl: p.evidenceFileId ? await ctx.storage.getUrl(p.evidenceFileId) : null });
+      out.push({ ...p, renterName: renter?.name ?? "", hasEvidence: !!p.evidenceFileId });
     }
     return out.sort((x, y) => y.receivedAt - x.receivedAt);
   },

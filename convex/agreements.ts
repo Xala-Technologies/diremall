@@ -186,7 +186,7 @@ export const get = query({
     const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).collect();
     const handovers = await ctx.db.query("handovers").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).collect();
     const deposit = await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).unique();
-    return { agreement: ag, unit, renter: await ctx.db.get(ag.renterId), terms, handovers, deposit, signedUrl: ag.signedFileId ? await ctx.storage.getUrl(ag.signedFileId) : null };
+    return { agreement: ag, unit, renter: await ctx.db.get(ag.renterId), terms, handovers, deposit, hasSigned: !!ag.signedFileId };
   },
 });
 

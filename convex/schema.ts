@@ -204,6 +204,10 @@ export default defineSchema({
     usedAt: v.optional(v.number()),
   }).index("by_email", ["email"]),
 
+  // A document link is created only after a role and building check, and works for two minutes.
+  fileTickets: defineTable({ tokenHash: v.string(), storageId: v.id("_storage"), contentType: v.string(), userId: v.id("users"), expiresAt: v.number() })
+    .index("by_hash", ["tokenHash"]).index("by_expiry", ["expiresAt"]),
+
   settings: defineTable({ key: v.string(), value: v.number() }).index("by_key", ["key"]),
 
   // Two-step sign-in. A secret only counts once `enabled`; sessions are marked verified per sign-in.

@@ -8,7 +8,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site",
+  "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://*.convex.site" + (process.env.NODE_ENV === "production" ? "" : " ws://localhost:* http://localhost:*"),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

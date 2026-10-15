@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 import { email, failures, normalizePhone, phone, req, tin } from "@/lib/validate";
+import { useOpenFile } from "@/lib/useOpenFile";
 import { useUpload } from "@/lib/useUpload";
 
 export default function Renters() {
@@ -76,7 +77,7 @@ function RenterForm({ onClose }: { onClose: () => void }) {
 }
 
 function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void }) {
-  const { t } = useI18n(); const { can } = useMe();
+  const { t } = useI18n(); const { can } = useMe(); const openFile = useOpenFile();
   const data = useQuery(api.renters.get, { renterId: id });
   const ledger = useQuery(api.reports.tenantLedger, { renterId: id });
   const credit = useQuery(api.payments.credit, { renterId: id });
@@ -87,7 +88,7 @@ function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void 
       {data && <div className="stack">
         <p className="muted">{t(data.renter.kind)} · {data.renter.phone}{data.renter.tin ? ` · TIN ${data.renter.tin}` : ""}</p>
         <Card title={t("renter.documents")}>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>{data.documents.map((d) => <li key={d._id}>{d.url ? <a href={d.url} target="_blank" rel="noreferrer">{d.kind}</a> : d.kind}</li>)}</ul>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>{data.documents.map((d) => <li key={d._id}><button type="button" className="linklike" onClick={() => void openFile("renterDoc", d._id)}>{d.kind}</button></li>)}</ul>
           {can("propertyManager", "financeOfficer") && <div className="row" style={{ marginTop: 10 }}>
             <input value={kind} onChange={(e) => setKind(e.target.value)} aria-label={t("renter.documents")} />
             <input type="file" onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => add({ renterId: id, kind, fileId: await upload(f) }), t("saved")); e.target.value = ""; }} />

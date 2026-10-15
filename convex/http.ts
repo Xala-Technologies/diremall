@@ -25,4 +25,22 @@ http.route({
   }),
 });
 
+// Document downloads: /files/<token>, where the token comes from files:ticket (role and building checked, valid 2 minutes).
+http.route({
+  pathPrefix: "/files/",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const token = new URL(req.url).pathname.replace(/^\/files\//, "");
+    if (!/^[a-f0-9]{64}$/.test(token)) return new Response("not found", { status: 404 });
+    const found = await ctx.runMutation(internal.files.redeem, { token });
+    if (!found) return new Response("link expired", { status: 410, headers: { "Cache-Control": "no-store" } });
+    const blob = await ctx.storage.get(found.storageId);
+    if (!blob) return new Response("not found", { status: 404 });
+    return new Response(blob, { status: 200, headers: {
+      "Content-Type": found.contentType, "Content-Disposition": "inline", "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer",
+    } });
+  }),
+});
+
 export default http;

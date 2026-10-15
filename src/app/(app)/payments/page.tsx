@@ -10,6 +10,7 @@ import { Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money,
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
+import { useOpenFile } from "@/lib/useOpenFile";
 import { useUpload } from "@/lib/useUpload";
 import { failures, positive, req } from "@/lib/validate";
 
@@ -22,7 +23,7 @@ export default function Payments() {
   const needle = q.trim().toLowerCase();
   const rows = all?.filter((p) => (!method || p.method === method) && (!needle || `${p.renterName} ${p.reference}`.toLowerCase().includes(needle)));
   const confirm = useMutation(api.payments.confirm); const apply = useMutation(api.payments.apply); const voidP = useMutation(api.payments.voidPayment);
-  const { run, error, notice } = useRun();
+  const { run, error, notice } = useRun(); const openFile = useOpenFile();
   return (
     <div className="stack">
       <PageHeader title={t("nav.payments")} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchPayments")} /><Tabs value={tab} onChange={(v) => setTab(v as Status)} tabs={[["", t("total")], ["recorded", t("recorded")], ["confirmed", t("confirmed")], ["applied", t("applied")], ["voided", t("voided")]]} /><FilterSelect label={t("pay.method")} placeholder={t("pay.method")} value={method} onChange={setMethod} options={[{ value: "", label: t("filter.allMethods"), icon: <Wallet size={16} /> }, { value: "bankDeposit", label: t("bankDeposit"), icon: <Landmark size={16} /> }, { value: "transfer", label: t("transfer"), icon: <ArrowLeftRight size={16} /> }, { value: "telebirr", label: t("telebirr"), icon: <Smartphone size={16} /> }, { value: "cbeBirr", label: t("cbeBirr"), icon: <Smartphone size={16} /> }, { value: "cash", label: t("cash"), icon: <Banknote size={16} /> }]} /></>} actions={can("financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("pay.record")}</button> : undefined} />
@@ -31,7 +32,7 @@ export default function Payments() {
         { head: t("pay.received"), cell: (p) => <DateText ms={p.receivedAt} />, sort: (p) => p.receivedAt }, { head: t("ag.renter"), cell: (p) => p.renterName, sort: (p) => p.renterName },
         { head: t("amount"), cell: (p) => <Money v={p.amount} strong />, right: true, money: true, sort: (p) => p.amount },
         { head: t("pay.method"), cell: (p) => t(p.method), sort: (p) => p.method }, { head: t("pay.reference"), cell: (p) => p.reference, hide: true },
-        { head: t("pay.evidence"), cell: (p) => (p.evidenceUrl ? <a href={p.evidenceUrl} target="_blank" rel="noreferrer">✓</a> : "—"), hide: true },
+        { head: t("pay.evidence"), cell: (p) => (p.hasEvidence ? <button type="button" className="linklike" onClick={(e) => { e.stopPropagation(); void openFile("evidence", p._id); }}>✓</button> : "—"), hide: true },
         { head: t("status"), cell: (p) => <StatusBadge status={p.status} />, sort: (p) => p.status },
         // one main action per stage; a receipt exists only once the payment is applied
         { head: "", cell: (p) => <div className="row">

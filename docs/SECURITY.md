@@ -24,13 +24,15 @@ independent test is worth commissioning.
 | No browser security headers. | Content-Security-Policy (blocks framing, plugins, foreign form targets, base-tag tricks), X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, HSTS. |
 | With `BOOTSTRAP_ADMIN_EMAIL` set, someone else signing up first stopped the admin from becoming super admin. | The named address becomes super admin while none exists, whoever signed up before. Without the variable, only the very first account ever created. |
 | Anyone could create an account and email addresses were not verified, so an outsider could register a colleague's email first and hold the password once an admin activated it. | Sign-up is by invitation. An access admin invites an email address and hands the person a one-time code (works once, for that address, for 7 days). Without a valid code the sign-up is cancelled. Only the first administrator is exempt. |
+| Contracts, evidence and renter documents were served from permanent, unchecked storage links. | Documents are served through a link created after a role and building check, valid for 2 minutes, bound to an active account. |
 | Uploads were only limited by the browser. | The server now rejects anything that is not a PDF, PNG, JPG or WebP, or is over 15 MB, when it is attached to a record. |
 
 ## Still open (decide before go-live)
-1. **Download links are not access-checked.** Contracts, evidence and renter documents are served from Convex file
-   storage through a link that is only given to users who pass the scope check. The link itself does not expire and
-   works for anyone who has it. The proposal asks for private, signed links. The fix is to serve files through an
-   authenticated route that checks the user on every download. Worth doing before storing ID copies or licences.
+1. **Links already issued before this change still work.** Documents are now served only through a link created after a
+   role and building check, valid for 2 minutes and dead once the person's account is deactivated. Permanent storage
+   addresses are no longer sent to the browser. Convex cannot revoke a storage address that was handed out earlier, so
+   if documents were opened before this change, those old addresses keep working for anyone who saved them. For a fresh
+   production deployment this does not apply.
 2. **Content-Security-Policy keeps `unsafe-inline` for scripts** because Next.js and the theme bootstrap use inline
    scripts. A per-request nonce would remove this. Framing and plugin attacks are still blocked.
 3. **Two-step secrets are stored unencrypted** in the database (Convex encrypts data at rest). Application-level

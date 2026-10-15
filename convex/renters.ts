@@ -65,7 +65,7 @@ export const get = query({
     const agreements = [];
     for (const ag of all) { const un = await ctx.db.get(ag.unitId); if (un && canSeeBuilding(u, un.buildingId)) agreements.push(ag); }
     const docs = await ctx.db.query("renterDocuments").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect();
-    const documents = await Promise.all(docs.map(async (d) => ({ _id: d._id, kind: d.kind, url: await ctx.storage.getUrl(d.fileId) })));
+    const documents = docs.map((d) => ({ _id: d._id, kind: d.kind }));
     return { renter, agreements, documents };
   },
 });

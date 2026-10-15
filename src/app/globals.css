@@ -316,3 +316,6 @@ fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; } legend {
   .page-head:has(.actions > :nth-child(2)) .actions { justify-content: flex-start; }
   .table-wrap td:empty { display: none; }
 }
+
+.linklike { all: unset; cursor: pointer; color: var(--ds-color-accent-text-default, var(--accent)); text-decoration: underline; text-underline-offset: 2px; border-radius: 4px; }
+.linklike:hover { text-decoration-thickness: 2px; } .linklike:focus-visible { outline: 3px solid var(--ds-color-accent-border-default); outline-offset: 2px; }

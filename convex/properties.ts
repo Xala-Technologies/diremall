@@ -43,7 +43,7 @@ export const listFloors = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     assertBuilding(u, buildingId);
     const floors = await ctx.db.query("floors").withIndex("by_building", (q) => q.eq("buildingId", buildingId)).collect();
-    return Promise.all(floors.map(async (f) => ({ ...f, planUrl: f.planFileId ? await ctx.storage.getUrl(f.planFileId) : null })));
+    return floors.map((f) => ({ ...f, hasPlan: !!f.planFileId }));
   },
 });
 

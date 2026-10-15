@@ -10,6 +10,7 @@ import { monthlyRent } from "../../../../../convex/lib/billing";
 import { Icon } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
+import { useOpenFile } from "@/lib/useOpenFile";
 import { useRun } from "@/lib/useRun";
 import { useUpload } from "@/lib/useUpload";
 import { failures, inRange, positive, req } from "@/lib/validate";
@@ -24,7 +25,7 @@ export default function AgreementPage() {
   const terminate = useMutation(api.agreements.terminate); const handover = useMutation(api.agreements.recordHandover);
   const receive = useMutation(api.deposits.receive); const refund = useMutation(api.deposits.refund);
   const reqDed = useMutation(api.deposits.requestDeduction); const appDed = useMutation(api.deposits.approveDeduction);
-  const upload = useUpload(); const { run, error, notice } = useRun();
+  const upload = useUpload(); const openFile = useOpenFile(); const { run, error, notice } = useRun();
   const [dlg, setDlg] = useState<null | "terms" | "handover" | "deduct" | "refund" | "receive" | "terminate" | "return" | "approve">(null);
   if (!d) return <p className="muted">{t("loading")}</p>;
   const a = d.agreement; const mine = me?._id === a.createdBy;
@@ -65,7 +66,7 @@ export default function AgreementPage() {
               <div><dt>{t("ag.renter")}</dt><dd>{d.renter?.name}</dd></div>
               <div><dt>{t("ag.start")}</dt><dd><DateText ms={a.startsAt} /></dd></div>
               <div><dt>{t("ag.end")}</dt><dd><DateText ms={a.endsAt} /></dd></div>
-              <div><dt>{t("ag.signed")}</dt><dd>{d.signedUrl ? <a href={d.signedUrl} target="_blank" rel="noreferrer">{t("ag.view")}</a> : <span className="muted">—</span>}</dd></div>
+              <div><dt>{t("ag.signed")}</dt><dd>{d.hasSigned ? <button type="button" className="linklike" onClick={() => void openFile("signed", d.agreement._id)}>{t("ag.view")}</button> : <span className="muted">—</span>}</dd></div>
               {d.terms.length > 0 && <div><dt>{t("rent")}</dt><dd><Money v={rentOf(d.terms.slice().sort((x, y) => y.effectiveFrom - x.effectiveFrom)[0]!)} strong /></dd></div>}
             </dl>
           </Card>
