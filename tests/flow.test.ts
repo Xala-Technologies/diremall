@@ -185,14 +185,15 @@ describe("bank matching and dashboard", () => {
     const before = await w.fin.query(w.api.reports.dashboard, { period: "2026-09" });
 
     await w.fin.mutation(w.api.bank.importStatement, { batch: "sep", entries: [{ postedAt: utc(2026, 9, 4), amount: etb(250000), reference: "CBE-778 ABEBE" }] });
-    const [s] = await w.fin.query(w.api.bank.suggestions, { batch: "sep" });
-    expect(s!.candidates[0]).toMatchObject({ paymentId, difference: 0, referenceMatches: true });
-    await w.fin.mutation(w.api.bank.confirmMatch, { entryId: s!.entry._id, paymentId });
+    const { lines: [line] } = await w.fin.query(w.api.bank.statement, { batch: "sep" });
+    const cands = await w.fin.query(w.api.bank.candidates, { entryId: line!._id });
+    expect(cands[0]).toMatchObject({ paymentId, difference: 0, referenceMatches: true });
+    await w.fin.mutation(w.api.bank.confirmMatch, { entryId: line!._id, paymentId });
 
     const after = await w.fin.query(w.api.reports.dashboard, { period: "2026-09" });
     expect(after.confirmedPayments).toBe(before.confirmedPayments);
     expect(after.appliedToBills).toBe(etb(250000));
-    expect(await w.fin.query(w.api.bank.unmatched, {})).toHaveLength(0);
+    expect((await w.fin.query(w.api.bank.statement, {})).totals.toMatch.n).toBe(0);
   });
 
   it("dashboard reproduces the proposal's figures; ledger and aging agree", async () => {

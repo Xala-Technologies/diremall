@@ -140,7 +140,7 @@ describe("review fixes: access", () => {
     const p = await s.mutation(w.api.payments.record, { renterId, amount: etb(6000), method: "cash", reference: "X", receivedAt: utc(2026, 9, 4) });
     await w.ap.mutation(w.api.payments.confirm, { paymentId: p });
     expect(await s.mutation(w.api.payments.apply, { paymentId: p })).toEqual({ applied: etb(1000), credit: etb(5000) });
-    await expect(s.query(w.api.bank.unmatched, {})).rejects.toThrow(/forbidden_building/);
+    await expect(s.query(w.api.bank.statement, {})).rejects.toThrow(/forbidden_building/);
   });
 
   it("assorted state guards: signed copy locked after activation, termination keeps unit status right, meter reset needs review", async () => {

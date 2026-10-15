@@ -11,8 +11,10 @@ export async function readTable(file: File): Promise<string[][]> {
 
 export function parseCsv(text: string): string[][] {
   const t = text.replace(/^﻿/, "");
-  const firstLine = t.split(/\r?\n/, 1)[0] ?? "";
-  const delim = [";", "\t", ","].map((d) => ({ d, n: firstLine.split(d).length })).sort((a, b) => b.n - a.n)[0]!.d;
+  // Pick the delimiter from the widest of the first lines (bank statements start with account text that has no columns),
+  // counting only characters outside quotes.
+  const sample = t.split(/\r?\n/, 20).map((l) => l.replace(/"[^"]*"/g, ""));
+  const delim = [",", ";", "\t"].map((d) => ({ d, n: Math.max(...sample.map((l) => l.split(d).length - 1)) })).sort((a, b) => b.n - a.n)[0]!.d;
   const rows: string[][] = [];
   let row: string[] = [], cell = "", quoted = false;
   for (let i = 0; i < t.length; i++) {

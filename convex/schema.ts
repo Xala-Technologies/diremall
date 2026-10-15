@@ -239,8 +239,15 @@ export default defineSchema({
     postedAt: ts,
     amount: money,
     reference: v.string(),
+    description: v.optional(v.string()), // the narration printed on the statement
+    bank: v.optional(v.string()),
     matchedPaymentId: v.optional(v.id("payments")), // matching links evidence; never creates a payment
-  }).index("by_batch", ["importBatch"]).index("by_payment", ["matchedPaymentId"]),
+    matchedBy: v.optional(v.id("users")),
+    matchedAt: v.optional(ts),
+    ignoredAt: v.optional(ts), // a line that is not rent (bank charge, transfer between own accounts, …)
+    ignoredBy: v.optional(v.id("users")),
+    ignoreReason: v.optional(v.string()),
+  }).index("by_batch", ["importBatch"]).index("by_payment", ["matchedPaymentId"]).index("by_line", ["postedAt", "amount"]),
 
   smsMessages: defineTable({
     renterId: v.id("renters"),
