@@ -66,20 +66,42 @@ You prepare bills, record money and keep the books right.
 3. *Issue all drafts*. Issued bills cannot be edited. To correct one, request a **correction** with a reason; an approver
    approves it.
 
-**Record a payment.** Payments → *Record payment*: renter, amount, method (bank deposit, transfer, Telebirr, CBE Birr,
-cash), the bank or Telebirr reference and the date. Attach the slip if you have one. A reference can only be booked once
-in the whole mall.
+The cards at the top show what was billed, collected, still outstanding and overdue for the month. The **Overdue** tab and
+the red "Overdue · 12 days" tag show bills past their due date. On each open bill, the wallet icon starts *Record
+payment* for that renter and the bell icon sends a reminder SMS (at most one per bill per day). *Remind overdue* sends one
+to every overdue bill after you confirm. Open a bill to print it as a proper invoice: it carries the company's legal
+details, the renter's details, the line items, the amount in words and where to pay.
 
-**Payment steps.** *Recorded* → an **approver confirms** it (not the person who recorded it) → you **apply** it to the
-renter's open bills. Only applied payments reduce what is owed, and a receipt is created when it is applied. Paying more
-than is owed leaves a credit on the renter's account.
+**Company details on bills and receipts.** An approver fills in Settings → *Organisation* once: legal name, TIN, VAT
+number, address, phone, the bank accounts renters pay into, and a note for the foot of every bill. They are printed on
+every bill, receipt and contract.
+
+**Record a payment.** Payments → *Record payment*: choose the renter and you will see their open bills and the total due
+(*Use total due* fills the amount). Then the amount, method (bank deposit, transfer, Telebirr, CBE Birr, cash), the bank or
+Telebirr reference and the date. Add who paid if it was not the renter, notes, and the slip if you have one. A reference
+can only be booked once in the whole mall.
+
+**Payment steps.** *Recorded* → an **approver confirms** it (not the person who recorded it) → you **apply** it. In the
+apply window you choose how much of the payment settles each bill; it starts oldest first and you can change it. Whatever is
+left stays as credit on the renter's account. Only applied payments reduce what is owed, and a receipt is created when it is
+applied. Click any payment to see its full history: who recorded, confirmed and applied it and when, what it paid, the
+evidence, and the bank statement line it matches. The cards at the top and the period filter show where every payment
+stands.
 
 **Deposits** are held separately and never reduce rent. Receive a deposit on the agreement page; a deduction or refund
 needs an approver.
 
-**Bank matching.** Bank matching → *Import statement (CSV)* with columns date, amount, reference. The system suggests
-which recorded payment each line belongs to. Confirming a match links evidence only; it never creates a payment or adds to
-collections.
+**Bank matching.** Bank matching → *Import statement*. Choose the bank's CSV or Excel file; the system reads the date, narration, reference and
+credit columns whatever order they are in, skips money-out rows, and shows a preview (number of deposits, total, anything it
+could not read) before anything is saved. Lines already imported before are skipped, so overlapping statements are safe.
+Each deposit is then matched in turn:
+- **Match** shows payments with exactly the same amount (reference matches are highlighted) and a search box for others.
+  Confirming links the statement line to the payment.
+- **Record payment** is for money that arrived but was never recorded: it opens the payment form already filled in from the
+  line (renter picked from the narration when the name appears) and links the line when you save. The payment still needs
+  an approver's confirmation like any other.
+- **Ignore** is for bank charges, transfers between your own accounts and anything that is not rent; a reason is required.
+Matching only links evidence: it never creates a payment or changes what was collected. An approver can reopen a match.
 
 **Reports.** Reports has the rent roll, vacancy, arrears ageing (30 / 60 / 90+ days), revenue and renter statements, each
 with Excel, CSV and PDF export. **Month-end pack** gathers the month in one place. The figures on screen and in the

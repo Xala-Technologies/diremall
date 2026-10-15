@@ -3,7 +3,9 @@ import { useQuery } from "convex/react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Icon, Mark } from "@/components/icons";
+import { Icon } from "@/components/icons";
+import { OrgHeader } from "@/components/OrgHeader";
+import { etbInWords } from "@/lib/words";
 import { Card, DateText, Money, PageHeader, Skeleton, StatusBadge } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 
@@ -23,15 +25,16 @@ export default function Receipt() {
       {!issued && <div className="msg bad no-print">{t("receipt.notYet")} <StatusBadge status={p.status} /></div>}
       <article className="paper" aria-label={t("receipt.title")}>
         <header className="paper-h">
-          <div className="brand" style={{ padding: 0 }}><Mark size={40} /><span className="brand-mark-name">Dire Mall<small>Dire Dawa</small></span></div>
+          <OrgHeader />
           <div style={{ textAlign: "right" }}><div className="paper-title">{t("receipt.title")}</div><div className="num strong">{p.receiptNumber ?? "—"}</div></div>
         </header>
         <dl className="dl paper-dl">
-          <div><dt>{t("receipt.receivedFrom")}</dt><dd>{d.renter?.name}{d.renter?.tin ? ` · TIN ${d.renter.tin}` : ""}</dd></div>
+          <div><dt>{t("receipt.receivedFrom")}</dt><dd>{d.renter?.name}{d.renter?.tin ? ` · TIN ${d.renter.tin}` : ""}{p.payerName ? <><br /><small className="muted">{t("pay.paidBy")} {p.payerName}</small></> : null}</dd></div>
           <div><dt>{t("pay.received")}</dt><dd><DateText ms={p.receivedAt} /></dd></div>
           <div><dt>{t("pay.method")}</dt><dd>{t(p.method)}</dd></div>
           <div><dt>{t("pay.reference")}</dt><dd>{p.reference}</dd></div>
           <div><dt>{t("amount")}</dt><dd style={{ fontSize: 20 }}><Money v={p.amount} strong /></dd></div>
+          <div><dt>{t("bill.inWords")}</dt><dd>{etbInWords(p.amount)}</dd></div>
         </dl>
         {d.lines.length > 0 && (
           <table className="paper-table">

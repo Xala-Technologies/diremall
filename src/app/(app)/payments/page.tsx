@@ -48,7 +48,7 @@ export default function Payments() {
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get("new")) {
-      setPrefill({ amount: Number(sp.get("amount")) || null, reference: sp.get("ref") ?? "", at: Number(sp.get("at")) || null, narration: sp.get("narr") ?? "", lineId: (sp.get("line") ?? undefined) as Id<"bankStatementEntries"> | undefined });
+      setPrefill({ amount: Number(sp.get("amount")) || null, reference: sp.get("ref") ?? "", at: Number(sp.get("at")) || null, narration: sp.get("narr") ?? "", lineId: (sp.get("line") ?? undefined) as Id<"bankStatementEntries"> | undefined, renterId: sp.get("renter") ?? undefined });
       setAdding(true); window.history.replaceState(null, "", "/payments");
     }
   }, []);
@@ -95,7 +95,7 @@ export default function Payments() {
   );
 }
 
-type Prefill = { amount: number | null; reference: string; at: number | null; narration: string; lineId?: Id<"bankStatementEntries"> };
+type Prefill = { amount: number | null; reference: string; at: number | null; narration: string; lineId?: Id<"bankStatementEntries">; renterId?: string };
 
 /** Record money that has arrived. The renter's open bills are shown so the amount can be checked against what is owed. */
 function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: () => void }) {
@@ -103,7 +103,7 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
   const renters = useQuery(api.renters.list, {});
   // a bank line names the payer in its narration: pre-pick the renter whose name appears in it
   const guess = prefill?.narration ? renters?.find((r) => prefill.narration.toLowerCase().includes(r.name.toLowerCase()))?._id : undefined;
-  const [renterId, setRenterId] = useState(""); const [amount, setAmount] = useState<number | null>(prefill?.amount ?? null);
+  const [renterId, setRenterId] = useState(prefill?.renterId ?? ""); const [amount, setAmount] = useState<number | null>(prefill?.amount ?? null);
   const [method, setMethod] = useState<Method>(prefill ? "transfer" : "transfer"); const [reference, setReference] = useState(prefill?.reference ?? "");
   const [at, setAt] = useState<number | null>(prefill?.at ?? today()); const [file, setFile] = useState<File | null>(null);
   const [payer, setPayer] = useState(""); const [notes, setNotes] = useState(prefill?.narration ?? "");
@@ -125,6 +125,7 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
         onClose();
       }}>
         {prefill?.lineId && <p className="muted wide">{t("pay.fromBank")}: {prefill.narration}</p>}
+        {prefill?.renterId && !prefill.lineId && prefill.narration && <p className="muted wide">{t("bill.number")}: {prefill.narration}</p>}
         <Field label={t("ag.renter")} error={errs.renter}><select value={chosen} onChange={(e) => { setRenterId(e.target.value); clear("renter"); }}><option value="" />{renters?.map((r) => <option key={r._id} value={r._id}>{r.name}</option>)}</select></Field>
         <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput key={String(amount)} value={amount} onChange={(v) => { setAmount(v); clear("amount"); }} /></Field>
         {chosen && bills && (

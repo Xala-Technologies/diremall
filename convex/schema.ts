@@ -227,6 +227,14 @@ export default defineSchema({
   fileTickets: defineTable({ tokenHash: v.string(), storageId: v.id("_storage"), contentType: v.string(), userId: v.id("users"), expiresAt: v.number() })
     .index("by_hash", ["tokenHash"]).index("by_expiry", ["expiresAt"]),
 
+  // Who the bills and receipts come from: printed on every invoice, receipt and contract. One row.
+  organization: defineTable({
+    name: v.string(), tin: v.optional(v.string()), vatNumber: v.optional(v.string()), address: v.optional(v.string()), city: v.optional(v.string()),
+    phone: v.optional(v.string()), email: v.optional(v.string()),
+    bankAccounts: v.optional(v.string()), // where renters pay, one per line: "CBE 1000123456789 Dire Mall PLC"
+    invoiceNote: v.optional(v.string()), // printed at the foot of every bill (payment terms, late-payment note)
+  }),
+
   settings: defineTable({ key: v.string(), value: v.number() }).index("by_key", ["key"]),
 
   // Two-step sign-in. A secret only counts once `enabled`; sessions are marked verified per sign-in.

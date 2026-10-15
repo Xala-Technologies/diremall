@@ -251,3 +251,39 @@ export const latestPeriod = query({
     return (recent.find((i) => i.status === "issued") ?? recent[0])?.period ?? null;
   },
 });
+
+
+/**
+ * Send a payment reminder SMS now for bills that still owe money. One per bill per day. Bills that are paid, still drafts,
+ * or already reminded today are skipped and reported, never sent twice.
+ */
+export const sendReminders = mutation({
+  args: { invoiceIds: v.array(v.id("invoices")) },
+  handler: async (ctx, { invoiceIds }) => {
+    const u = await requireRole(ctx, "financeOfficer");
+    if (invoiceIds.length === 0) return { sent: 0, skipped: [] as { invoiceId: string; reason: string }[] };
+    if (invoiceIds.length > 200) fail("too_many_bills");
+    const today = new Date().toISOString().slice(0, 10);
+    const skipped: { invoiceId: string; reason: string }[] = [];
+    let sent = 0;
+    for (const id of new Set(invoiceIds)) {
+      const inv = await ctx.db.get(id);
+      if (!inv) { skipped.push({ invoiceId: id, reason: "not_found" }); continue; }
+      await assertUnitVisible(ctx, u, inv.unitId);
+      if (inv.status !== "issued") { skipped.push({ invoiceId: id, reason: "not_issued" }); continue; }
+      const bal = await invoiceBalance(ctx, inv);
+      if (bal.due <= 0) { skipped.push({ invoiceId: id, reason: "already_paid" }); continue; }
+      const key = `manual:${id}:${today}`;
+      if (await ctx.db.query("smsMessages").withIndex("by_dedupe", (q) => q.eq("dedupeKey", key)).first()) { skipped.push({ invoiceId: id, reason: "already_reminded_today" }); continue; }
+      const overdue = inv.dueAt < Date.now();
+      const due = new Date(inv.dueAt).toISOString().slice(0, 10);
+      await ctx.db.insert("smsMessages", {
+        renterId: inv.renterId, kind: "dueReminder", invoiceId: id, dedupeKey: key, status: "queued",
+        body: overdue ? `Reminder: bill ${inv.number} of ${formatEtb(bal.due)} was due on ${due}. Please pay as soon as possible. Thank you.` : `Reminder: bill ${inv.number} of ${formatEtb(bal.due)} is due on ${due}. Thank you.`,
+      });
+      sent++;
+    }
+    await audit(ctx, u, "bill.remind", "invoices", invoiceIds.length === 1 ? invoiceIds[0]! : "bulk", `sent=${sent} skipped=${skipped.length}`);
+    return { sent, skipped };
+  },
+});

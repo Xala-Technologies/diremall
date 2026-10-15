@@ -7,7 +7,10 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { OrgHeader } from "@/components/OrgHeader";
+import { etbInWords } from "@/lib/words";
 import { formatEtb } from "@/lib/format";
+import { useToast } from "@/components/toast";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -20,16 +23,23 @@ export default function InvoicePage() {
   const credit = useQuery(api.payments.credit, d ? { renterId: d.invoice.renterId } : "skip");
   const issue = useMutation(api.billing.issue); const discard = useMutation(api.billing.discardDraft);
   const reqAdj = useMutation(api.billing.requestAdjustment); const appAdj = useMutation(api.billing.approveAdjustment);
-  const useCredit = useMutation(api.payments.useCredit);
-  const { run, error, notice } = useRun(); const [dlg, setDlg] = useState(false); const [confirmDiscard, setConfirmDiscard] = useState(false); const [confirmIssue, setConfirmIssue] = useState(false); const router = useRouter();
+  const useCredit = useMutation(api.payments.useCredit); const remind = useMutation(api.billing.sendReminders);
+  const org = useQuery(api.settings.org) as { tin?: string; address?: string; bankAccounts?: string; invoiceNote?: string } | undefined; const buildings = useQuery(api.properties.listBuildings);
+  const { run, error, notice } = useRun(); const toast = useToast(); const [dlg, setDlg] = useState(false); const [confirmDiscard, setConfirmDiscard] = useState(false); const [confirmIssue, setConfirmIssue] = useState(false); const router = useRouter();
   if (!d) return <p className="muted">{t("loading")}</p>;
   const inv = d.invoice; const b = d.balance;
+  const building = buildings?.find((x) => x._id === d.unit.buildingId)?.name;
+  const open = inv.status === "issued" && b.due > 0; const late = open && inv.dueAt < Date.now();
+  const lineSum = d.lines.reduce((s, l) => s + l.amount, 0);
   return (
     <div className="stack">
+      <div className="stack screen-only">
       <Link href="/billing" className="crumb"><Icon name="back" size={16} />{t("nav.billing")}</Link>
       <PageHeader title={`${t("bill.number")} ${inv.number || t("draft")}`}>
         <StatusBadge status={inv.status === "draft" ? "draft" : b.due <= 0 ? "paid" : b.paid + b.creditUsed > 0 ? "partial" : "outstanding"} />
-        <button className="btn no-print" onClick={() => window.print()}>{t("print")}</button>
+        <button className="btn no-print" onClick={() => window.print()}><Icon name="print" size={16} />{t("print")}</button>
+        {open && can("financeOfficer") && <button className="btn" onClick={() => router.push(`/payments?new=1&renter=${inv.renterId}&amount=${b.due}&narr=${encodeURIComponent(inv.number)}`)}>{t("bill.recordPayment")}</button>}
+        {open && can("financeOfficer") && <button className="btn" onClick={async () => { const r = await run(() => remind({ invoiceIds: [invoiceId] })); if (r) { if (r.sent) toast(t("bill.reminderQueued")); else toast(t(`bill.skip.${r.skipped[0]?.reason}`)); } }}><Icon name="bell" size={16} />{t("bill.remind")}</button>}
         {inv.status === "draft" && can("financeOfficer") && <>
           <button className="btn primary" onClick={() => setConfirmIssue(true)}>{t("bill.issue")}</button>
           <button className="btn danger" onClick={() => setConfirmDiscard(true)}>{t("discard")}</button></>}
@@ -75,6 +85,41 @@ export default function InvoicePage() {
       {d.adjustments.length > 0 && <Card title={t("bill.adjustments")}><Table rows={d.adjustments} cols={[
         { head: t("amount"), cell: (a) => <Money v={a.delta} /> }, { head: t("reason"), cell: (a) => a.reason, text: true },
         { head: t("status"), cell: (a) => (a.approvedBy ? t("approved") : can("approver") && a.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appAdj({ adjustmentId: a._id }), t("saved"))}>{t("bill.approve")}</button> : t("inReview")) }]} /></Card>}
+      </div>
+      <section className="invoice-wrap">
+        {org && (!org.tin || !org.address || !org.bankAccounts) && <p className="msg info screen-only"><Icon name="alert" size={16} />{t("bill.orgMissing")} <Link href="/settings">{t("nav.settings")}</Link></p>}
+        <div className="screen-only invoice-wrap-h"><h2>{t("bill.printable")}</h2><button className="btn sm no-print" onClick={() => window.print()}><Icon name="print" size={15} />{t("print")}</button></div>
+        <article className="paper invoice" aria-label={t("bill.invoice")}>
+          <header className="paper-h">
+            <OrgHeader />
+            <div style={{ textAlign: "right" }}>
+              <div className="paper-title">{inv.status === "draft" ? t("bill.draftTitle") : t("bill.invoice")}</div>
+              <div className="num strong">{inv.number || "—"}</div>
+              {inv.status === "issued" && <div className={`stamp ${b.due <= 0 ? "paid" : late ? "late" : ""}`}>{b.due <= 0 ? t("paidFull") : late ? t("overdue") : t("bill.due")}</div>}
+            </div>
+          </header>
+          <div className="invoice-meta">
+            <div><span className="muted">{t("bill.billTo")}</span><b>{d.renter?.name}</b>{d.renter?.tin && <span>TIN {d.renter.tin}</span>}{d.renter?.address && <span>{d.renter.address}</span>}<span>{d.renter?.phone}</span></div>
+            <div><span className="muted">{t("ag.unit")}</span><b>{d.unit.number}</b>{building && <span>{building}</span>}<span>{t("period")} {inv.period}</span></div>
+            <div><span className="muted">{t("bill.issuedOn")}</span><b>{inv.issuedAt ? <DateText ms={inv.issuedAt} /> : "—"}</b><span className="muted">{t("bill.dueDate")}</span><b><DateText ms={inv.dueAt} /></b></div>
+          </div>
+          <table className="paper-table">
+            <thead><tr><th>{t("bill.item")}</th><th>{t("bill.calc")}</th><th className="r">{t("amount")} (ETB)</th></tr></thead>
+            <tbody>{d.lines.map((l) => <tr key={l._id}><td>{l.description}</td><td>{l.calcNote}</td><td className="r num">{(l.amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td></tr>)}</tbody>
+          </table>
+          <dl className="invoice-totals">
+            <div><dt>{t("bill.subtotal")}</dt><dd className="num">{(lineSum / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>
+            {b.adjustments !== 0 && <div><dt>{t("bill.adjustments")}</dt><dd className="num">{(b.adjustments / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
+            <div><dt>{t("total")}</dt><dd className="num">{(b.total + b.adjustments) / 100 === 0 ? "0.00" : ((b.total + b.adjustments) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>
+            {inv.status === "issued" && <div><dt>{t("bill.paid")}</dt><dd className="num">{((b.paid + b.creditUsed) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
+            {inv.status === "issued" && <div className="grand"><dt>{t("bill.due")}</dt><dd className="num">ETB {(b.due / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
+          </dl>
+          {inv.status === "issued" && <p className="paper-note"><span className="muted">{t("bill.inWords")}:</span> <b>{etbInWords(Math.max(b.due, 0))}</b></p>}
+          {org?.bankAccounts && <div className="paper-pay"><b>{t("bill.howToPay")}</b>{org.bankAccounts.split("\n").filter(Boolean).map((l, i) => <div key={i}>{l}</div>)}<span className="muted">{t("bill.quoteNumber")} {inv.number}</span></div>}
+          {org?.invoiceNote && <p className="paper-note">{org.invoiceNote}</p>}
+          <footer className="paper-f"><div><span className="muted">{t("bill.issuedBy")}</span><div className="sign" /></div><div><span className="muted">{t("bill.receivedBy")}</span><div className="sign" /></div></footer>
+        </article>
+      </section>
       {confirmIssue && <ConfirmDialog title={t("confirm.issueTitle")} message={t("confirm.issueBody").replace("{n}", "1")} confirmLabel={t("bill.issueN")} onClose={() => setConfirmIssue(false)} onConfirm={async () => { await run(() => issue({ invoiceIds: [invoiceId] }), t("saved")); }} />}
       {confirmDiscard && <ConfirmDialog title={t("discard")} message={t("confirm.discardBody")} confirmLabel={t("discard")} danger onClose={() => setConfirmDiscard(false)} onConfirm={async () => { const ok = await run(() => discard({ invoiceId })); if (ok !== undefined) router.push("/billing"); }} />}
       {dlg && <AdjustDialog error={error} onClose={() => setDlg(false)} onSave={(delta, reason) => run(() => reqAdj({ invoiceId, delta, reason }))} />}
