@@ -286,3 +286,9 @@ fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; } legend {
 .search-clear:hover { background: var(--ds-color-neutral-surface-hover); color: var(--ink); }
 .search-clear:focus-visible { outline: 2px solid var(--ds-color-accent-border-default); }
 .search-key { position: absolute; inset-inline-end: 8px; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border: 1px solid var(--ds-color-neutral-border-default); border-radius: 5px; font: inherit; font-size: .75rem; color: var(--muted); background: var(--ds-color-neutral-background-tinted); pointer-events: none; }
+
+.recovery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.recovery li { padding: 8px 12px; border: 1px solid var(--ds-color-neutral-border-default); border-radius: 8px; background: var(--ds-color-neutral-background-tinted); text-align: center; }
+.recovery code, .secret { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; }
+.qr { background: #fff; border-radius: 8px; border: 1px solid var(--ds-color-neutral-border-default); padding: 4px; }
+.auth.wide-auth { max-width: 32rem; }

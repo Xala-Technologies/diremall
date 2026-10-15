@@ -194,6 +194,18 @@ export default defineSchema({
   // key/value configuration: tariffs (santim per unit), sms lead days, counters
   settings: defineTable({ key: v.string(), value: v.number() }).index("by_key", ["key"]),
 
+  // Two-step sign-in. A secret only counts once `enabled`; sessions are marked verified per sign-in.
+  mfaSecrets: defineTable({
+    userId: v.id("users"),
+    secret: v.string(),
+    enabled: v.boolean(),
+    lastStep: v.optional(v.number()), // a code can be used once
+    recovery: v.array(v.string()), // sha-256 of unused recovery codes
+    failures: v.number(),
+    lockedUntil: v.optional(v.number()),
+  }).index("by_user", ["userId"]),
+  mfaSessions: defineTable({ sessionId: v.string(), userId: v.id("users") }).index("by_session", ["sessionId"]).index("by_user", ["userId"]),
+
   bankStatementEntries: defineTable({
     importBatch: v.string(),
     postedAt: ts,

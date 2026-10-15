@@ -1,4 +1,4 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthSessionId, getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -10,12 +10,32 @@ export const fail = (code: string): never => {
   throw new ConvexError(code);
 };
 
-/** The signed-in, active staff member. Throws if signed out or deactivated. */
-export async function requireUser(ctx: Ctx): Promise<Doc<"users">> {
+/** Roles that must use two-step sign-in once the organisation turns the requirement on. */
+const PRIVILEGED: Role[] = ["approver", "financeOfficer", "accessAdmin", "superAdmin"];
+
+/** "verify": has 2FA but this sign-in is not verified yet. "setup": 2FA is required for the role but not set up. */
+export async function mfaState(ctx: Ctx, user: Doc<"users">): Promise<"ok" | "verify" | "setup"> {
+  const row = await ctx.db.query("mfaSecrets").withIndex("by_user", (q) => q.eq("userId", user._id)).unique();
+  if (row?.enabled) {
+    const sid = await getAuthSessionId(ctx);
+    const ok = sid ? await ctx.db.query("mfaSessions").withIndex("by_session", (q) => q.eq("sessionId", sid)).first() : null;
+    return ok ? "ok" : "verify";
+  }
+  const required = (await getSetting(ctx, "mfa.required", 0)) === 1;
+  return required && (user.roles ?? []).some((r) => PRIVILEGED.includes(r)) ? "setup" : "ok";
+}
+
+/** The signed-in, active staff member. Throws if signed out, deactivated, or the second step is pending. */
+export async function requireUser(ctx: Ctx, opts: { skipMfa?: boolean } = {}): Promise<Doc<"users">> {
   const id = await getAuthUserId(ctx);
   if (!id) return fail("unauthenticated");
   const user = await ctx.db.get(id);
   if (!user || !user.active) return fail("inactive");
+  if (!opts.skipMfa) {
+    const s = await mfaState(ctx, user);
+    if (s === "verify") return fail("mfa_required");
+    if (s === "setup") return fail("mfa_setup_required");
+  }
   return user;
 }
 

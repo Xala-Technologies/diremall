@@ -1,4 +1,5 @@
 "use client";
+import { MfaRequired, MfaVerify } from "@/components/Mfa";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useQuery } from "convex/react";
 import Link from "next/link";
@@ -54,6 +55,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (me === null) return (
     <div className="center"><div className="card auth"><Mark /><h1>{t("appName")}</h1><p className="muted">{t("pendingActivation")}</p><button className="btn" onClick={() => void signOut()}>{t("signOut")}</button></div></div>
   );
+  if (me.mfa === "verify") return <MfaVerify />;
+  if (me.mfa === "setup") return <MfaRequired />;
   const allowed = (i: Item) => !i.roles || me.roles.includes("superAdmin") || i.roles.some((r) => me.roles.includes(r as never));
   const initials = (me.name || me.email || "?").split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("");
 

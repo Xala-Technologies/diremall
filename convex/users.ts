@@ -1,14 +1,15 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { role } from "./schema";
-import { audit, fail, hasRole, requireRole, requireUser } from "./lib/access";
+import { audit, fail, hasRole, mfaState, requireRole, requireUser } from "./lib/access";
 
 export const me = query({
   args: {},
   handler: async (ctx) => {
     try {
-      const u = await requireUser(ctx);
-      return { _id: u._id, name: u.name ?? "", email: u.email ?? "", roles: u.roles ?? [], buildingScope: u.buildingScope ?? [], lang: u.lang ?? "en" };
+      const u = await requireUser(ctx, { skipMfa: true });
+      const mfa = await mfaState(ctx, u);
+      return { _id: u._id, name: u.name ?? "", email: u.email ?? "", roles: u.roles ?? [], buildingScope: u.buildingScope ?? [], lang: u.lang ?? "en", mfa };
     } catch {
       return null; // signed out, or account not yet activated
     }
