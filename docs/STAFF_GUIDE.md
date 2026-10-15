@@ -25,12 +25,20 @@ Language (English or Amharic), the Ethiopian or Gregorian calendar and light or 
 ## Property staff
 You look after buildings, units, renters and agreements.
 
-**Add a building and its units.** Buildings & units → *Add building*. Add floors, then units with area (m²), category and
-rate per m². To load many at once use **Import data** (a spreadsheet; the system checks every row first and imports
-nothing if any row is wrong).
+**Add a building and its units.** Buildings & units → *Add building*: name, city and sub-city, address, caretaker and
+phone, notes, and the floors (type them separated by commas, for example "Ground, 1st, 2nd"). Pick the building, then
+*Manage building* to correct its details, rename floors, add floors, and attach or view each **floor plan**. *Add unit*
+takes the floor, unit number, area (m²), category, rate per m², starting status (vacant or under maintenance) and notes.
+Every unit card has *Edit unit*; the area and rate of a leased unit are locked, because they change through an
+agreement term so issued bills never move. To load many units at once use **Import data** (a spreadsheet; the system
+checks every row first and imports nothing if any row is wrong).
 
-**Add a renter.** Renters → *Add renter*. Companies need a TIN. Attach the business licence and other papers on the
-renter's page. Documents are PDF, PNG, JPG or WebP, up to 15 MB.
+**Add a renter.** Renters → *Add renter*. A **company** needs a TIN (10 digits) and can have a business licence number,
+the licence expiry date (the renter's page warns when it is close or past), a VAT number and a legal representative. An
+**individual** needs an ID number or a TIN. Everyone needs a phone number; you can also record a contact person, a second
+phone, an email, an address and notes. Attach the licence, TIN certificate or ID copy while creating, or later on the
+renter's page. A TIN can belong to one renter only. Documents are PDF, PNG, JPG or WebP, up to 15 MB. To correct anything
+later open the renter and choose *Edit renter*.
 
 **Make an agreement.**
 1. Agreements → *New agreement*, or *New agreement* on a vacant unit's card. Choose the unit, renter, dates, rent

@@ -17,3 +17,9 @@ export { normalizePhone };
 export function failures(checks: Record<string, string | null>): Record<string, string> {
   return Object.fromEntries(Object.entries(checks).filter(([, m]) => m)) as Record<string, string>;
 }
+
+export const MAX_FILE_BYTES = 15 * 1024 * 1024;
+export const FILE_ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
+/** The same rule the server applies to uploads, checked first so people get the message before waiting on an upload. */
+export const fileProblem = (f: File | null | undefined, t: T) =>
+  !f ? null : f.size > MAX_FILE_BYTES ? t("v.file.size") : !FILE_ACCEPT.split(",").includes(f.type) ? t("v.file.type") : null;

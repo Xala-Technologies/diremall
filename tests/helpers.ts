@@ -29,7 +29,8 @@ export async function world() {
   const buildingId = await pm.mutation(api.properties.createBuilding, { name: "Dire Mall" });
   const floorId = await pm.mutation(api.properties.addFloor, { buildingId, label: "Ground" });
   const unit = (number: string, areaM2: number) => pm.mutation(api.properties.createUnit, { buildingId, floorId, number, areaM2, category: "retail", ratePerM2: etb(2300) });
-  const renter = (name: string) => pm.mutation(api.renters.create, { kind: "company", name, tin: "0012345", phone: "+251911000000" });
+  let tinSeq = 1000000000;
+  const renter = (name: string) => pm.mutation(api.renters.create, { kind: "company", name, tin: String(tinSeq++), phone: "+251911000000" });
 
   /** Draft → signed → review → approved agreement running Sep 2026 – Aug 2027. */
   async function activeAgreement(unitId: Id<"units">, renterId: Id<"renters">, rent: { kind: "perM2"; ratePerM2: number } | { kind: "fixed"; amount: number } = { kind: "perM2", ratePerM2: etb(2300) }) {

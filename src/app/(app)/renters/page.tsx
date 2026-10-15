@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateText, Empty, Field, Message, Modal, Money, PageHeader, SearchInput, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
+import { Card, DateField, DateText, Empty, Field, Message, Modal, Money, PageHeader, SearchInput, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Building2, User, Users } from "lucide-react";
@@ -11,7 +11,8 @@ import { downloadCsv } from "@/lib/csv";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
-import { email, failures, normalizePhone, phone, req, tin } from "@/lib/validate";
+import { FILE_ACCEPT, email, failures, fileProblem, normalizePhone, phone, req, tin } from "@/lib/validate";
+import { useToast } from "@/components/toast";
 import { useOpenFile } from "@/lib/useOpenFile";
 import { useUpload } from "@/lib/useUpload";
 
@@ -48,29 +49,68 @@ export default function Renters() {
   );
 }
 
-function RenterForm({ onClose }: { onClose: () => void }) {
-  const { t } = useI18n(); const create = useMutation(api.renters.create); const { run, error, busy } = useRun();
-  const [f, setF] = useState({ kind: "company" as "company" | "individual", name: "", tin: "", businessLicenseNo: "", phone: "", email: "", legalRepresentative: "" });
+type RenterDoc = { _id: Id<"renters">; kind: "company" | "individual"; name: string; tin?: string; phone: string; email?: string; businessLicenseNo?: string; legalRepresentative?: string; idNumber?: string; address?: string; contactPerson?: string; contactPhone?: string; vatNumber?: string; licenseExpiresAt?: number; notes?: string };
+
+/** Add a renter, or edit one. Companies and individuals are asked for different things. */
+function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => void }) {
+  const { t } = useI18n(); const create = useMutation(api.renters.create); const update = useMutation(api.renters.update); const addDoc = useMutation(api.renters.addDocument);
+  const upload = useUpload(); const toast = useToast(); const { run, error, busy } = useRun();
+  const [f, setF] = useState({ kind: renter?.kind ?? ("company" as "company" | "individual"), name: renter?.name ?? "", tin: renter?.tin ?? "", businessLicenseNo: renter?.businessLicenseNo ?? "", phone: renter?.phone ?? "", email: renter?.email ?? "",
+    legalRepresentative: renter?.legalRepresentative ?? "", idNumber: renter?.idNumber ?? "", address: renter?.address ?? "", contactPerson: renter?.contactPerson ?? "", contactPhone: renter?.contactPhone ?? "", vatNumber: renter?.vatNumber ?? "", notes: renter?.notes ?? "" });
+  const [expires, setExpires] = useState<number | null>(renter?.licenseExpiresAt ?? null);
+  const [files, setFiles] = useState<Record<string, File | null>>({ license: null, tin: null, id: null });
   const [errs, setErrs] = useState<Record<string, string>>({});
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => { setF({ ...f, [k]: e.target.value }); if (errs[k]) setErrs({ ...errs, [k]: "" }); };
+  const company = f.kind === "company";
+  const setFile = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0] ?? null; const p = fileProblem(file, t); setErrs({ ...errs, [`file_${k}`]: p ?? "" }); setFiles({ ...files, [k]: p ? null : file }); if (p) e.target.value = ""; };
+  const docSlots = company ? [["license", "renter.doc.license", "Business licence"], ["tin", "renter.doc.tin", "TIN certificate"]] as const : [["id", "renter.doc.id", "ID copy"]] as const;
   return (
-    <Modal title={t("renter.add")} onClose={onClose}>
+    <Modal title={renter ? `${t("renter.edit")}: ${renter.name}` : t("renter.add")} onClose={onClose}>
       <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
-        const found = failures({ name: req(f.name, t), phone: req(f.phone, t) ?? phone(f.phone, t), tin: f.kind === "company" ? (req(f.tin, t) ?? tin(f.tin, t)) : (f.tin.trim() ? tin(f.tin, t) : null), email: email(f.email, t) });
-        setErrs(found);
-        if (Object.keys(found).length) return;
-        const opt = (s: string) => (s.trim() ? s.trim() : undefined);
-        if (await run(() => create({ kind: f.kind, name: f.name.trim(), phone: normalizePhone(f.phone), tin: opt(f.tin)?.replace(/\s/g, ""), businessLicenseNo: opt(f.businessLicenseNo), email: opt(f.email), legalRepresentative: opt(f.legalRepresentative) }), t("saved"))) onClose();
+        const found = failures({
+          name: req(f.name, t), phone: req(f.phone, t) ?? phone(f.phone, t),
+          tin: company ? (req(f.tin, t) ?? tin(f.tin, t)) : (f.tin.trim() ? tin(f.tin, t) : (f.idNumber.trim() ? null : t("v.idOrTin"))),
+          idNumber: !company && !f.tin.trim() && !f.idNumber.trim() ? t("v.idOrTin") : null,
+          email: email(f.email, t), contactPhone: f.contactPhone.trim() ? phone(f.contactPhone, t) : null,
+          vatNumber: f.vatNumber.trim() && !/^\d{6,15}$/.test(f.vatNumber.replace(/\s/g, "")) ? t("v.vat") : null,
+        });
+        setErrs(found); if (Object.keys(found).length) return;
+        const text = { name: f.name.trim(), tin: f.tin.replace(/\s/g, ""), phone: normalizePhone(f.phone), email: f.email.trim(), businessLicenseNo: f.businessLicenseNo, legalRepresentative: f.legalRepresentative, idNumber: f.idNumber, address: f.address,
+          contactPerson: f.contactPerson, contactPhone: f.contactPhone.trim() ? normalizePhone(f.contactPhone) : "", vatNumber: f.vatNumber, notes: f.notes };
+        if (renter) { if ((await run(() => update({ renterId: renter._id, patch: { ...text, licenseExpiresAt: expires ?? 0 } }), t("saved"))) !== undefined) onClose(); return; }
+        const opt = <K extends keyof typeof text>(k: K) => (String(text[k]).trim() ? text[k] : undefined);
+        const id = await run(() => create({ kind: f.kind, name: text.name, phone: text.phone, tin: opt("tin"), email: opt("email"), businessLicenseNo: opt("businessLicenseNo"), legalRepresentative: opt("legalRepresentative"), idNumber: opt("idNumber"),
+          address: opt("address"), contactPerson: opt("contactPerson"), contactPhone: opt("contactPhone"), vatNumber: opt("vatNumber"), notes: opt("notes"), licenseExpiresAt: expires ?? undefined }), t("saved"));
+        if (!id) return;
+        // the renter exists now; attach what was chosen. A failed upload must not create the renter twice, so it only warns.
+        for (const [k, , kind] of docSlots) {
+          const file = files[k]; if (!file) continue;
+          try { await addDoc({ renterId: id, kind, fileId: await upload(file) }); } catch { toast(`${kind}: ${t("renter.docFailed")}`); }
+        }
+        onClose();
       }}>
-        <Field label={t("renter.kind")}><select value={f.kind} onChange={set("kind")}><option value="company">{t("company")}</option><option value="individual">{t("individual")}</option></select></Field>
+        <Field label={t("renter.kind")}><select value={f.kind} disabled={!!renter} onChange={set("kind")}><option value="company">{t("company")}</option><option value="individual">{t("individual")}</option></select></Field>
         <Field label={t("name")} error={errs.name}><input autoFocus value={f.name} onChange={set("name")} /></Field>
-        <Field label={t("renter.tin")} error={errs.tin} hint={f.kind === "company" ? undefined : t("optional")}><input inputMode="numeric" value={f.tin} onChange={set("tin")} /></Field>
-        <Field label={t("renter.license")}><input value={f.businessLicenseNo} onChange={set("businessLicenseNo")} /></Field>
+        {company ? <>
+          <Field label={t("renter.tin")} error={errs.tin}><input inputMode="numeric" value={f.tin} onChange={set("tin")} placeholder="0012345678" /></Field>
+          <Field label={t("renter.license")} hint={t("optional")}><input value={f.businessLicenseNo} onChange={set("businessLicenseNo")} /></Field>
+          <Field label={t("renter.licenseExpires")} hint={t("optional")}><div className="row"><DateField value={expires} onChange={setExpires} />{expires != null && <button type="button" className="btn ghost sm" onClick={() => setExpires(null)}>{t("clear")}</button>}</div></Field>
+          <Field label={t("renter.vat")} error={errs.vatNumber} hint={t("optional")}><input inputMode="numeric" value={f.vatNumber} onChange={set("vatNumber")} /></Field>
+          <Field label={t("renter.rep")} hint={t("optional")}><input value={f.legalRepresentative} onChange={set("legalRepresentative")} /></Field>
+        </> : <>
+          <Field label={t("renter.idNumber")} error={errs.idNumber} hint={t("renter.idHint")}><input value={f.idNumber} onChange={set("idNumber")} /></Field>
+          <Field label={t("renter.tin")} error={errs.tin} hint={t("optional")}><input inputMode="numeric" value={f.tin} onChange={set("tin")} /></Field>
+        </>}
         <Field label={t("renter.phone")} error={errs.phone}><input type="tel" value={f.phone} onChange={set("phone")} placeholder="0911 20 01 01" /></Field>
         <Field label={t("email")} error={errs.email} hint={t("optional")}><input type="email" value={f.email} onChange={set("email")} /></Field>
-        <Field label={t("renter.rep")} hint={t("optional")}><input value={f.legalRepresentative} onChange={set("legalRepresentative")} /></Field>
-        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
+        <Field label={t("renter.contactPerson")} hint={t("optional")}><input value={f.contactPerson} onChange={set("contactPerson")} /></Field>
+        <Field label={t("renter.contactPhone")} error={errs.contactPhone} hint={t("optional")}><input type="tel" value={f.contactPhone} onChange={set("contactPhone")} /></Field>
+        <div className="wide"><Field label={t("renter.address")} hint={t("optional")}><input value={f.address} onChange={set("address")} /></Field></div>
+        <div className="wide"><Field label={t("renter.notes")} hint={t("optional")}><textarea rows={2} value={f.notes} onChange={set("notes")} /></Field></div>
+        {!renter && <fieldset className="wide docs-now"><legend>{t("renter.attachNow")}</legend><p className="muted">{t("renter.attachHint")}</p>
+          {docSlots.map(([k, label]) => <Field key={k} label={t(label)} error={errs[`file_${k}`]}><input type="file" accept={FILE_ACCEPT} onChange={setFile(k)} /></Field>)}</fieldset>}
+        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{renter ? t("save") : t("create")}</button></div>
       </form>
     </Modal>
   );
@@ -82,11 +122,28 @@ function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void 
   const ledger = useQuery(api.reports.tenantLedger, { renterId: id });
   const credit = useQuery(api.payments.credit, { renterId: id });
   const add = useMutation(api.renters.addDocument); const upload = useUpload(); const { run, error, notice } = useRun();
-  const [kind, setKind] = useState("Business licence");
+  const [kind, setKind] = useState("Business licence"); const [editing, setEditing] = useState(false);
   return (
     <Modal title={data?.renter.name ?? t("loading")} onClose={onClose}>
       {data && <div className="stack">
-        <p className="muted">{t(data.renter.kind)} · {data.renter.phone}{data.renter.tin ? ` · TIN ${data.renter.tin}` : ""}</p>
+        <Card title={t("renter.details")} actions={can("propertyManager", "financeOfficer") ? <button className="btn sm" onClick={() => setEditing(true)}>{t("renter.edit")}</button> : undefined}>
+          <dl className="dl">
+            <div><dt>{t("renter.kind")}</dt><dd>{t(data.renter.kind)}</dd></div>
+            <div><dt>{t("renter.phone")}</dt><dd>{data.renter.phone}</dd></div>
+            {data.renter.email && <div><dt>{t("email")}</dt><dd>{data.renter.email}</dd></div>}
+            {data.renter.tin && <div><dt>{t("renter.tin")}</dt><dd className="num">{data.renter.tin}</dd></div>}
+            {data.renter.idNumber && <div><dt>{t("renter.idNumber")}</dt><dd>{data.renter.idNumber}</dd></div>}
+            {data.renter.businessLicenseNo && <div><dt>{t("renter.license")}</dt><dd>{data.renter.businessLicenseNo}</dd></div>}
+            {data.renter.licenseExpiresAt != null && <div><dt>{t("renter.licenseExpires")}</dt><dd><DateText ms={data.renter.licenseExpiresAt} />{" "}
+              {data.renter.licenseExpiresAt < Date.now() ? <Badge tone="bad">{t("renter.licenseExpired")}</Badge> : data.renter.licenseExpiresAt < Date.now() + 60 * 86400000 ? <Badge tone="warn">{t("renter.licenseSoon")}</Badge> : null}</dd></div>}
+            {data.renter.vatNumber && <div><dt>{t("renter.vat")}</dt><dd className="num">{data.renter.vatNumber}</dd></div>}
+            {data.renter.legalRepresentative && <div><dt>{t("renter.rep")}</dt><dd>{data.renter.legalRepresentative}</dd></div>}
+            {data.renter.contactPerson && <div><dt>{t("renter.contactPerson")}</dt><dd>{data.renter.contactPerson}{data.renter.contactPhone ? ` · ${data.renter.contactPhone}` : ""}</dd></div>}
+            {data.renter.address && <div><dt>{t("renter.address")}</dt><dd>{data.renter.address}</dd></div>}
+            {data.renter.notes && <div><dt>{t("renter.notes")}</dt><dd>{data.renter.notes}</dd></div>}
+          </dl>
+        </Card>
+        {editing && <RenterForm renter={data.renter as RenterDoc} onClose={() => setEditing(false)} />}
         <Card title={t("renter.documents")}>
           <ul style={{ margin: 0, paddingLeft: 18 }}>{data.documents.map((d) => <li key={d._id}><button type="button" className="linklike" onClick={() => void openFile("renterDoc", d._id)}>{d.kind}</button></li>)}</ul>
           {can("propertyManager", "financeOfficer") && <div className="row" style={{ marginTop: 10 }}>

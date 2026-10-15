@@ -11,13 +11,15 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
-import { failures, nonNegative, req } from "@/lib/validate";
+import { FILE_ACCEPT, failures, fileProblem, nonNegative, phone, req } from "@/lib/validate";
+import { useOpenFile } from "@/lib/useOpenFile";
+import { useUpload } from "@/lib/useUpload";
 
 export default function Properties() {
   const { t } = useI18n();
   const { can } = useMe();
   const [building, setBuilding] = useState("");
-  const [modal, setModal] = useState<null | "building" | "floor" | "unit">(null);
+  const [modal, setModal] = useState<null | "building" | "manage" | "unit">(null); const [editUnit, setEditUnit] = useState<UnitRow | null>(null);
   const [view, setViewState] = useState<"grid" | "table">("grid"); const router = useRouter();
   useEffect(() => { try { if (localStorage.getItem("unitView") === "table") setViewState("table"); } catch {} }, []);
   const setView = (v: "grid" | "table") => { setViewState(v); try { localStorage.setItem("unitView", v); } catch {} };
@@ -60,7 +62,7 @@ export default function Properties() {
         </>}
         actions={can("propertyManager") ? <>
           <button className="btn" onClick={() => setModal("building")}>{t("prop.addBuilding")}</button>
-          {building && <button className="btn" onClick={() => setModal("floor")}>{t("prop.addFloor")}</button>}
+          {building && <button className="btn" onClick={() => setModal("manage")}>{t("prop.manage")}</button>}
           {building && <button className="btn primary" onClick={() => setModal("unit")}>{t("prop.addUnit")}</button>}
         </> : undefined} />
       <Message error={error} />
@@ -78,10 +80,11 @@ export default function Properties() {
                   <div className="tile-r">{u.renterName || <span className="muted">—</span>}</div>
                   {"reservedFrom" in u && u.reservedFrom && <div className="tile-m"><Badge tone="info">{t("ag.reservedFrom")} <DateText ms={u.reservedFrom} /></Badge></div>}
                   <div className="tile-m"><span>{t(u.category)}</span><span>·</span><span className="num">{u.areaM2} m²</span><span>·</span><span className="num">{(u.ratePerM2 / 100).toLocaleString()} /m²</span></div>
-                  {can("propertyManager") && u.status !== "occupied" && (
+                  {can("propertyManager") && (
                     <div className="row" onClick={(e) => e.stopPropagation()}>
                       {u.status === "vacant" && !("reservedFrom" in u && u.reservedFrom) && <button className="btn sm primary" onClick={() => router.push(`/agreements?new=${u._id}`)}>{t("ag.new")}</button>}
-                      <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>{u.status === "vacant" ? t("maintenance") : t("vacant")}</button>
+                      {u.status !== "occupied" && <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>{u.status === "vacant" ? t("maintenance") : t("vacant")}</button>}
+                      <button className="btn sm" onClick={() => setEditUnit(u as UnitRow)}>{t("prop.editUnit")}</button>
                     </div>)}
                 </div>
               );
@@ -97,74 +100,144 @@ export default function Properties() {
           { head: t("prop.area"), cell: (u) => u.areaM2, right: true, sort: (u) => u.areaM2 },
           { head: t("prop.rate"), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
           { head: t("status"), cell: (u) => <StatusBadge status={u.status} />, sort: (u) => u.status },
-          { head: "", cell: (u) => can("propertyManager") && u.status !== "occupied" ? (
-            <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>
-              {u.status === "vacant" ? t("maintenance") : t("vacant")}</button>) : null },
+          { head: "", cell: (u) => can("propertyManager") ? (
+            <div className="row">
+              {u.status !== "occupied" && <button className="btn sm" onClick={() => void run(() => setAvail({ unitId: u._id, status: u.status === "vacant" ? "maintenance" : "vacant" }))}>{u.status === "vacant" ? t("maintenance") : t("vacant")}</button>}
+              <button className="btn sm" onClick={() => setEditUnit(u as UnitRow)}>{t("prop.editUnit")}</button>
+            </div>) : null },
         ]} />
       </Card>
       )}
-      {modal === "building" && <BuildingForm onClose={() => setModal(null)} />}
-      {modal === "floor" && building && <FloorForm buildingId={building as Id<"buildings">} onClose={() => setModal(null)} />}
-      {modal === "unit" && building && floors && <UnitForm buildingId={building as Id<"buildings">} floors={floors} onClose={() => setModal(null)} />}
+      {modal === "building" && <BuildingForm onClose={() => setModal(null)} onCreated={(id) => changeBuilding(id)} />}
+      {modal === "manage" && building && buildings?.find((b) => b._id === building) && <BuildingManage building={buildings.find((b) => b._id === building)!} onClose={() => setModal(null)} />}
+      {modal === "unit" && building && <UnitForm buildingId={building as Id<"buildings">} onClose={() => setModal(null)} />}
+      {editUnit && <UnitForm buildingId={editUnit.buildingId} unit={editUnit} onClose={() => setEditUnit(null)} />}
     </div>
   );
 }
 
-function BuildingForm({ onClose }: { onClose: () => void }) {
+type BuildingDoc = { _id: Id<"buildings">; name: string; address?: string; city?: string; subCity?: string; contactName?: string; contactPhone?: string; notes?: string };
+const draftOf = (b?: BuildingDoc) => ({ name: b?.name ?? "", address: b?.address ?? "", city: b?.city ?? "Dire Dawa", subCity: b?.subCity ?? "", contactName: b?.contactName ?? "", contactPhone: b?.contactPhone ?? "", notes: b?.notes ?? "" });
+type Draft = ReturnType<typeof draftOf>;
+
+function BuildingFields({ f, set, errs }: { f: Draft; set: (k: keyof Draft) => (e: { target: { value: string } }) => void; errs: Record<string, string> }) {
+  const { t } = useI18n();
+  return (<>
+    <Field label={t("name")} error={errs.name}><input autoFocus value={f.name} onChange={set("name")} /></Field>
+    <Field label={t("prop.city")} hint={t("optional")}><input value={f.city} onChange={set("city")} /></Field>
+    <Field label={t("prop.subCity")} hint={t("optional")}><input value={f.subCity} onChange={set("subCity")} /></Field>
+    <Field label={t("prop.address")} hint={t("optional")}><input value={f.address} onChange={set("address")} /></Field>
+    <Field label={t("prop.contactName")} hint={t("optional")}><input value={f.contactName} onChange={set("contactName")} /></Field>
+    <Field label={t("prop.contactPhone")} error={errs.contactPhone} hint={t("optional")}><input type="tel" value={f.contactPhone} onChange={set("contactPhone")} placeholder="0911 20 01 01" /></Field>
+    <div className="wide"><Field label={t("prop.notes")} hint={t("optional")}><textarea rows={2} value={f.notes} onChange={set("notes")} /></Field></div>
+  </>);
+}
+const checkBuilding = (f: Draft, t: (k: string) => string) => failures({ name: req(f.name, t), contactPhone: f.contactPhone.trim() ? phone(f.contactPhone, t) : null });
+const buildingArgs = (f: Draft) => ({ name: f.name.trim(), address: f.address, city: f.city, subCity: f.subCity, contactName: f.contactName, contactPhone: f.contactPhone, notes: f.notes });
+
+function BuildingForm({ onClose, onCreated }: { onClose: () => void; onCreated: (id: Id<"buildings">) => void }) {
   const { t } = useI18n(); const create = useMutation(api.properties.createBuilding); const { run, error, busy } = useRun();
-  const [name, setName] = useState(""); const [address, setAddress] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
+  const [f, setF] = useState(draftOf()); const [floors, setFloors] = useState("Ground"); const [errs, setErrs] = useState<Record<string, string>>({});
+  const set = (k: keyof Draft) => (e: { target: { value: string } }) => { setF({ ...f, [k]: e.target.value }); if (errs[k]) setErrs({ ...errs, [k]: "" }); };
   return (
     <Modal title={t("prop.addBuilding")} onClose={onClose}>
       <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
-        const found = failures({ name: req(name, t) }); setErrs(found); if (Object.keys(found).length) return;
-        if (await run(() => create({ name: name.trim(), address: address.trim() || undefined }), t("saved"))) onClose();
+        const found = checkBuilding(f, t); setErrs(found); if (Object.keys(found).length) return;
+        const id = await run(() => create({ ...buildingArgs(f), floors: floors.split(",").map((x) => x.trim()).filter(Boolean) }), t("saved"));
+        if (id) { onCreated(id); onClose(); }
       }}>
-        <Field label={t("name")} error={errs.name}><input autoFocus value={name} onChange={(e) => { setName(e.target.value); setErrs({}); }} /></Field>
-        <Field label={t("prop.address")} hint={t("optional")}><input value={address} onChange={(e) => setAddress(e.target.value)} /></Field>
+        <BuildingFields f={f} set={set} errs={errs} />
+        <div className="wide"><Field label={t("prop.floorsList")} hint={t("prop.floorsHint")}><input value={floors} onChange={(e) => setFloors(e.target.value)} placeholder="Ground, 1st, 2nd" /></Field></div>
         <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
       </form>
     </Modal>
   );
 }
 
-function FloorForm({ buildingId, onClose }: { buildingId: Id<"buildings">; onClose: () => void }) {
-  const { t } = useI18n(); const add = useMutation(api.properties.addFloor); const { run, error, busy } = useRun();
-  const [label, setLabel] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
+/** Edit a building's details and look after its floors and floor plans in one place. */
+function BuildingManage({ building, onClose }: { building: BuildingDoc; onClose: () => void }) {
+  const { t } = useI18n(); const update = useMutation(api.properties.updateBuilding); const addFloor = useMutation(api.properties.addFloor); const updateFloor = useMutation(api.properties.updateFloor);
+  const floors = useQuery(api.properties.listFloors, { buildingId: building._id }); const upload = useUpload(); const openFile = useOpenFile();
+  const { run, error, busy } = useRun(); const floorRun = useRun();
+  const [f, setF] = useState(draftOf(building)); const [errs, setErrs] = useState<Record<string, string>>({});
+  const [newLabel, setNewLabel] = useState(""); const [newPlan, setNewPlan] = useState<File | null>(null); const [fileErr, setFileErr] = useState<string | null>(null);
+  const set = (k: keyof Draft) => (e: { target: { value: string } }) => { setF({ ...f, [k]: e.target.value }); if (errs[k]) setErrs({ ...errs, [k]: "" }); };
+  const pick = (file: File | undefined, then: (f: File) => void) => { const p = fileProblem(file, t); setFileErr(p); if (file && !p) then(file); };
   return (
-    <Modal title={t("prop.addFloor")} onClose={onClose}>
-      <form className="form" noValidate onSubmit={async (e) => {
-        e.preventDefault();
-        const found = failures({ label: req(label, t) }); setErrs(found); if (Object.keys(found).length) return;
-        if (await run(() => add({ buildingId, label: label.trim() }), t("saved"))) onClose();
-      }}>
-        <Field label={t("prop.floor")} error={errs.label}><input autoFocus value={label} onChange={(e) => { setLabel(e.target.value); setErrs({}); }} placeholder="Ground, 1st, 2nd…" /></Field>
-        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
-      </form>
+    <Modal title={`${t("prop.manageTitle")}: ${building.name}`} onClose={onClose}>
+      <div className="stack">
+        <form className="form" noValidate onSubmit={async (e) => {
+          e.preventDefault();
+          const found = checkBuilding(f, t); setErrs(found); if (Object.keys(found).length) return;
+          await run(() => update({ buildingId: building._id, ...buildingArgs(f) }), t("saved"));
+        }}>
+          <div className="wide"><h3 className="section-h">{t("prop.details")}</h3></div>
+          <BuildingFields f={f} set={set} errs={errs} />
+          <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("save")}</button></div>
+        </form>
+        <section>
+          <h3 className="section-h">{t("prop.floorsTitle")}</h3>
+          {!floors ? <Skeleton lines={2} /> : (
+            <ul className="floor-list">
+              {floors.map((fl) => (
+                <li key={fl._id}>
+                  <input defaultValue={fl.label} aria-label={t("prop.floor")} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== fl.label) void floorRun.run(() => updateFloor({ floorId: fl._id, label: v }), t("saved")); else e.target.value = fl.label; }} />
+                  <span className="muted floor-plan">{fl.hasPlan ? t("prop.floorPlan") : t("prop.noPlan")}</span>
+                  {fl.hasPlan && <button type="button" className="btn sm" onClick={() => void openFile("plan", fl._id)}>{t("prop.viewPlan")}</button>}
+                  <label className="btn sm">{fl.hasPlan ? t("prop.replacePlan") : t("prop.attachPlan")}
+                    <input type="file" hidden accept={FILE_ACCEPT} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; pick(file, (x) => void floorRun.run(async () => updateFloor({ floorId: fl._id, planFileId: await upload(x) }), t("saved"))); }} /></label>
+                </li>))}
+            </ul>)}
+          <form className="floor-add" onSubmit={async (e) => {
+            e.preventDefault(); if (!newLabel.trim()) return;
+            const ok = await floorRun.run(async () => addFloor({ buildingId: building._id, label: newLabel.trim(), planFileId: newPlan ? await upload(newPlan) : undefined }), t("saved"));
+            if (ok) { setNewLabel(""); setNewPlan(null); }
+          }}>
+            <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("prop.newFloor")} aria-label={t("prop.newFloor")} />
+            <label className="btn sm">{newPlan ? newPlan.name : t("prop.attachPlan")}<input type="file" hidden accept={FILE_ACCEPT} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; pick(file, setNewPlan); }} /></label>
+            <button className="btn primary sm" disabled={!newLabel.trim() || floorRun.busy}>{t("prop.addFloor")}</button>
+          </form>
+          <Message error={fileErr ?? floorRun.error} />
+        </section>
+      </div>
     </Modal>
   );
 }
 
-function UnitForm({ buildingId, floors, onClose }: { buildingId: Id<"buildings">; floors: { _id: Id<"floors">; label: string }[]; onClose: () => void }) {
-  const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const { run, error, busy } = useRun();
-  const [floorId, setFloorId] = useState(floors[0]?._id ?? ""); const [number, setNumber] = useState(""); const [area, setArea] = useState("");
-  const [category, setCategory] = useState<"office" | "retail" | "storage" | "residential">("retail"); const [rate, setRate] = useState<number | null>(null);
+type UnitRow = { _id: Id<"units">; buildingId: Id<"buildings">; floorId: Id<"floors">; number: string; areaM2: number; category: "office" | "retail" | "storage" | "residential"; ratePerM2: number; status: "vacant" | "occupied" | "maintenance"; notes?: string };
+
+/** Add a unit, or edit one. A leased unit's area and rate are locked: those change through an agreement term. */
+function UnitForm({ buildingId, unit, onClose }: { buildingId: Id<"buildings">; unit?: UnitRow; onClose: () => void }) {
+  const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const update = useMutation(api.properties.updateUnit); const { run, error, busy } = useRun();
+  const floors = useQuery(api.properties.listFloors, { buildingId });
+  const [floorId, setFloorId] = useState<string>(unit?.floorId ?? ""); const [number, setNumber] = useState(unit?.number ?? ""); const [area, setArea] = useState(unit ? String(unit.areaM2) : "");
+  const [category, setCategory] = useState<UnitRow["category"]>(unit?.category ?? "retail"); const [rate, setRate] = useState<number | null>(unit ? unit.ratePerM2 : null);
+  const [status, setStatus] = useState<"vacant" | "maintenance">("vacant"); const [notes, setNotes] = useState(unit?.notes ?? "");
   const [errs, setErrs] = useState<Record<string, string>>({});
   const clear = (k: string) => errs[k] && setErrs({ ...errs, [k]: "" });
+  const locked = unit?.status === "occupied";
+  const chosenFloor = floorId || floors?.[0]?._id || "";
   return (
-    <Modal title={t("prop.addUnit")} onClose={onClose}>
+    <Modal title={unit ? `${t("prop.editUnit")}: ${unit.number}` : t("prop.addUnit")} onClose={onClose}>
       <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
-        const found = failures({ floor: floorId ? null : t("v.pick"), number: req(number, t), area: Number(area) > 0 ? null : t("v.positive"), rate: nonNegative(rate, t) });
+        const found = failures({ floor: chosenFloor ? null : t("v.pick"), number: req(number, t), area: Number(area) > 0 ? null : t("v.positive"), rate: nonNegative(rate, t) });
         setErrs(found); if (Object.keys(found).length) return;
-        if (await run(() => create({ buildingId, floorId: floorId as Id<"floors">, number: number.trim(), areaM2: Number(area), category, ratePerM2: rate! }), t("saved"))) onClose();
+        const ok = unit
+          ? await run(() => update({ unitId: unit._id, number: number.trim(), floorId: chosenFloor as Id<"floors">, notes, category, ...(locked ? {} : { areaM2: Number(area), ratePerM2: rate! }) }), t("saved"))
+          : await run(() => create({ buildingId, floorId: chosenFloor as Id<"floors">, number: number.trim(), areaM2: Number(area), category, ratePerM2: rate!, notes, status }), t("saved"));
+        if (ok !== undefined) onClose();
       }}>
-        <Field label={t("prop.floor")} error={errs.floor}><select value={floorId} onChange={(e) => { setFloorId(e.target.value as Id<"floors">); clear("floor"); }}>{floors.length === 0 && <option value="">—</option>}{floors.map((f) => <option key={f._id} value={f._id}>{f.label}</option>)}</select></Field>
+        <Field label={t("prop.floor")} error={errs.floor}><select value={chosenFloor} onChange={(e) => { setFloorId(e.target.value); clear("floor"); }}>{(floors?.length ?? 0) === 0 && <option value="">—</option>}{floors?.map((f) => <option key={f._id} value={f._id}>{f.label}</option>)}</select></Field>
         <Field label={t("prop.unitNumber")} error={errs.number}><input autoFocus value={number} onChange={(e) => { setNumber(e.target.value); clear("number"); }} /></Field>
-        <Field label={t("prop.area")} error={errs.area}><input inputMode="decimal" value={area} onChange={(e) => { setArea(e.target.value); clear("area"); }} /></Field>
-        <Field label={t("prop.category")}><select value={category} onChange={(e) => setCategory(e.target.value as typeof category)}>{(["office", "retail", "storage", "residential"] as const).map((c) => <option key={c} value={c}>{t(c)}</option>)}</select></Field>
-        <Field label={t("prop.rate")} error={errs.rate}><MoneyInput value={rate} onChange={(v) => { setRate(v); clear("rate"); }} /></Field>
-        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("create")}</button></div>
+        <Field label={t("prop.area")} error={errs.area}><input inputMode="decimal" value={area} disabled={locked} onChange={(e) => { setArea(e.target.value); clear("area"); }} /></Field>
+        <Field label={t("prop.category")}><select value={category} onChange={(e) => setCategory(e.target.value as UnitRow["category"])}>{(["office", "retail", "storage", "residential"] as const).map((c) => <option key={c} value={c}>{t(c)}</option>)}</select></Field>
+        <Field label={t("prop.rate")} error={errs.rate}><MoneyInput value={rate} onChange={(v) => { if (!locked) { setRate(v); clear("rate"); } }} /></Field>
+        {!unit && <Field label={t("prop.unitStatus")}><select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}><option value="vacant">{t("vacant")}</option><option value="maintenance">{t("maintenance")}</option></select></Field>}
+        {locked && <p className="muted wide">{t("prop.rateLocked")}</p>}
+        <div className="wide"><Field label={t("prop.unitNotes")} hint={t("optional")}><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field></div>
+        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{unit ? t("save") : t("create")}</button></div>
       </form>
     </Modal>
   );

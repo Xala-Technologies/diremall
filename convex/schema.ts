@@ -36,7 +36,10 @@ export default defineSchema({
     inviteCode: v.optional(v.string()), // only present for a moment during sign-up; removed as soon as it is checked
   }).index("email", ["email"]),
 
-  buildings: defineTable({ name: v.string(), address: v.optional(v.string()) }),
+  buildings: defineTable({
+    name: v.string(), address: v.optional(v.string()), city: v.optional(v.string()), subCity: v.optional(v.string()),
+    contactName: v.optional(v.string()), contactPhone: v.optional(v.string()), notes: v.optional(v.string()),
+  }),
   floors: defineTable({ buildingId: v.id("buildings"), label: v.string(), planFileId: v.optional(v.id("_storage")) })
     .index("by_building", ["buildingId"]),
 
@@ -48,6 +51,7 @@ export default defineSchema({
     category: v.union(v.literal("office"), v.literal("retail"), v.literal("storage"), v.literal("residential")),
     ratePerM2: money,
     status: v.union(v.literal("vacant"), v.literal("occupied"), v.literal("maintenance")),
+    notes: v.optional(v.string()),
   }).index("by_building", ["buildingId"]).index("by_building_number", ["buildingId", "number"]),
 
   renters: defineTable({
@@ -58,6 +62,13 @@ export default defineSchema({
     phone: v.string(),
     email: v.optional(v.string()),
     legalRepresentative: v.optional(v.string()),
+    idNumber: v.optional(v.string()), // national ID, Kebele ID or passport (individuals)
+    address: v.optional(v.string()),
+    contactPerson: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    licenseExpiresAt: v.optional(ts),
+    notes: v.optional(v.string()),
   }).index("by_name", ["name"]).index("by_tin", ["tin"]),
   renterDocuments: defineTable({
     renterId: v.id("renters"),
