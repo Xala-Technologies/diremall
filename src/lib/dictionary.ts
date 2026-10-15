@@ -174,6 +174,7 @@ export const EN: Record<string, string> = {
   "ag.rentNow": "Rent today", "ag.nextIncrease": "Next increase", "ag.preparedBy": "Prepared by", "ag.approvedBy": "Approved by", "ag.source": "Source", "ag.imported": "Brought in from the old records", "ag.endedEarly": "Ended early because",
   "ag.depositOwed": "The renter still owes {x} on this lease. Request a deduction for it before refunding the deposit.",
   "ag.endingSoon": "Ending in 60 days", "ag.rentMonth": "Rent / month",
+  ready: "Ready", waiting: "Waiting", missing: "Missing", "util.kpi.meters": "Meters", "util.kpi.ready": "Ready to bill", "util.kpi.readySub": "approved reading this month", "util.kpi.waiting": "Waiting for approval", "util.kpi.missing": "No reading this month", "util.kpi.missingSub": "these will not be charged", "util.noMeter": "{n} occupied units have no meter", "util.register": "Meters this month", "util.noMeters": "No meters yet. Use Enter reading, pick a unit, and add its meter.", "util.meter": "Meter", "util.prev": "Previous", "util.thisMonth": "This month", "util.usage": "Usage", "util.charge": "Charge", "util.enter": "Enter reading", "util.waitingTitle": "Readings waiting for review", "util.lastReading": "Last reading", "util.firstReading": "This is the first reading for this meter.", "util.lowWarn": "This is lower than the last reading ({v}). It will go to an approver unless this is a meter reset.", "util.serial": "Meter serial number", "util.history": "Readings", "util.noReadings": "No readings yet.", "util.resetShort": "reset", "util.split": "How it was split", "util.splitHint": "Split by area. The share of vacant units is carried by the owner and is not billed to anyone.", "util.unitShare": "Share", "util.allocated": "Billed to units", "util.sharedHint": "Generator fuel, security and cleaning for the whole building, split across the units by area. An approver must approve each cost before it appears on bills.", "util.noShared": "No shared costs for this month yet.", "util.pickBuilding": "Choose a building to see its shared costs.",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -326,6 +327,12 @@ export const AM: Record<string, string> = {
   "ag.rentNow": "የዛሬ ኪራይ", "ag.nextIncrease": "ቀጣይ ጭማሪ", "ag.preparedBy": "ያዘጋጀው", "ag.approvedBy": "ያጸደቀው", "ag.source": "ምንጭ", "ag.imported": "ከቀድሞ መዛግብት የገባ", "ag.endedEarly": "ቀድሞ ያበቃበት ምክንያት",
   "ag.depositOwed": "ተከራዩ በዚህ ውል አሁንም {x} ዕዳ አለበት። ዋስትናውን ከመመለስዎ በፊት ለዚህ ተቀናሽ ይጠይቁ።",
   "ag.endingSoon": "በ60 ቀን ውስጥ የሚያበቃ", "ag.rentMonth": "ኪራይ / ወር",
+  ready: "ዝግጁ", waiting: "በመጠበቅ ላይ", missing: "የጎደለ",
+  "util.kpi.meters": "ቆጣሪዎች", "util.kpi.ready": "ለደረሰኝ ዝግጁ", "util.kpi.readySub": "በዚህ ወር የጸደቀ ንባብ", "util.kpi.waiting": "ማጽደቅ የሚጠብቁ", "util.kpi.missing": "በዚህ ወር ንባብ የሌለው", "util.kpi.missingSub": "እነዚህ አይሰበሰቡም",
+  "util.noMeter": "{n} የተያዙ ክፍሎች ቆጣሪ የላቸውም", "util.register": "በዚህ ወር ያሉ ቆጣሪዎች", "util.noMeters": "እስካሁን ቆጣሪ የለም። «ንባብ አስገባ»ን ይጠቀሙ፣ ክፍል ይምረጡና ቆጣሪውን ያክሉ።", "util.meter": "ቆጣሪ", "util.prev": "ያለፈው", "util.thisMonth": "በዚህ ወር", "util.usage": "አጠቃቀም", "util.charge": "ክፍያ",
+  "util.enter": "ንባብ አስገባ", "util.waitingTitle": "ግምገማ የሚጠብቁ ንባቦች", "util.lastReading": "የመጨረሻ ንባብ", "util.firstReading": "ይህ የዚህ ቆጣሪ የመጀመሪያ ንባብ ነው።", "util.lowWarn": "ይህ ከመጨረሻው ንባብ ({v}) ያንሳል። ቆጣሪ ዳግም ማስጀመር ካልሆነ ወደ አጽዳቂ ይሄዳል።", "util.serial": "የቆጣሪ መለያ ቁጥር",
+  "util.history": "ንባቦች", "util.noReadings": "እስካሁን ንባብ የለም።", "util.resetShort": "ዳግም ተጀምሯል", "util.split": "እንዴት እንደተከፈለ", "util.splitHint": "በስፋት ተከፍሏል። የባዶ ክፍሎች ድርሻ በባለቤቱ ይሸፈናል፣ ለማንም አይከፈልም።", "util.unitShare": "ድርሻ", "util.allocated": "ለክፍሎች የተከፈለ",
+  "util.sharedHint": "የመላው ሕንፃ የጄነሬተር ነዳጅ፣ ጥበቃና ጽዳት፣ በስፋት ለክፍሎች ይከፈላል። እያንዳንዱ ወጪ በደረሰኝ ላይ ከመታየቱ በፊት በአጽዳቂ መጽደቅ አለበት።", "util.noShared": "ለዚህ ወር እስካሁን የጋራ ወጪ የለም።", "util.pickBuilding": "የጋራ ወጪዎቹን ለማየት ሕንፃ ይምረጡ።",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

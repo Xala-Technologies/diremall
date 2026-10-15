@@ -1,6 +1,9 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
-import { READ_ROLES, assertBuilding, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
+import { READ_ROLES, assertBuilding, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, requireRole } from "./lib/access";
+import { activeAgreementsByUnit, renterMap, unitMap } from "./lib/bulk";
+import { periodRange } from "./lib/period";
 import { allocateSharedCost } from "./lib/billing";
 import { assertUnitVisible } from "./lib/scope";
 
@@ -155,5 +158,52 @@ export const sharedCosts = query({
     assertBuilding(u, buildingId);
     const rows = await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => (period ? q.eq("buildingId", buildingId).eq("period", period) : q.eq("buildingId", buildingId))).collect();
     return Promise.all(rows.map(async (c) => ({ ...c, allocations: await ctx.db.query("sharedCostAllocations").withIndex("by_cost", (q) => q.eq("sharedCostId", c._id)).collect() })));
+  },
+});
+
+/**
+ * Every meter with its readings for one month, mirroring what billing will do: only APPROVED readings dated in the month
+ * count, and usage is the step from the last approved reading before the month. So "ready" here means "will be billed".
+ */
+export const register = query({
+  args: { period: v.string(), buildingId: v.optional(v.id("buildings")) },
+  handler: async (ctx, { period, buildingId }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    assertPeriod(period);
+    if (buildingId) assertBuilding(u, buildingId);
+    const { start, end } = periodRange(period);
+    const [units, renters, leases, meters] = await Promise.all([unitMap(ctx), renterMap(ctx), activeAgreementsByUnit(ctx), ctx.db.query("meters").collect()]);
+    const tariff = { electricity: await getSetting(ctx, "tariff.electricity", 600), water: await getSetting(ctx, "tariff.water", 0) };
+    const now = Date.now();
+    const rows: {
+      meterId: Id<"meters">; unitId: Id<"units">; buildingId: Id<"buildings">; unitNumber: string; renterName: string; kind: "water" | "electricity"; serial: string;
+      previous: number | null; previousAt: number | null; latest: number | null; latestAt: number | null; usage: number | null; charge: number | null; status: "ready" | "waiting" | "flagged" | "missing";
+    }[] = [];
+    const metered = new Set<Id<"units">>();
+    for (const m of meters) {
+      const unit = units.get(m.unitId);
+      if (!unit || !canSeeBuilding(u, unit.buildingId) || (buildingId && unit.buildingId !== buildingId)) continue;
+      metered.add(unit._id);
+      const readings = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", m._id)).collect()).sort((a, b) => a.readAt - b.readAt);
+      const approved = readings.filter((r) => r.status === "approved");
+      const inPeriod = approved.filter((r) => r.readAt >= start && r.readAt < end);
+      const before = approved.filter((r) => r.readAt < start).at(-1);
+      let usage = 0;
+      if (inPeriod.length > 0) { const seq = before ? [before, ...inPeriod] : inPeriod; for (let i = 1; i < seq.length; i++) if (!seq[i]!.isReset) usage += seq[i]!.value - seq[i - 1]!.value; }
+      const waiting = readings.filter((r) => r.status !== "approved" && r.readAt >= start && r.readAt < end);
+      const status = inPeriod.length > 0 ? "ready" : waiting.length > 0 ? (waiting.some((r) => r.status === "flagged") ? "flagged" : "waiting") : "missing";
+      const rate = m.kind === "electricity" ? tariff.electricity : tariff.water;
+      const lease = (leases.get(unit._id) ?? []).find((a) => a.startsAt <= now && a.endsAt > now);
+      rows.push({
+        meterId: m._id, unitId: unit._id, buildingId: unit.buildingId, unitNumber: unit.number, renterName: lease ? renters.get(lease.renterId)?.name ?? "" : "", kind: m.kind, serial: m.serial,
+        previous: before?.value ?? null, previousAt: before?.readAt ?? null, latest: inPeriod.at(-1)?.value ?? null, latestAt: inPeriod.at(-1)?.readAt ?? null,
+        usage: inPeriod.length > 0 ? usage : null, charge: inPeriod.length > 0 && rate > 0 && usage > 0 ? Math.round(usage * rate) : null, status,
+      });
+    }
+    rows.sort((a, b) => a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true }) || a.kind.localeCompare(b.kind));
+    const count = (s: string) => rows.filter((r) => r.status === s).length;
+    // occupied units with no meter at all: worth knowing before billing day
+    const withoutMeter = [...units.values()].filter((x) => canSeeBuilding(u, x.buildingId) && (!buildingId || x.buildingId === buildingId) && x.status === "occupied" && !metered.has(x._id)).length;
+    return { rows, tariff, summary: { meters: rows.length, ready: count("ready"), waiting: count("waiting") + count("flagged"), missing: count("missing"), withoutMeter } };
   },
 });

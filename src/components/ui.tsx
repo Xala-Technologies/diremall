@@ -28,7 +28,7 @@ export function Badge({ tone, children }: { tone?: "good" | "warn" | "bad" | "in
 }
 
 export const statusTone = (s: string) =>
-  (({ matched: "good", toMatch: "warn", ignored: "muted", active: "good", paid: "good", approved: "good", applied: "good", delivered: "good", occupied: "info", issued: "info", confirmed: "info", accepted: "info", partial: "warn", inReview: "warn", draft: "warn", recorded: "warn", queued: "warn", maintenance: "warn", flagged: "bad", failed: "bad", outstanding: "bad", terminated: "bad", voided: "bad", expired: "muted", inactive: "muted", vacant: "muted", cancelled: "muted", uncertain: "warn" }) as Record<string, "good" | "warn" | "bad" | "info" | "muted">)[s] ?? "muted";
+  (({ ready: "good", waiting: "warn", missing: "muted", matched: "good", toMatch: "warn", ignored: "muted", active: "good", paid: "good", approved: "good", applied: "good", delivered: "good", occupied: "info", issued: "info", confirmed: "info", accepted: "info", partial: "warn", inReview: "warn", draft: "warn", recorded: "warn", queued: "warn", maintenance: "warn", flagged: "bad", failed: "bad", outstanding: "bad", terminated: "bad", voided: "bad", expired: "muted", inactive: "muted", vacant: "muted", cancelled: "muted", uncertain: "warn" }) as Record<string, "good" | "warn" | "bad" | "info" | "muted">)[s] ?? "muted";
 
 export function StatusBadge({ status }: { status: string }) {
   const { t } = useI18n();
