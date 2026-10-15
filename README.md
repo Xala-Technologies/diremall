@@ -104,3 +104,7 @@ Authenticator-app codes (TOTP, RFC 6238) plus eight one-time recovery codes. Any
 ## Adding staff (invitation-only)
 
 Staff access → **Invite person**: enter their email, choose roles and buildings, and give them the one-time code yourself (in person or by phone). They then use **Create account** on the sign-in page with the same email and the code. The first administrator needs no code (restrict who with `BOOTSTRAP_ADMIN_EMAIL` on production).
+
+## Training
+
+[docs/STAFF_GUIDE.md](docs/STAFF_GUIDE.md) explains each role's daily tasks in plain language, for training sessions.
