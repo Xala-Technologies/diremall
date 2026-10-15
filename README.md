@@ -96,3 +96,7 @@ Authenticator-app codes (TOTP, RFC 6238) plus eight one-time recovery codes. Any
 - Each new sign-in must pass the second step; until then the server rejects every request (`mfa_required`).
 - A code can be used once; five wrong codes lock the second step for five minutes.
 - Enrolling, disabling, recovery-code use and resets are written to the audit log.
+
+## Backup and restore
+
+`node scripts/backup.mjs` takes a full export plus a fingerprint of the counts and money totals; `scripts/restore-drill.mjs` restores it into a scratch deployment and checks the figures match. See [docs/BACKUP.md](docs/BACKUP.md).

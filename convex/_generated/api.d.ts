@@ -11,6 +11,7 @@
 import type * as agreements from "../agreements.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
+import type * as backup from "../backup.js";
 import type * as bank from "../bank.js";
 import type * as billing from "../billing.js";
 import type * as crons from "../crons.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   agreements: typeof agreements;
   audit: typeof audit;
   auth: typeof auth;
+  backup: typeof backup;
   bank: typeof bank;
   billing: typeof billing;
   crons: typeof crons;
