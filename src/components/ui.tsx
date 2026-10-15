@@ -285,13 +285,13 @@ export function ViewToggle({ value, onChange, labels }: { value: "grid" | "table
 }
 
 /** Excel, CSV and PDF (the browser's save-as-PDF) for the rows shown on screen, so exports match the totals you see. */
-export function ExportMenu({ name, rows }: { name: string; rows: Record<string, string | number | null | undefined>[] }) {
+export function ExportMenu({ name, rows, print = true }: { name: string; rows: Record<string, string | number | null | undefined>[]; print?: boolean }) {
   const { t } = useI18n();
   return (
     <div className="row no-print" role="group" aria-label={t("export")}>
       <button className="btn sm" disabled={rows.length === 0} onClick={() => void downloadXlsx(name, [{ name: name.slice(0, 31), rows }])}><Icon name="download" size={15} />Excel</button>
       <button className="btn sm" disabled={rows.length === 0} onClick={() => downloadCsv(`${name}.csv`, rows)}>CSV</button>
-      <button className="btn sm" onClick={() => window.print()}><Icon name="print" size={15} />PDF</button>
+      {print && <button className="btn sm" onClick={() => window.print()}><Icon name="print" size={15} />PDF</button>}
     </div>
   );
 }

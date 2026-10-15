@@ -26,7 +26,7 @@ export default function Reports() {
 function RentRoll({ b }: { b?: Id<"buildings"> }) {
   const { t } = useI18n(); const d = useQuery(api.reports.rentRoll, { buildingId: b });
   return <Card title={t("rep.rentRoll")} actions={<ExportMenu name="rent-roll" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, category: r.category, area_m2: r.areaM2, status: r.status, renter: r.renterName, start: r.startsAt ? new Date(r.startsAt).toISOString().slice(0, 10) : "", end: r.endsAt ? new Date(r.endsAt).toISOString().slice(0, 10) : "", monthly_rent: r.monthlyRent / 100 })) : []} />}>
-    <Table rows={d?.rows.map((r, i) => ({ ...r, _id: String(i) }))} cols={[
+    <Table rows={d?.rows.map((r, i) => ({ ...r, _id: String(i) }))} empty={t("empty.rep.rentRoll")} cols={[
       { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("prop.category"), cell: (r) => t(r.category), sort: (r) => r.category }, { head: t("prop.area"), cell: (r) => r.areaM2, right: true, sort: (r) => r.areaM2 },
       { head: t("status"), cell: (r) => <StatusBadge status={r.status} />, sort: (r) => r.status }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName }, { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt} />, sort: (r) => r.endsAt },
       { head: t("rent"), cell: (r) => <Money v={r.monthlyRent} />, right: true, money: true, sort: (r) => r.monthlyRent }]} />
@@ -37,7 +37,7 @@ function RentRoll({ b }: { b?: Id<"buildings"> }) {
 function Vacancy({ b }: { b?: Id<"buildings"> }) {
   const { t } = useI18n(); const d = useQuery(api.reports.vacancy, { buildingId: b });
   return <Card title={t("rep.vacancy")} actions={<ExportMenu name="vacancy" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, category: r.category, area_m2: r.areaM2, status: r.status, potential_rent: r.potentialRent / 100 })) : []} />}>
-    <Table rows={d?.rows.map((r, i) => ({ ...r, _id: String(i) }))} cols={[
+    <Table rows={d?.rows.map((r, i) => ({ ...r, _id: String(i) }))} empty={t("empty.rep.vacancy")} cols={[
       { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong> }, { head: t("prop.category"), cell: (r) => t(r.category) }, { head: t("prop.area"), cell: (r) => r.areaM2, right: true },
       { head: t("status"), cell: (r) => <StatusBadge status={r.status} /> }, { head: t("rent"), cell: (r) => <Money v={r.potentialRent} />, right: true, money: true }]} />
     {d && <p style={{ textAlign: "right" }}>{t("total")}: <Money v={d.totalPotentialRent} strong /></p>}
@@ -48,7 +48,7 @@ function Aging({ b }: { b?: Id<"buildings"> }) {
   const { t } = useI18n(); const d = useQuery(api.reports.aging, { buildingId: b });
   const cols = ["current", "d1_30", "d31_60", "d61_90", "d90plus"] as const;
   return <Card title={t("rep.aging")} actions={<ExportMenu name="aging" rows={d ? d.rows.map((r) => ({ renter: r.renterName, units: r.units, ...Object.fromEntries(cols.map((c) => [c, r[c] / 100])) })) : []} />}>
-    <Table rows={d?.rows.map((r) => ({ ...r, _id: r.renterId }))} cols={[
+    <Table rows={d?.rows.map((r) => ({ ...r, _id: r.renterId }))} empty={t("empty.rep.aging")} cols={[
       { head: t("ag.renter"), cell: (r) => <strong>{r.renterName}</strong> }, { head: t("ag.unit"), cell: (r) => r.units },
       ...cols.map((c) => ({ head: t(c), cell: (r: NonNullable<typeof d>["rows"][number]) => (r[c] ? <Money v={r[c]} /> : "—"), right: true, money: true }))]} />
     {d && <p className="row" style={{ justifyContent: "flex-end" }}>{cols.map((c) => <span key={c}>{t(c)} <Money v={d.totals[c]} strong /></span>)}</p>}
@@ -60,7 +60,7 @@ function Revenue({ b }: { b?: Id<"buildings"> }) {
   const d = useQuery(api.reports.revenue, { fromPeriod: from, toPeriod: to, buildingId: b });
   return <Card title={t("rep.revenue")} actions={<><input type="month" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} /><input type="month" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
     <ExportMenu name="revenue" rows={d ? d.rows.map((r) => ({ period: r.period, billed: r.billed / 100, collected: r.collected / 100, outstanding: r.outstanding / 100 })) : []} /></>}>
-    <Table rows={d?.rows.map((r) => ({ ...r, _id: r.period }))} cols={[
+    <Table rows={d?.rows.map((r) => ({ ...r, _id: r.period }))} empty={t("empty.rep.revenue")} cols={[
       { head: t("period"), cell: (r) => r.period }, { head: t("dash.billed"), cell: (r) => <Money v={r.billed} />, right: true, money: true }, { head: "Collected", cell: (r) => <Money v={r.collected} />, right: true, money: true }, { head: t("outstanding"), cell: (r) => <Money v={r.outstanding} />, right: true, money: true }]} />
     {d && <p className="row" style={{ justifyContent: "flex-end" }}><span>{t("dash.billed")} <Money v={d.totals.billed} strong /></span><span>Collected <Money v={d.totals.collected} strong /></span><span>{t("outstanding")} <Money v={d.totals.outstanding} strong /></span></p>}
     <p className="muted">{t("rep.collectedNote")}</p>
@@ -78,7 +78,7 @@ function Ledger() {
       <div className="row" style={{ marginBottom: 12 }}>
         <FilterSelect label={t("ag.renter")} value={renterId} onChange={setRenterId} options={[{ value: "", label: `${t("ag.renter")}…`, icon: <Users size={16} /> }, ...(renters ?? []).map((r) => ({ value: r._id, label: r.name, icon: <Users size={16} /> }))]} />
       </div>
-      {renterId && <Table rows={d?.map((l, i) => ({ ...l, _id: String(i) }))} cols={[
+      {renterId && <Table rows={d?.map((l, i) => ({ ...l, _id: String(i) }))} empty={t("empty.rep.ledger")} cols={[
         { head: t("date"), cell: (l) => <DateText ms={l.at} /> }, { head: t("status"), cell: (l) => l.kind }, { head: t("pay.reference"), cell: (l) => l.ref },
         { head: "Debit", cell: (l) => (l.debit ? <Money v={l.debit} /> : ""), right: true, money: true }, { head: "Credit", cell: (l) => (l.credit ? <Money v={l.credit} /> : ""), right: true, money: true },
         { head: t("bill.due"), cell: (l) => <Money v={l.balance} strong />, right: true, money: true }]} />}

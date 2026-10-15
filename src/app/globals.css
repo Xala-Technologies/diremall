@@ -120,7 +120,7 @@ strong, b { font-weight: 600; } a { color: var(--ds-color-accent-text-subtle); t
 .avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--ds-color-accent-surface-tinted); color: var(--ds-color-accent-text-subtle); display: grid; place-items: center; font-weight: 600; flex: none; font-size: .875rem; }
 .main { min-width: 0; } .content { padding: 24px 32px 56px; max-width: 1360px; margin: 0 auto; animation: rise .28s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.page-head-wrap { margin-bottom: 20px; }
+.page-head-wrap { margin-bottom: 4px; }
 .page-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title actions" "filters filters"; gap: 12px 20px; align-items: center; }
 .page-title { grid-area: title; min-width: 0; } .page-title .sub { color: var(--muted); margin-top: 6px; max-width: 60ch; }
 .page-head .actions { grid-area: actions; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }

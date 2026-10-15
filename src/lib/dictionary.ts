@@ -125,6 +125,10 @@ export const EN: Record<string, string> = {
   "err.building_name_exists": "A building with this name already exists.", "err.floor_label_exists": "This building already has a floor with that name.", "err.invalid_phone": "Enter a valid Ethiopian phone number.", "err.invalid_tin": "A TIN has 10 digits.",
   "err.tin_already_registered": "A renter with this TIN already exists.", "err.individual_needs_identifier": "Enter a TIN or an ID number for an individual.", "err.invalid_vat": "Enter the VAT number (6 to 15 digits).", "err.too_many_floors": "At most 60 floors at once.", "err.name_required": "A name is required.",
   "v.idOrTin": "Enter an ID number or a TIN.", "renter.docFailed": "could not be uploaded. Add it from the renter's page.",
+  "ag.noHandover": "No handover recorded yet. Add one at move-in and again at move-out.", "dep.noDeductions": "No deductions. The full deposit is available.",
+  "empty.rep.rentRoll": "No units yet. Add buildings and units first.", "empty.rep.vacancy": "No vacant units. Every unit is let or reserved.", "empty.rep.aging": "Nothing overdue. Every issued bill is paid or not yet due.",
+  "empty.rep.revenue": "No bills issued in this period.", "empty.rep.ledger": "No bills or payments for this renter yet.",
+  "imp.err.id_or_tin": "An individual needs an ID number or a TIN.", "imp.err.vat": "VAT number must be 6 to 15 digits.",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -228,6 +232,10 @@ export const AM: Record<string, string> = {
   "err.building_name_exists": "በዚህ ስም ሕንፃ አስቀድሞ አለ።", "err.floor_label_exists": "ይህ ሕንፃ በዚህ ስም ፎቅ አስቀድሞ አለው።", "err.invalid_phone": "ትክክለኛ የኢትዮጵያ ስልክ ቁጥር ያስገቡ።", "err.invalid_tin": "TIN 10 አሃዝ አለው።",
   "err.tin_already_registered": "በዚህ TIN ተከራይ አስቀድሞ አለ።", "err.individual_needs_identifier": "ለግለሰብ TIN ወይም የመታወቂያ ቁጥር ያስገቡ።", "err.invalid_vat": "የተ.እ.ታ. ቁጥሩን ያስገቡ (ከ6 እስከ 15 አሃዝ)።", "err.too_many_floors": "በአንድ ጊዜ ቢበዛ 60 ፎቆች።", "err.name_required": "ስም ያስፈልጋል።",
   "v.idOrTin": "የመታወቂያ ቁጥር ወይም TIN ያስገቡ።", "renter.docFailed": "አልተጫነም። ከተከራዩ ገጽ ያክሉት።",
+  "ag.noHandover": "እስካሁን ርክክብ አልተመዘገበም። ሲገቡና ሲወጡ ይመዝግቡ።", "dep.noDeductions": "ተቀናሽ የለም። ሙሉ ዋስትናው አለ።",
+  "empty.rep.rentRoll": "እስካሁን ክፍል የለም። መጀመሪያ ሕንፃና ክፍሎች ያክሉ።", "empty.rep.vacancy": "ባዶ ክፍል የለም። ሁሉም ክፍሎች ተከራይተዋል ወይም ተይዘዋል።", "empty.rep.aging": "ያለፈበት የለም። ሁሉም የወጡ ደረሰኞች ተከፍለዋል ወይም ገና አልደረሱም።",
+  "empty.rep.revenue": "በዚህ ጊዜ የወጣ ደረሰኝ የለም።", "empty.rep.ledger": "ለዚህ ተከራይ እስካሁን ደረሰኝ ወይም ክፍያ የለም።",
+  "imp.err.id_or_tin": "ግለሰብ የመታወቂያ ቁጥር ወይም TIN ያስፈልገዋል።", "imp.err.vat": "የተ.እ.ታ. ቁጥር ከ6 እስከ 15 አሃዝ መሆን አለበት።",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

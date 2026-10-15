@@ -56,7 +56,7 @@ export default function AgreementPage() {
         { head: t("bill.calc"), cell: (x) => <Money v={rentOf(x)} />, right: true, money: true }, { head: t("ag.dueDay"), cell: (x) => x.dueDay, right: true },
       ]} /></Card>
       <Card flush title={t("ag.handover")} actions={can("propertyManager") && <button className="btn sm" onClick={() => setDlg("handover")}>{t("add")}</button>}>
-        <Table rows={d.handovers} empty="—" cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition, text: true }]} />
+        <Table rows={d.handovers} empty={t("ag.noHandover")} cols={[{ head: t("date"), cell: (h) => <DateText ms={h.at} /> }, { head: t("status"), cell: (h) => t(h.kind === "moveIn" ? "ag.moveIn" : "ag.moveOut") }, { head: t("ag.keys"), cell: (h) => h.keys }, { head: t("ag.condition"), cell: (h) => h.condition, text: true }]} />
       </Card>
         </div>
         <div className="stack">
@@ -75,7 +75,7 @@ export default function AgreementPage() {
         {can("financeOfficer", "propertyManager") && <button className="btn sm" onClick={() => setDlg("deduct")}>{t("dep.deduct")}</button>}
         {can("approver") && <button className="btn sm" onClick={() => setDlg("refund")}>{t("dep.refund")}</button>}</>}>
         <dl className="dl"><div><dt>{t("dep.required")}</dt><dd><Money v={dep.required} /></dd></div><div><dt>{t("dep.held")}</dt><dd><Money v={dep.held} /></dd></div><div><dt>{t("dep.available")}</dt><dd><Money v={dep.available} strong /></dd></div><div><dt>{t("dep.refunded")}</dt><dd><Money v={dep.refunded} /></dd></div></dl>
-        <Table rows={dep.deductions.map((x, i) => ({ ...x, _id: String(i), i }))} empty="—" cols={[
+        <Table rows={dep.deductions.map((x, i) => ({ ...x, _id: String(i), i }))} empty={t("dep.noDeductions")} cols={[
           { head: t("amount"), cell: (x) => <Money v={x.amount} /> }, { head: t("reason"), cell: (x) => x.reason, text: true },
           { head: t("status"), cell: (x) => (x.approvedBy ? t("approved") : can("approver") && x.requestedBy !== me?._id ? <button className="btn sm" onClick={() => void run(() => appDed({ agreementId, index: x.i }))}>{t("bill.approve")}</button> : t("inReview")) },
         ]} />

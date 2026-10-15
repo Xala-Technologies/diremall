@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
 import { Card, ConfirmDialog, ExportMenu, Kpi, Message, PageHeader, Skeleton, Table, Tabs } from "@/components/ui";
-import { RENTER_COLUMNS, RENTER_TEMPLATE, UNIT_COLUMNS, UNIT_TEMPLATE, mapRows, readTable } from "@/lib/importFile";
+import { RENTER_COLUMNS, RENTER_OPTIONAL, RENTER_TEMPLATE, UNIT_COLUMNS, UNIT_TEMPLATE, mapRows, readTable } from "@/lib/importFile";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -23,7 +23,7 @@ export default function ImportPage() {
   );
 }
 
-function useFile<K extends string>(spec: Record<K, string[]>) {
+function useFile<K extends string>(spec: Record<K, string[]>, optional: readonly NoInfer<K>[] = []) {
   const { t } = useI18n();
   const [rows, setRows] = useState<({ row: number } & Record<K, string>)[] | null>(null);
   const [missing, setMissing] = useState<K[]>([]);
@@ -33,7 +33,7 @@ function useFile<K extends string>(spec: Record<K, string[]>) {
     if (!file) return;
     setReadError(null); setName(file.name);
     try {
-      const { rows: r, missing: m } = mapRows(await readTable(file), spec);
+      const { rows: r, missing: m } = mapRows(await readTable(file), spec, optional);
       setMissing(m); setRows(m.length ? null : r);
     } catch { setRows(null); setMissing([]); setReadError(t("imp.readFail")); }
   };
@@ -71,7 +71,7 @@ function UnitImport() {
   const label = (k: string) => ({ building: t("building"), floor: t("prop.floor"), unit: t("prop.unitNumber"), area: t("prop.area"), category: t("prop.category"), rate: t("prop.rate") } as Record<string, string>)[k] ?? k;
   return (
     <div className="stack">
-      <Card title={t("imp.template")} actions={<ExportMenu name="units-template" rows={UNIT_TEMPLATE} />}><Picker f={f} /></Card>
+      <Card title={t("imp.template")} actions={<ExportMenu name="units-template" rows={UNIT_TEMPLATE} print={false} />}><Picker f={f} /></Card>
       <Message error={error ?? f.readError} />
       {f.missing.length > 0 && <div className="msg bad" role="alert"><Icon name="alert" />{t("imp.missingCols")}: {f.missing.map(label).join(", ")}</div>}
       {f.rows && (!check ? <Card><Skeleton lines={4} /></Card> : (
@@ -99,13 +99,13 @@ function UnitImport() {
 }
 
 function RenterImport() {
-  const { t } = useI18n(); const f = useFile(RENTER_COLUMNS); const commit = useMutation(api.imports.commitRenters); const { run, error } = useRun();
+  const { t } = useI18n(); const f = useFile(RENTER_COLUMNS, RENTER_OPTIONAL); const commit = useMutation(api.imports.commitRenters); const { run, error } = useRun();
   const [confirm, setConfirm] = useState(false);
   const check = useQuery(api.imports.checkRenters, f.rows ? { rows: f.rows } : "skip");
-  const label = (k: string) => ({ kind: t("renter.kind"), name: t("name"), tin: t("renter.tin"), license: t("renter.license"), phone: t("renter.phone"), email: t("email"), rep: t("renter.rep") } as Record<string, string>)[k] ?? k;
+  const label = (k: string) => ({ kind: t("renter.kind"), name: t("name"), tin: t("renter.tin"), license: t("renter.license"), phone: t("renter.phone"), email: t("email"), rep: t("renter.rep"), idNumber: t("renter.idNumber"), address: t("renter.address"), contactPerson: t("renter.contactPerson"), contactPhone: t("renter.contactPhone"), vat: t("renter.vat"), notes: t("renter.notes") } as Record<string, string>)[k] ?? k;
   return (
     <div className="stack">
-      <Card title={t("imp.template")} actions={<ExportMenu name="renters-template" rows={RENTER_TEMPLATE} />}><Picker f={f} /></Card>
+      <Card title={t("imp.template")} actions={<ExportMenu name="renters-template" rows={RENTER_TEMPLATE} print={false} />}><Picker f={f} /></Card>
       <Message error={error ?? f.readError} />
       {f.missing.length > 0 && <div className="msg bad" role="alert"><Icon name="alert" />{t("imp.missingCols")}: {f.missing.map(label).join(", ")}</div>}
       {f.rows && (!check ? <Card><Skeleton lines={4} /></Card> : (

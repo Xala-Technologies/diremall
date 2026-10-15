@@ -13,7 +13,7 @@ const MAX_ROWS = 1000;
 export type Issue = { row: number; field: string; code: string };
 
 const unitRow = v.object({ row: v.number(), building: v.string(), floor: v.string(), unit: v.string(), area: v.string(), category: v.string(), rate: v.string() });
-const renterRow = v.object({ row: v.number(), kind: v.string(), name: v.string(), tin: v.string(), license: v.string(), phone: v.string(), email: v.string(), rep: v.string() });
+const renterRow = v.object({ row: v.number(), kind: v.string(), name: v.string(), tin: v.string(), license: v.string(), phone: v.string(), email: v.string(), rep: v.string(), idNumber: v.optional(v.string()), address: v.optional(v.string()), contactPerson: v.optional(v.string()), contactPhone: v.optional(v.string()), vat: v.optional(v.string()), notes: v.optional(v.string()) });
 type UnitRow = typeof unitRow.type;
 type RenterRow = typeof renterRow.type;
 
@@ -98,7 +98,7 @@ async function evalRenters(ctx: QueryCtx, rows: RenterRow[]) {
   if (rows.length > MAX_ROWS) fail("import_too_many_rows");
   const issues: Issue[] = [];
   const seenTin = new Set<string>(); const seenName = new Set<string>();
-  const clean: { kind: "company" | "individual"; name: string; tin?: string; businessLicenseNo?: string; phone: string; email?: string; legalRepresentative?: string }[] = [];
+  const clean: { kind: "company" | "individual"; name: string; tin?: string; businessLicenseNo?: string; phone: string; email?: string; legalRepresentative?: string; idNumber?: string; address?: string; contactPerson?: string; contactPhone?: string; vatNumber?: string; notes?: string }[] = [];
   for (const r of rows) {
     const bad = (field: string, code: string) => issues.push({ row: r.row, field, code });
     const name = r.name.trim();
@@ -110,6 +110,12 @@ async function evalRenters(ctx: QueryCtx, rows: RenterRow[]) {
     const tin = r.tin.replace(/\s/g, "");
     if (kind === "company" && !tin) bad("tin", "required"); else if (tin && !isTin(tin)) bad("tin", "tin");
     if (r.email.trim() && !isEmail(r.email)) bad("email", "email");
+    const idNo = (r.idNumber ?? "").trim(), vat = (r.vat ?? "").replace(/\s/g, ""), cPhone = (r.contactPhone ?? "").trim();
+    const idMissing = kind === "individual" && !tin && !idNo;
+    if (idMissing) bad("idNumber", "id_or_tin");
+    if (vat && !/^\d{6,15}$/.test(vat)) bad("vat", "vat");
+    if (cPhone && !isPhone(cPhone)) bad("contactPhone", "phone");
+    if (idMissing || (vat && !/^\d{6,15}$/.test(vat)) || (cPhone && !isPhone(cPhone))) continue;
     if (!name || !kind || !phone || !isPhone(phone) || (kind === "company" && !tin) || (tin && !isTin(tin)) || (r.email.trim() && !isEmail(r.email))) continue;
 
     const nameKey = `${key(name)}|${normalizePhone(phone)}`;
@@ -118,7 +124,7 @@ async function evalRenters(ctx: QueryCtx, rows: RenterRow[]) {
     if (tin && (await ctx.db.query("renters").withIndex("by_tin", (q) => q.eq("tin", tin)).first())) { bad("tin", "already_exists"); continue; }
     const sameName = await ctx.db.query("renters").withIndex("by_name", (q) => q.eq("name", name)).collect();
     if (sameName.some((x) => normalizePhone(x.phone) === normalizePhone(phone))) { bad("name", "already_exists"); continue; }
-    clean.push({ kind: kind!, name, ...(tin ? { tin } : {}), ...(r.license.trim() ? { businessLicenseNo: r.license.trim() } : {}), phone: normalizePhone(phone), ...(r.email.trim() ? { email: r.email.trim() } : {}), ...(r.rep.trim() ? { legalRepresentative: r.rep.trim() } : {}) });
+    clean.push({ kind: kind!, name, ...(tin ? { tin } : {}), ...(r.license.trim() ? { businessLicenseNo: r.license.trim() } : {}), phone: normalizePhone(phone), ...(r.email.trim() ? { email: r.email.trim() } : {}), ...(r.rep.trim() ? { legalRepresentative: r.rep.trim() } : {}), ...(idNo ? { idNumber: idNo } : {}), ...((r.address ?? "").trim() ? { address: r.address!.trim() } : {}), ...((r.contactPerson ?? "").trim() ? { contactPerson: r.contactPerson!.trim() } : {}), ...(cPhone ? { contactPhone: normalizePhone(cPhone) } : {}), ...(vat ? { vatNumber: vat } : {}), ...((r.notes ?? "").trim() ? { notes: r.notes!.trim() } : {}) });
   }
   return { issues, clean, summary: { rows: rows.length, valid: rows.length - new Set(issues.map((i) => i.row)).size } };
 }
