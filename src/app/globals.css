@@ -387,3 +387,4 @@ textarea { font: inherit; resize: vertical; }
   .page-head:has(.actions > :nth-child(3)) .actions { justify-content: flex-start; }
 }
 .msg.info { background: var(--ds-color-info-surface-tinted, #e0f2fe); color: var(--ds-color-info-text-default, #075985); border: 1px solid currentColor; }
+.dup-warn { border: 1px solid var(--ds-color-warning-base-default); background: var(--ds-color-warning-surface-tinted); color: var(--ds-color-warning-text-default); border-radius: var(--r-lg); padding: 12px 14px; display: grid; gap: 8px; } .dup-warn ul { margin: 0; padding-left: 18px; } .dup-warn p { margin: 0; }

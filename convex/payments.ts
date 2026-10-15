@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, nextSeq, requireRole } from "./lib/access";
 import { applyPayment } from "./lib/billing";
@@ -14,8 +14,8 @@ const method = v.union(v.literal("bankDeposit"), v.literal("transfer"), v.litera
 
 /** Step 1: staff record the payment and its evidence. Nothing is reduced yet. */
 export const record = mutation({
-  args: { renterId: v.id("renters"), amount: v.number(), method, reference: v.string(), receivedAt: v.number(), evidenceFileId: v.optional(v.id("_storage")), payerName: v.optional(v.string()), notes: v.optional(v.string()) },
-  handler: async (ctx, a) => {
+  args: { renterId: v.id("renters"), amount: v.number(), method, reference: v.string(), receivedAt: v.number(), evidenceFileId: v.optional(v.id("_storage")), payerName: v.optional(v.string()), notes: v.optional(v.string()), notDuplicate: v.optional(v.boolean()) },
+  handler: async (ctx, { notDuplicate, ...a }) => {
     const u = await requireRole(ctx, "financeOfficer");
     await assertRenterVisible(ctx, u, a.renterId);
     assertSantim(a.amount);
@@ -25,6 +25,9 @@ export const record = mutation({
     const dupe = (await ctx.db.query("payments").withIndex("by_reference", (q) => q.eq("method", a.method).eq("reference", a.reference)).collect())
       .find((p) => p.status !== "voided");
     if (dupe) fail("duplicate_payment_reference");
+    // The same renter paying the same amount within two weeks is more often the same money recorded twice (cash, then its
+    // bank deposit) than a second payment. The person has to say it is a different payment.
+    if (!notDuplicate && (await similarPayments(ctx, a.renterId, a.amount, a.receivedAt)).length > 0) fail("possible_duplicate");
     const clean = (x?: string) => (x && x.trim() ? x.trim() : undefined);
     const id = await ctx.db.insert("payments", { ...a, reference: a.reference.trim(), payerName: clean(a.payerName), notes: clean(a.notes), status: "recorded", recordedBy: u._id });
     await audit(ctx, u, "payment.record", "payments", id, `${a.amount}`);
@@ -248,5 +251,22 @@ export const summary = query({
       out[p.status].n++; out[p.status].amount += p.amount;
     }
     return { ...out, capped: rows.length >= 5000 };
+  },
+});
+
+const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+async function similarPayments(ctx: QueryCtx, renterId: Id<"renters">, amount: number, receivedAt: number) {
+  const mine = await ctx.db.query("payments").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect();
+  return mine.filter((p) => p.status !== "voided" && p.amount === amount && Math.abs(p.receivedAt - receivedAt) <= TWO_WEEKS);
+}
+
+/** Payments that look like the one about to be recorded: same renter, same amount, within two weeks. */
+export const possibleDuplicates = query({
+  args: { renterId: v.id("renters"), amount: v.number(), receivedAt: v.number() },
+  handler: async (ctx, { renterId, amount, receivedAt }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    await assertRenterVisible(ctx, u, renterId);
+    const rows = await similarPayments(ctx, renterId, amount, receivedAt);
+    return rows.map((p) => ({ paymentId: p._id, method: p.method, reference: p.reference, receivedAt: p.receivedAt, status: p.status }));
   },
 });

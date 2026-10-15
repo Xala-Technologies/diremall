@@ -168,6 +168,8 @@ export const EN: Record<string, string> = {
   "imp.err.end_before_start": "The end date must be after the start date.", "imp.err.invalid_amount": "Not a valid amount.", "imp.err.due_day": "The due day must be between 1 and 28.", "imp.err.invalid_escalation": "The increase must be 1 to 100 percent, every 1 to 60 months.", "imp.err.overlaps": "This lease overlaps another lease on the same unit.",
   "imp.err.date": "Not a readable date. Use day/month/year or year-month-day.", "imp.err.basis": "Write per m2 or fixed.", "imp.err.no_agreement": "This renter has no agreement yet. Import their agreement first.", "imp.err.no_agreement_for_unit": "This renter has no agreement on that unit.", "imp.err.unit_needed": "This renter has several units. Fill in the unit.",
   "bill.backToMonth": "Back to months",
+  "pay.dup.title": "A similar payment was already recorded", "pay.dup.hint": "Same renter, same amount, within two weeks. If the cash was later deposited in the bank, do not record the deposit again: match the bank line to the payment in Bank matching.",
+  "pay.dup.different": "This is a different payment", "pay.dup.confirm": "Tick the box to confirm this is a different payment.", "err.possible_duplicate": "A similar payment (same renter, same amount, within two weeks) already exists. Confirm it is a different one.",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -314,6 +316,8 @@ export const AM: Record<string, string> = {
   "imp.err.end_before_start": "የማብቂያ ቀኑ ከመጀመሪያው ቀን በኋላ መሆን አለበት።", "imp.err.invalid_amount": "ትክክለኛ መጠን አይደለም።", "imp.err.due_day": "የመክፈያ ቀኑ ከ1 እስከ 28 መሆን አለበት።", "imp.err.invalid_escalation": "ጭማሪው ከ1 እስከ 100 በመቶ፣ በየ1 እስከ 60 ወር መሆን አለበት።", "imp.err.overlaps": "ይህ ውል በዚሁ ክፍል ላይ ካለ ሌላ ውል ጋር ይደራረባል።",
   "imp.err.date": "የማይነበብ ቀን። ቀን/ወር/ዓመት ወይም ዓመት-ወር-ቀን ይጠቀሙ።", "imp.err.basis": "per m2 ወይም fixed ይጻፉ።", "imp.err.no_agreement": "ይህ ተከራይ እስካሁን ውል የለውም። መጀመሪያ ውሉን ያስገቡ።", "imp.err.no_agreement_for_unit": "ይህ ተከራይ በዚያ ክፍል ላይ ውል የለውም።", "imp.err.unit_needed": "ይህ ተከራይ በርካታ ክፍሎች አሉት። ክፍሉን ይሙሉ።",
   "bill.backToMonth": "ወደ ወራት ተመለስ",
+  "pay.dup.title": "ተመሳሳይ ክፍያ አስቀድሞ ተመዝግቧል", "pay.dup.hint": "ተመሳሳይ ተከራይ፣ ተመሳሳይ መጠን፣ በሁለት ሳምንት ውስጥ። ጥሬ ገንዘቡ በኋላ ባንክ ከገባ ገቢውን እንደገና አይመዝግቡ፤ በባንክ ማዛመድ ውስጥ የባንክ መስመሩን ከክፍያው ጋር ያዛምዱ።",
+  "pay.dup.different": "ይህ የተለየ ክፍያ ነው", "pay.dup.confirm": "ይህ የተለየ ክፍያ መሆኑን ለማረጋገጥ ሳጥኑን ምልክት ያድርጉ።", "err.possible_duplicate": "ተመሳሳይ ክፍያ (ተመሳሳይ ተከራይ፣ ተመሳሳይ መጠን፣ በሁለት ሳምንት ውስጥ) አስቀድሞ አለ። የተለየ መሆኑን ያረጋግጡ።",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

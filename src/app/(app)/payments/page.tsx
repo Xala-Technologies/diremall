@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { FilterSelect } from "@/components/FilterSelect";
+import { Icon } from "@/components/icons";
 import { Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
 import { formatEtb, periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -110,15 +111,17 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
   const [errs, setErrs] = useState<Record<string, string>>({});
   const chosen = renterId || guess || "";
   const bills = useQuery(api.payments.openBills, chosen ? { renterId: chosen as Id<"renters"> } : "skip");
+  const dupes = useQuery(api.payments.possibleDuplicates, chosen && amount != null && amount > 0 && at != null ? { renterId: chosen as Id<"renters">, amount, receivedAt: at } : "skip");
+  const [different, setDifferent] = useState(false);
   const totalDue = bills?.reduce((s, b) => s + b.due, 0) ?? 0;
   const clear = (k: string) => errs[k] && setErrs({ ...errs, [k]: "" });
   return (
     <Modal title={t("pay.record")} onClose={onClose}>
       <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
-        const found = failures({ renter: chosen ? null : t("v.pick"), amount: positive(amount, t), reference: req(reference, t), at: at == null ? t("v.date") : null, file: fileProblem(file, t) });
+        const found = failures({ renter: chosen ? null : t("v.pick"), amount: positive(amount, t), reference: req(reference, t), at: at == null ? t("v.date") : null, file: fileProblem(file, t), dup: dupes && dupes.length > 0 && !different ? t("pay.dup.confirm") : null });
         setErrs(found); if (Object.keys(found).length) return;
-        const id = await run(async () => record({ renterId: chosen as Id<"renters">, amount: amount!, method, reference: reference.trim(), receivedAt: at!, evidenceFileId: file ? await upload(file) : undefined, payerName: payer, notes }), t("saved"));
+        const id = await run(async () => record({ renterId: chosen as Id<"renters">, amount: amount!, method, reference: reference.trim(), receivedAt: at!, evidenceFileId: file ? await upload(file) : undefined, payerName: payer, notes, notDuplicate: different || undefined }), t("saved"));
         if (!id) return;
         // started from a bank line: link it now, so the statement and the payment agree straight away
         if (prefill?.lineId) { try { await matchLine({ entryId: prefill.lineId, paymentId: id }); } catch { /* the line can be matched from Bank matching */ } }
@@ -133,6 +136,14 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
             <div className="open-bills-h"><b>{t("pay.openBills")}</b>{bills.length > 0 && <><span className="muted">{t("pay.totalDue")}: {formatEtb(totalDue)}</span><button type="button" className="btn ghost sm" onClick={() => setAmount(totalDue)}>{t("pay.useTotal")}</button></>}</div>
             {bills.length === 0 ? <p className="muted">{t("pay.noOpenBills")}</p> : (
               <ul>{bills.map((b) => <li key={b.invoiceId}><span>{b.number}</span><span className="muted">{b.unitNumber} · {periodText(b.period, t)}</span><span className="muted">{t("bill.dueDate")} <DateText ms={b.dueAt} /></span><Money v={b.due} /></li>)}</ul>)}
+          </div>)}
+        {dupes && dupes.length > 0 && (
+          <div className="wide dup-warn" role="alert">
+            <b><Icon name="alert" size={16} /> {t("pay.dup.title")}</b>
+            <ul>{dupes.map((d) => <li key={d.paymentId}>{t(d.method)} · <span className="num">{d.reference}</span> · <DateText ms={d.receivedAt} /> · <StatusBadge status={d.status} /></li>)}</ul>
+            <p className="muted">{t("pay.dup.hint")}</p>
+            <label className="row"><input type="checkbox" checked={different} onChange={(e) => { setDifferent(e.target.checked); clear("dup"); }} />{t("pay.dup.different")}</label>
+            {errs.dup && <small className="field-error">{errs.dup}</small>}
           </div>)}
         <Field label={t("pay.method")}><select value={method} onChange={(e) => setMethod(e.target.value as Method)}>{METHODS.map((m) => <option key={m} value={m}>{t(m)}</option>)}</select></Field>
         <Field label={t("pay.reference")} error={errs.reference}><input value={reference} onChange={(e) => { setReference(e.target.value); clear("reference"); }} /></Field>

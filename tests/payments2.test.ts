@@ -68,3 +68,28 @@ describe("payment details and trail", () => {
     await expect(lim.query(w.api.payments.openBills, { renterId: w.renterId })).rejects.toThrow(/forbidden/);
   });
 });
+
+describe("possible duplicate payments", () => {
+  it("warns when the same renter pays the same amount within two weeks, unless it is said to be different", async () => {
+    const w = await withBills();
+    const first = await record(w, 5000, { method: "cash", reference: "C-1", receivedAt: utc(2026, 10, 3) });
+    const d = await w.fin.query(w.api.payments.possibleDuplicates, { renterId: w.renterId, amount: etb(5000), receivedAt: utc(2026, 10, 10) });
+    expect(d).toEqual([expect.objectContaining({ paymentId: first, method: "cash", reference: "C-1", status: "recorded" })]);
+    // the bank deposit of that same cash is exactly the case to catch
+    await expect(w.fin.mutation(w.api.payments.record, { renterId: w.renterId, amount: etb(5000), method: "bankDeposit", reference: "B-9", receivedAt: utc(2026, 10, 10) })).rejects.toThrow(/possible_duplicate/);
+    await w.fin.mutation(w.api.payments.record, { renterId: w.renterId, amount: etb(5000), method: "bankDeposit", reference: "B-9", receivedAt: utc(2026, 10, 10), notDuplicate: true });
+  });
+
+  it("stays quiet for a different amount, a different renter, an old payment, or a voided one", async () => {
+    const w = await withBills();
+    const first = await record(w, 5000, { receivedAt: utc(2026, 10, 3) });
+    const q = (amount: number, receivedAt: number, renterId = w.renterId) => w.fin.query(w.api.payments.possibleDuplicates, { renterId, amount: etb(amount), receivedAt });
+    expect(await q(5001, utc(2026, 10, 3))).toEqual([]);
+    expect(await q(5000, utc(2026, 11, 1))).toEqual([]); // more than two weeks apart
+    const other = await w.renter("Selam");
+    expect(await q(5000, utc(2026, 10, 3), other)).toEqual([]);
+    await w.ap.mutation(w.api.payments.voidPayment, { paymentId: first, reason: "Entered by mistake" });
+    expect(await q(5000, utc(2026, 10, 3))).toEqual([]);
+    await record(w, 5000, { receivedAt: utc(2026, 10, 3) }); // allowed again once the first is voided
+  });
+});
