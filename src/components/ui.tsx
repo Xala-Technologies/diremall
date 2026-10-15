@@ -125,7 +125,8 @@ export function Message({ error, notice }: { error?: string | null; notice?: str
 
 /** ETB amount input; reports santim (or null while invalid). */
 export function MoneyInput({ value, onChange, placeholder }: { value: number | null; onChange: (v: number | null) => void; placeholder?: string }) {
-  const [text, setText] = useState(value == null ? "" : String(value / 100));
+  // start tidy: 230000 shows as 230,000.00 straight away, not only after leaving the field
+  const [text, setText] = useState(value == null ? "" : (value / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   return (
     <input inputMode="decimal" value={text} placeholder={placeholder ?? "0.00"}
       onChange={(e) => { setText(e.target.value); onChange(parseEtb(e.target.value)); }}

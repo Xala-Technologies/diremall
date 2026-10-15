@@ -62,7 +62,7 @@ export default function Bank() {
               <div className="two-line"><StatusBadge status="ignored" /><small className="muted">{l.ignoreReason}</small></div>
             ) : l.state === "matched" ? <StatusBadge status="matched" /> : <StatusBadge status="toMatch" />, text: true },
             { head: "", cell: (l) => <div className="row">
-              {l.state === "toMatch" && can("financeOfficer") && <><button className="btn sm primary" onClick={() => setMatching(l._id)}>{t("bank.match")}</button><button className="btn sm" onClick={() => setIgnoring(l._id)}>{t("bank.ignore")}</button></>}
+              {l.state === "toMatch" && can("financeOfficer") && <><button className="btn sm primary" onClick={() => setMatching(l._id)}>{t("bank.match")}</button><button className="btn sm" onClick={() => router.push(`/payments?new=1&amount=${l.amount}&ref=${encodeURIComponent(l.reference)}&at=${l.postedAt}&narr=${encodeURIComponent(l.description ?? l.reference)}&line=${l._id}`)}>{t("bank.record")}</button><button className="btn sm" onClick={() => setIgnoring(l._id)}>{t("bank.ignore")}</button></>}
               {l.state === "matched" && l.payment?.status === "applied" && <button className="btn sm" onClick={() => router.push(`/payments/${l.payment!.paymentId}`)}>{t("pay.receipt")}</button>}
               {l.state === "matched" && can("approver") && <button className="btn sm" onClick={() => void run(() => reopen({ entryId: l._id }), t("saved"))}>{t("bank.reopen")}</button>}
               {l.state === "ignored" && can("financeOfficer") && <button className="btn sm" onClick={() => void run(() => reopen({ entryId: l._id }), t("saved"))}>{t("bank.reopen")}</button>}

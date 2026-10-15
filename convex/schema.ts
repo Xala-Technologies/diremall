@@ -154,6 +154,14 @@ export default defineSchema({
     confirmedBy: v.optional(v.id("users")),
     evidenceFileId: v.optional(v.id("_storage")),
     receiptNumber: v.optional(v.string()),
+    payerName: v.optional(v.string()), // who actually paid, when that is not the renter
+    notes: v.optional(v.string()),
+    confirmedAt: v.optional(ts),
+    appliedBy: v.optional(v.id("users")),
+    appliedAt: v.optional(ts),
+    voidedBy: v.optional(v.id("users")),
+    voidedAt: v.optional(ts),
+    voidReason: v.optional(v.string()),
   }).index("by_renter", ["renterId"]).index("by_status", ["status"]).index("by_reference", ["method", "reference"]).index("by_amount", ["amount"]).index("by_received", ["receivedAt"]),
   paymentAllocations: defineTable({ paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
     .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]),

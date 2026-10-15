@@ -355,3 +355,15 @@ textarea { font: inherit; resize: vertical; }
 .cand-note { font-size: .8125rem; max-width: 12rem; text-align: right; } .tag { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ds-color-success-surface-tinted); color: var(--ds-color-success-text-default); }
 @media (max-width: 640px) { .cand-list li { grid-template-columns: 1fr; } .cand-note { text-align: left; max-width: none; } }
 .tab-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Payments */
+.open-bills { border: 1px solid var(--ds-color-neutral-border-default); border-radius: var(--r-lg); padding: 12px 14px; background: var(--ds-color-neutral-background-tinted); display: grid; gap: 8px; }
+.open-bills-h { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; } .open-bills-h .btn { margin-left: auto; }
+.open-bills ul, .open-bills-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.open-bills li, .open-bills-list li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; gap: 12px; align-items: center; font-size: .9375rem; } .open-bills-list li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+.alloc { display: grid; gap: 8px; } .alloc-h, .alloc-row { display: grid; grid-template-columns: minmax(0, 1fr) 9rem 11rem; gap: 12px; align-items: center; }
+.alloc-h { font-size: .8125rem; font-weight: 600; color: var(--muted); padding: 0 2px; } .alloc-row { padding: 8px 10px; border: 1px solid var(--ds-color-neutral-border-default); border-radius: var(--r-lg); }
+.alloc-row small { display: block; font-size: .8125rem; } .alloc-row input { text-align: right; min-height: 38px; } .r { text-align: right; }
+.alloc-sum { display: flex; flex-wrap: wrap; gap: 24px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--ds-color-accent-surface-tinted); } .alloc-sum > div { display: grid; gap: 2px; } .alloc-sum span { font-size: .8125rem; color: var(--muted); } .alloc-sum b { font-size: 1.125rem; } .alloc-sum .bad b { color: var(--ds-color-danger-base-default); }
+.trail { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--ds-color-neutral-border-default); display: grid; gap: 10px; } .trail li { position: relative; } .trail li::before { content: ""; position: absolute; left: -20px; top: .45em; width: 10px; height: 10px; border-radius: 50%; background: var(--ds-color-accent-text-subtle); } .trail small { display: block; }
+@media (max-width: 640px) { .alloc-h { display: none; } .alloc-row, .open-bills li { grid-template-columns: 1fr; } .alloc-row .r { text-align: left; } }

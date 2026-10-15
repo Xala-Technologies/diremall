@@ -14,7 +14,7 @@ const method = v.union(v.literal("bankDeposit"), v.literal("transfer"), v.litera
 
 /** Step 1: staff record the payment and its evidence. Nothing is reduced yet. */
 export const record = mutation({
-  args: { renterId: v.id("renters"), amount: v.number(), method, reference: v.string(), receivedAt: v.number(), evidenceFileId: v.optional(v.id("_storage")) },
+  args: { renterId: v.id("renters"), amount: v.number(), method, reference: v.string(), receivedAt: v.number(), evidenceFileId: v.optional(v.id("_storage")), payerName: v.optional(v.string()), notes: v.optional(v.string()) },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "financeOfficer");
     await assertRenterVisible(ctx, u, a.renterId);
@@ -25,7 +25,8 @@ export const record = mutation({
     const dupe = (await ctx.db.query("payments").withIndex("by_reference", (q) => q.eq("method", a.method).eq("reference", a.reference)).collect())
       .find((p) => p.status !== "voided");
     if (dupe) fail("duplicate_payment_reference");
-    const id = await ctx.db.insert("payments", { ...a, status: "recorded", recordedBy: u._id });
+    const clean = (x?: string) => (x && x.trim() ? x.trim() : undefined);
+    const id = await ctx.db.insert("payments", { ...a, reference: a.reference.trim(), payerName: clean(a.payerName), notes: clean(a.notes), status: "recorded", recordedBy: u._id });
     await audit(ctx, u, "payment.record", "payments", id, `${a.amount}`);
     return id;
   },
@@ -40,7 +41,7 @@ export const confirm = mutation({
     await assertRenterVisible(ctx, u, p.renterId);
     if (p.status !== "recorded") fail("not_recorded");
     assertDifferentPerson(p.recordedBy, u._id);
-    await ctx.db.patch(paymentId, { status: "confirmed", confirmedBy: u._id });
+    await ctx.db.patch(paymentId, { status: "confirmed", confirmedBy: u._id, confirmedAt: Date.now() });
     await audit(ctx, u, "payment.confirm", "payments", paymentId);
   },
 });
@@ -54,7 +55,7 @@ export const voidPayment = mutation({
     if (p.status === "applied") fail("applied_payment_needs_reversal");
     if (p.status === "voided") fail("already_voided");
     if (!reason.trim()) fail("reason_required");
-    await ctx.db.patch(paymentId, { status: "voided" });
+    await ctx.db.patch(paymentId, { status: "voided", voidedBy: u._id, voidedAt: Date.now(), voidReason: reason.trim() });
     await audit(ctx, u, "payment.void", "payments", paymentId, reason);
   },
 });
@@ -111,7 +112,7 @@ export const apply = mutation({
     if (credit > 0) await ctx.db.insert("renterCredits", { renterId: p.renterId, paymentId, amount: credit });
     const year = new Date(p.receivedAt).getUTCFullYear();
     const receiptNumber = p.receiptNumber ?? `RCT-${year}-${String(await nextSeq(ctx, `receiptSeq:${year}`)).padStart(4, "0")}`;
-    await ctx.db.patch(paymentId, { status: "applied", receiptNumber });
+    await ctx.db.patch(paymentId, { status: "applied", receiptNumber, appliedBy: u._id, appliedAt: Date.now() });
     await audit(ctx, u, "payment.apply", "payments", paymentId, `applied=${p.amount - credit} credit=${credit}`);
 
     // Receipt acknowledgment by SMS (once per payment).
@@ -188,7 +189,13 @@ export const get = query({
     }
     const credit = (await ctx.db.query("renterCredits").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect()).filter((c) => c.paymentId === paymentId).reduce((s, c) => s + c.amount, 0);
     const receivedBy = (await ctx.db.get(p.confirmedBy ?? p.recordedBy))?.name ?? "";
-    return { payment: p, renter: await ctx.db.get(p.renterId), lines, credit, confirmedByName: receivedBy };
+    const name = async (id?: Id<"users">) => (id ? (await ctx.db.get(id))?.name ?? "" : undefined);
+    const line = await ctx.db.query("bankStatementEntries").withIndex("by_payment", (q) => q.eq("matchedPaymentId", paymentId)).first();
+    const timeline = {
+      recordedByName: await name(p.recordedBy), recordedAt: p._creationTime, confirmedByName: await name(p.confirmedBy), confirmedAt: p.confirmedAt,
+      appliedByName: await name(p.appliedBy), appliedAt: p.appliedAt, voidedByName: await name(p.voidedBy), voidedAt: p.voidedAt, voidReason: p.voidReason,
+    };
+    return { payment: p, renter: await ctx.db.get(p.renterId), lines, credit, confirmedByName: receivedBy, timeline, hasEvidence: !!p.evidenceFileId, bankLine: line ? { description: line.description, reference: line.reference, batch: line.importBatch, postedAt: line.postedAt } : null };
   },
 });
 
@@ -205,5 +212,41 @@ export const inPeriod = query({
       return { ...p, renterName: renters.get(p.renterId)?.name ?? "" };
     }));
     return out.filter((x): x is NonNullable<typeof x> => x !== null).sort((a, b) => b.receivedAt - a.receivedAt);
+  },
+});
+
+/** The renter's open bills, oldest first: what a payment can be applied to. */
+export const openBills = query({
+  args: { renterId: v.id("renters") },
+  handler: async (ctx, { renterId }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    await assertRenterVisible(ctx, u, renterId);
+    const all = (await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect()).filter((i) => i.status === "issued");
+    const out = [];
+    for (const inv of all) {
+      const unit = await ctx.db.get(inv.unitId);
+      if (!unit || !canSeeBuilding(u, unit.buildingId)) continue;
+      const bal = await invoiceBalance(ctx, inv);
+      if (bal.due > 0) out.push({ invoiceId: inv._id, number: inv.number, period: inv.period, unitNumber: unit.number, dueAt: inv.dueAt, due: bal.due });
+    }
+    return out.sort((a, b) => a.dueAt - b.dueAt);
+  },
+});
+
+/** Counts and amounts by status for payments received in a date range (all time when none is given). */
+export const summary = query({
+  args: { from: v.optional(v.number()), to: v.optional(v.number()) },
+  handler: async (ctx, { from, to }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    const rows = await ctx.db.query("payments").withIndex("by_received", (q) => (from !== undefined && to !== undefined ? q.gte("receivedAt", from).lt("receivedAt", to) : from !== undefined ? q.gte("receivedAt", from) : to !== undefined ? q.lt("receivedAt", to) : q)).order("desc").take(5000);
+    const seen = new Map<string, boolean>();
+    const out = { recorded: { n: 0, amount: 0 }, confirmed: { n: 0, amount: 0 }, applied: { n: 0, amount: 0 }, voided: { n: 0, amount: 0 } };
+    for (const p of rows) {
+      let ok = seen.get(p.renterId);
+      if (ok === undefined) { try { await assertRenterVisible(ctx, u, p.renterId); ok = true; } catch { ok = false; } seen.set(p.renterId, ok); }
+      if (!ok) continue;
+      out[p.status].n++; out[p.status].amount += p.amount;
+    }
+    return { ...out, capped: rows.length >= 5000 };
   },
 });
