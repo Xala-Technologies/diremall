@@ -3,7 +3,8 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, DateText, ExportMenu, Field, Money, PageHeader, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Badge, BuildingSelect, Card, DateText, ExportMenu, Field, Money, PageHeader, StatusBadge, Table, Tabs } from "@/components/ui";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users } from "lucide-react";
 import { FilterSelect } from "@/components/FilterSelect";
@@ -12,13 +13,13 @@ import { periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 export default function Reports() {
-  const { t } = useI18n(); const [tab, setTab] = useState<"rentRoll" | "vacancy" | "aging" | "revenue" | "ledger">("rentRoll"); const [building, setBuilding] = useState("");
+  const { t } = useI18n(); const [tab, setTab] = useState<"rentRoll" | "vacancy" | "aging" | "revenue" | "ledger" | "expiry" | "deposits">("rentRoll"); const [building, setBuilding] = useState("");
   const buildings = useQuery(api.properties.listBuildings); const b = (building || undefined) as Id<"buildings"> | undefined;
   return (
     <div className="stack">
-      <PageHeader title={t("nav.reports")} filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")]]} /></>}
+      <PageHeader title={t("nav.reports")} filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")], ["expiry", t("rep.expiry")], ["deposits", t("rep.deposits")]]} /></>}
         actions={<Link className="btn primary no-print" href="/reports/month-end">{t("rep.monthEnd")}</Link>} />
-      {tab === "rentRoll" && <RentRoll b={b} />}{tab === "vacancy" && <Vacancy b={b} />}{tab === "aging" && <Aging b={b} />}{tab === "revenue" && <Revenue b={b} />}{tab === "ledger" && <Ledger />}
+      {tab === "rentRoll" && <RentRoll b={b} />}{tab === "vacancy" && <Vacancy b={b} />}{tab === "aging" && <Aging b={b} />}{tab === "revenue" && <Revenue b={b} />}{tab === "ledger" && <Ledger />}{tab === "expiry" && <Expiry b={b} />}{tab === "deposits" && <Deposits b={b} />}
     </div>
   );
 }
@@ -85,4 +86,37 @@ function Ledger() {
         { head: t("bill.due"), cell: (l) => <Money v={l.balance} strong />, right: true, money: true }]} />}
     </Card>
   );
+}
+
+const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+/** The renewal pipeline: leases ending soon, with the rent that would be lost and the deposit held. */
+function Expiry({ b }: { b?: Id<"buildings"> }) {
+  const { t } = useI18n(); const router = useRouter(); const [days, setDays] = useState("90");
+  const d = useQuery(api.reports.leaseExpiry, { withinDays: Number(days), buildingId: b });
+  return <Card title={t("rep.expiry")} actions={<><FilterSelect label={t("rep.within")} value={days} onChange={setDays} options={["30", "60", "90", "180", "365"].map((n) => ({ value: n, label: t("rep.withinDays").replace("{n}", n), icon: <Users size={16} /> }))} />
+    <ExportMenu name="lease-expiry" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, renter: r.renterName, ends: iso(r.endsAt), days_left: r.daysLeft, monthly_rent: r.rent / 100, deposit_held: r.deposit / 100 })) : []} /></>}>
+    <Table rows={d?.rows.map((r) => ({ ...r, _id: r.agreementId }))} empty={t("empty.rep.expiry")} onRow={(r) => router.push(`/agreements/${r.agreementId}`)} cols={[
+      { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName },
+      { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt} />, sort: (r) => r.endsAt },
+      { head: t("rep.timeLeft"), cell: (r) => <Badge tone={r.daysLeft < 0 ? "bad" : r.daysLeft <= 60 ? "warn" : "muted"}>{r.daysLeft < 0 ? t("rep.pastEnd").replace("{n}", String(-r.daysLeft)) : t("ag.daysLeft").replace("{n}", String(r.daysLeft))}</Badge>, sort: (r) => r.daysLeft },
+      { head: t("ag.rentMonth"), cell: (r) => <Money v={r.rent} />, right: true, money: true, sort: (r) => r.rent }, { head: t("rep.depositHeld"), cell: (r) => <Money v={r.deposit} />, right: true, money: true },
+    ]} />
+    {d && d.rows.length > 0 && <p style={{ textAlign: "right" }}>{d.totals.leases} {t("rep.leases")} · {t("rep.rentAtStake")}: <Money v={d.totals.rent} strong />{d.totals.overdue > 0 ? ` · ${d.totals.overdue} ${t("rep.pastEndN")}` : ""}</p>}
+  </Card>;
+}
+
+/** Deposits by lease, with refunds due for ended leases shown first. */
+function Deposits({ b }: { b?: Id<"buildings"> }) {
+  const { t } = useI18n(); const router = useRouter(); const d = useQuery(api.reports.deposits, { buildingId: b });
+  return <Card title={t("rep.deposits")} actions={<ExportMenu name="deposits" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, renter: r.renterName, status: r.status, required: r.required / 100, held: r.held / 100, deducted: r.deducted / 100, refunded: r.refunded / 100, still_held: r.available / 100, refund_due: r.refundDue ? "yes" : "" })) : []} />}>
+    {d && <div className="acct"><div><span>{t("rep.stillHeld")}</span><b className="num"><Money v={d.totals.held} /></b></div><div className={d.totals.toReturn ? "warn" : ""}><span>{t("rep.toReturn")}</span><b className="num"><Money v={d.totals.toReturn} /></b></div><div className={d.totals.shortfall ? "bad" : ""}><span>{t("rep.shortfall")}</span><b className="num"><Money v={d.totals.shortfall} /></b></div></div>}
+    <Table rows={d?.rows.map((r) => ({ ...r, _id: r.agreementId }))} empty={t("empty.rep.deposits")} onRow={(r) => router.push(`/agreements/${r.agreementId}`)} cols={[
+      { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName },
+      { head: t("status"), cell: (r) => r.refundDue ? <Badge tone="warn">{t("rep.refundDue")}</Badge> : <StatusBadge status={r.status} /> },
+      { head: t("dep.required"), cell: (r) => <Money v={r.required} />, right: true, money: true }, { head: t("dep.held"), cell: (r) => <Money v={r.held} />, right: true, money: true },
+      { head: t("rep.deducted"), cell: (r) => <Money v={r.deducted} />, right: true, money: true, hide: true }, { head: t("dep.refunded"), cell: (r) => <Money v={r.refunded} />, right: true, money: true, hide: true },
+      { head: t("dep.available"), cell: (r) => <Money v={r.available} strong />, right: true, money: true, sort: (r) => r.available },
+    ]} />
+  </Card>;
 }

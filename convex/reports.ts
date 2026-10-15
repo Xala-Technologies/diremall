@@ -3,7 +3,7 @@ import { query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { READ_ROLES, assertBuilding, canSeeBuilding, requireRole } from "./lib/access";
-import { ageArrears, monthlyRent } from "./lib/billing";
+import { ageArrears, escalatedRent, monthlyRent } from "./lib/billing";
 import { invoiceBalance, termAt } from "./lib/ledger";
 import { periodRange } from "./lib/period";
 import { activeAgreementsByUnit, renterMap, termsByAgreement } from "./lib/bulk";
@@ -203,5 +203,67 @@ export const revenue = query({
     const rows = [...byPeriod.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, r]) => ({ period, ...r }));
     // "Collected" is money received against bills. It is not profit.
     return { rows, totals: rows.reduce((t, r) => ({ billed: t.billed + r.billed, collected: t.collected + r.collected, outstanding: t.outstanding + r.outstanding }), { billed: 0, collected: 0, outstanding: 0 }) };
+  },
+});
+
+/** The monthly rent a lease is charging now (or charged at its end), with any yearly increase applied. */
+function rentOf(terms: Doc<"agreementTerms">[], areaM2: number, endsAt: number) {
+  const sorted = terms.slice().sort((a, b) => a.effectiveFrom - b.effectiveFrom);
+  const at = Math.min(Date.now(), endsAt);
+  const cur = sorted.filter((x) => x.effectiveFrom <= at).at(-1) ?? sorted[0];
+  if (!cur) return 0;
+  const d = new Date(); const monthStart = Math.min(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1), endsAt);
+  return escalatedRent(monthlyRent(cur.rent.kind === "fixed" ? { kind: "fixed", amount: cur.rent.amount } : { kind: "perM2", areaM2, ratePerM2: cur.rent.ratePerM2 }), cur.escalation, cur.effectiveFrom, monthStart).amount;
+}
+
+/**
+ * Active leases that end within the chosen number of days (and any already past their end date but not yet closed),
+ * soonest first: the renewal pipeline, with the rent that would be lost.
+ */
+export const leaseExpiry = query({
+  args: { withinDays: v.number(), buildingId: v.optional(v.id("buildings")) },
+  handler: async (ctx, { withinDays, buildingId }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    if (buildingId) assertBuilding(u, buildingId);
+    const units = new Map((await scopedUnits(ctx, u, buildingId)).map((x) => [x._id, x]));
+    const [renters, terms] = await Promise.all([renterMap(ctx), termsByAgreement(ctx)]);
+    const horizon = Date.now() + Math.min(Math.max(withinDays, 1), 730) * DAY;
+    const rows = [];
+    for (const ag of await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("status", "active")).collect()) {
+      const unit = units.get(ag.unitId);
+      if (!unit || ag.endsAt > horizon) continue;
+      const dep = await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", ag._id)).unique();
+      rows.push({
+        agreementId: ag._id, unitNumber: unit.number, renterName: renters.get(ag.renterId)?.name ?? "", endsAt: ag.endsAt, daysLeft: Math.ceil((ag.endsAt - Date.now()) / DAY),
+        rent: rentOf(terms.get(ag._id) ?? [], unit.areaM2, ag.endsAt), deposit: dep ? dep.held : 0,
+      });
+    }
+    rows.sort((a, b) => a.endsAt - b.endsAt);
+    return { rows, totals: { leases: rows.length, rent: rows.reduce((s, r) => s + r.rent, 0), overdue: rows.filter((r) => r.daysLeft < 0).length } };
+  },
+});
+
+/** Deposits held, by lease: what was required, held, deducted and refunded, and what is still to be returned. */
+export const deposits = query({
+  args: { buildingId: v.optional(v.id("buildings")) },
+  handler: async (ctx, { buildingId }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    if (buildingId) assertBuilding(u, buildingId);
+    const units = new Map((await scopedUnits(ctx, u, buildingId)).map((x) => [x._id, x]));
+    const renters = await renterMap(ctx);
+    const rows: { agreementId: Id<"agreements">; unitNumber: string; renterName: string; status: string; required: number; held: number; deducted: number; refunded: number; available: number; refundDue: boolean; shortfall: number }[] = [];
+    for (const dep of await ctx.db.query("deposits").collect()) {
+      const ag = await ctx.db.get(dep.agreementId);
+      const unit = ag ? units.get(ag.unitId) : undefined;
+      if (!ag || !unit) continue;
+      const deducted = dep.deductions.filter((d) => d.approvedBy).reduce((s, d) => s + d.amount, 0);
+      const available = dep.held - deducted - dep.refunded;
+      const ended = ag.status === "expired" || ag.status === "terminated";
+      if (dep.held === 0 && dep.required === 0 && dep.refunded === 0) continue;
+      rows.push({ agreementId: ag._id, unitNumber: unit.number, renterName: renters.get(ag.renterId)?.name ?? "", status: ag.status, required: dep.required, held: dep.held, deducted, refunded: dep.refunded, available, refundDue: ended && available > 0, shortfall: ag.status === "active" ? Math.max(0, dep.required - dep.held) : 0 });
+    }
+    rows.sort((a, b) => Number(b.refundDue) - Number(a.refundDue) || a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true }));
+    const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((s, r) => s + f(r), 0);
+    return { rows, totals: { held: sum((r) => r.available), toReturn: sum((r) => (r.refundDue ? r.available : 0)), shortfall: sum((r) => r.shortfall), leases: rows.length } };
   },
 });
