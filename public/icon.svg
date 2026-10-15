@@ -1,7 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dire Mall">
   <title>Dire Mall</title>
-  <rect width="64" height="64" rx="14" fill="#003057"/>
-  <defs><clipPath id="dm-counter"><path d="M25 20H33C39.5 20 44 24.5 44 32C44 39.5 39.5 44 33 44H25Z"/></clipPath></defs>
-  <path fill="#fff" fill-rule="evenodd" d="M16 11H33C46.5 11 54 19.5 54 32C54 44.5 46.5 53 33 53H16ZM25 20V44H33C39.5 44 44 39.5 44 32C44 24.5 39.5 20 33 20Z"/>
-  <g clip-path="url(#dm-counter)"><rect x="22" y="22.5" width="26" height="3" fill="#fff"/><rect x="22" y="30.5" width="26" height="3" fill="#F5A623"/><rect x="22" y="38.5" width="26" height="3" fill="#fff"/></g>
+  <defs><clipPath id="dm-c"><path d="M17 14H35C45 14 52 21 52 32C52 43 45 50 35 50H17Z"/></clipPath></defs><rect width="64" height="64" rx="14" fill="#003057"/><path fill="#fff" fill-rule="evenodd" d="M10 7H35C50 7 58 17.5 58 32C58 46.5 50 57 35 57H10ZM17 14V50H35C45 50 52 43 52 32C52 21 45 14 35 14Z"/><g clip-path="url(#dm-c)"><rect x="17" y="19" width="36" height="4" fill="#fff"/><rect x="17" y="28" width="36" height="4" fill="#F5A623"/><rect x="17" y="37" width="36" height="4" fill="#fff"/></g>
 </svg>
