@@ -33,6 +33,7 @@ export default defineSchema({
     buildingScope: v.optional(v.union(v.literal("all"), v.array(v.id("buildings")))),
     active: v.optional(v.boolean()),
     lang: v.optional(v.union(v.literal("en"), v.literal("am"))),
+    inviteCode: v.optional(v.string()), // only present for a moment during sign-up; removed as soon as it is checked
   }).index("email", ["email"]),
 
   buildings: defineTable({ name: v.string(), address: v.optional(v.string()) }),
@@ -192,6 +193,17 @@ export default defineSchema({
   }).index("by_agreement", ["agreementId"]),
 
   // key/value configuration: tariffs (santim per unit), sms lead days, counters
+  // Sign-up is by invitation: an access admin invites an email address and hands the person a one-time code.
+  invites: defineTable({
+    email: v.string(),
+    codeHash: v.string(),
+    roles: v.array(role),
+    buildingScope: v.union(v.literal("all"), v.array(v.id("buildings"))),
+    createdBy: v.id("users"),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+  }).index("by_email", ["email"]),
+
   settings: defineTable({ key: v.string(), value: v.number() }).index("by_key", ["key"]),
 
   // Two-step sign-in. A secret only counts once `enabled`; sessions are marked verified per sign-in.

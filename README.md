@@ -100,3 +100,7 @@ Authenticator-app codes (TOTP, RFC 6238) plus eight one-time recovery codes. Any
 ## Backup and restore
 
 `node scripts/backup.mjs` takes a full export plus a fingerprint of the counts and money totals; `scripts/restore-drill.mjs` restores it into a scratch deployment and checks the figures match. See [docs/BACKUP.md](docs/BACKUP.md).
+
+## Adding staff (invitation-only)
+
+Staff access → **Invite person**: enter their email, choose roles and buildings, and give them the one-time code yourself (in person or by phone). They then use **Create account** on the sign-in page with the same email and the code. The first administrator needs no code (restrict who with `BOOTSTRAP_ADMIN_EMAIL` on production).

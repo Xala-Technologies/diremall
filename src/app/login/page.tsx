@@ -37,13 +37,14 @@ export default function Login() {
               ? (known ? "Email or password is incorrect." : "Could not sign in. Please try again.")
               : /invalid_email/.test(msg) ? "Enter a valid email address."
               : /Invalid password/i.test(msg) ? "Use a password of at least 8 characters."
-              : "Could not create the account. Please try again, or check the server log.");
+              : t("invite.signupFailed"));
             console.error("auth error:", msg);
           } finally { setBusy(false); }
         }}>
           <div><h1>{flow === "signIn" ? t("signIn") : t("signUp")}</h1><p className="muted">{t("appName")}</p></div>
           {flow === "signUp" && <Field label={t("name")}><input name="name" required autoComplete="name" /></Field>}
           <Field label={t("email")}><input name="email" type="email" required autoComplete="email" autoFocus /></Field>
+          {flow === "signUp" && <Field label={t("invite.code")} hint={t("invite.codeHint")}><input name="inviteCode" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="XXXXX-XXXXX" /></Field>}
           <Field label={t("password")} hint={flow === "signUp" ? t("pw.hint") : undefined}>
             <div className="pw-wrap"><input name="password" type={show ? "text" : "password"} required minLength={8} autoComplete={flow === "signIn" ? "current-password" : "new-password"} />
               <button type="button" className="btn ghost sm icon-only pw-toggle" onClick={() => setShow(!show)} aria-label={show ? t("pw.hide") : t("pw.show")} aria-pressed={show}><Icon name={show ? "eyeOff" : "eye"} size={18} /></button></div></Field>

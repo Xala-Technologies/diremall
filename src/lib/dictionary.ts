@@ -110,6 +110,10 @@ export const EN: Record<string, string> = {
   "err.mfa_required": "Enter your two-step code to continue.", "err.mfa_setup_required": "Set up two-step sign-in to continue.", "err.mfa_already_enabled": "Two-step sign-in is already on.", "err.mfa_not_started": "Start the setup first.",
   "err.mfa_required_for_role": "Your role must keep two-step sign-in on.", "err.mfa_enroll_first": "Set up your own two-step sign-in first, so you are not locked out.", "err.cannot_reset_own_mfa": "Ask another admin to reset yours.",
   "err.file_too_large": "That file is larger than 15 MB.", "err.file_type_not_allowed": "Only PDF, PNG, JPG or WebP files are accepted.", "err.file_missing": "The uploaded file was not found. Try again.",
+  "invite.person": "Invite person", "invite.pending": "Pending invitations", "invite.expires": "Expires", "invite.revoke": "Cancel", "invite.create": "Create invitation", "invite.ready": "Invitation ready",
+  "invite.readyHint": "Give this code to the person yourself, in person or by phone. It works once, for this email address, for 7 days, and is not shown again. They sign up on the sign-in page with the code.",
+  "invite.code": "Invitation code", "invite.codeHint": "From your administrator. Not needed for the first administrator.", "invite.signupFailed": "Could not create the account. Check the invitation code and that the email matches the invitation, or ask your administrator for a new invitation.",
+  "err.email_already_registered": "That email address already has an account.", "err.roles_required": "Choose at least one role.", "err.invalid_email": "Enter a valid email address.",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -198,6 +202,10 @@ export const AM: Record<string, string> = {
   "err.mfa_required": "ለመቀጠል ባለ ሁለት ደረጃ ኮድዎን ያስገቡ።", "err.mfa_setup_required": "ለመቀጠል ባለ ሁለት ደረጃ መግቢያ ያዋቅሩ።", "err.mfa_already_enabled": "ባለ ሁለት ደረጃ መግቢያ አስቀድሞ በርቷል።", "err.mfa_not_started": "መጀመሪያ ማዋቀሩን ይጀምሩ።",
   "err.mfa_required_for_role": "ሚናዎ ባለ ሁለት ደረጃ መግቢያን ማቆየት አለበት።", "err.mfa_enroll_first": "እንዳይቆለፉ መጀመሪያ የራስዎን ባለ ሁለት ደረጃ መግቢያ ያዋቅሩ።", "err.cannot_reset_own_mfa": "የእርስዎን ሌላ አስተዳዳሪ ያስጀምር።",
   "err.file_too_large": "ፋይሉ ከ15 ሜባ ይበልጣል።", "err.file_type_not_allowed": "PDF፣ PNG፣ JPG ወይም WebP ፋይሎች ብቻ ይቀበላሉ።", "err.file_missing": "የተጫነው ፋይል አልተገኘም። እንደገና ይሞክሩ።",
+  "invite.person": "ሰው ጋብዝ", "invite.pending": "በመጠባበቅ ላይ ያሉ ግብዣዎች", "invite.expires": "ያበቃል", "invite.revoke": "ሰርዝ", "invite.create": "ግብዣ ፍጠር", "invite.ready": "ግብዣው ተዘጋጅቷል",
+  "invite.readyHint": "ይህን ኮድ በአካል ወይም በስልክ ለሰውየው ራስዎ ይስጡ። ለዚህ ኢሜይል ለ7 ቀናት አንድ ጊዜ ብቻ ይሰራል፣ ዳግም አይታይም። በመግቢያ ገጹ ላይ በኮዱ ይመዘገባሉ።",
+  "invite.code": "የግብዣ ኮድ", "invite.codeHint": "ከአስተዳዳሪዎ። ለመጀመሪያው አስተዳዳሪ አያስፈልግም።", "invite.signupFailed": "መለያው አልተፈጠረም። የግብዣ ኮዱን እና ኢሜይሉ ከግብዣው ጋር መመሳሰሉን ያረጋግጡ፣ ወይም አስተዳዳሪዎን አዲስ ግብዣ ይጠይቁ።",
+  "err.email_already_registered": "ይህ ኢሜይል አስቀድሞ መለያ አለው።", "err.roles_required": "ቢያንስ አንድ ሚና ይምረጡ።", "err.invalid_email": "ትክክለኛ ኢሜይል ያስገቡ።",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

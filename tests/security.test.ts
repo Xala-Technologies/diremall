@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldBootstrap } from "../convex/auth";
+import { shouldBootstrap } from "../convex/lib/signup";
 import { lockDuration } from "../convex/mfa";
 import { csvCell } from "../src/lib/csv";
 import { etb, storePdf, utc, world } from "./helpers";
