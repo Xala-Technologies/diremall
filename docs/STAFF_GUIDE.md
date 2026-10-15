@@ -50,9 +50,25 @@ later open the renter and choose *Edit renter*.
 
 You cannot approve your own agreements.
 
-**Meter readings and shared costs.** Utilities → *Enter reading* for each sub-meter. Readings that look unusual are
-flagged and wait for review. Shared costs (generator, security, cleaning) are split by area; the share of a vacant unit is
-carried by the owner.
+**Reading a lease.** Open any agreement. The bar and badge show how long it has left. *Lease account* shows what has been
+billed, paid and is still owed or overdue, with the latest bills. Details show the rent being charged today, the next
+yearly increase and its date, and who prepared and approved the lease. On the Agreements list, *Ending in 60 days* shows
+the leases to renew. **Reports → Lease expiry** lists them for 30 to 365 days with the monthly rent at stake.
+
+**Moving out.** When a lease ends or is terminated, the deposit card stays on the agreement page. If the renter still owes
+money on that lease the page says so: request a deduction for it, then an approver approves the deduction and refunds what
+is left. **Reports → Deposits** lists every deposit and the refunds due.
+
+**Meter readings.** Utilities → Meters shows every meter for the month: previous reading, this month's reading, usage and
+the charge billing will make, with a status: *Ready* (an approved reading this month, so it will be billed), *Waiting*
+(entered but not approved), *Flagged* or *Missing* (no reading, so nothing is charged). Check there are no Missing rows
+before preparing the month's bills. *Enter reading* shows the last reading and warns if the new value is lower, which sends
+it to an approver unless you tick meter reset. Click a meter to see all its readings. The page also tells you how many
+occupied units have no meter at all.
+
+**Shared costs.** Utilities → Shared costs: enter the building's generator, security or cleaning total for the month. It is
+split across the units by area, the share of vacant units is carried by the owner, and an approver approves it before it
+appears on bills. *How it was split* shows each unit's share.
 
 ---
 
@@ -142,8 +158,9 @@ You decide who can use the system. You cannot approve financial items unless you
 
 ## SMS reminders
 The system queues reminders before the due date, a thank-you when a payment is applied, and a warning before an agreement
-ends. **SMS** shows every message and its status; failed ones can be retried. A renter who has paid does not get a debt
-reminder.
+ends. **SMS** shows every message, its type and status; failed ones can be retried one by one or all at once. A renter who
+has paid does not get a debt reminder. Each message shows how many SMS **segments** it uses: the operator bills by segment,
+and text in Amharic fits only 70 characters in a segment (160 for English), so it costs more.
 
 ## If something looks wrong
 Do not repeat the action. Note the page, the time and what you clicked, and tell the administrator. History shows what
