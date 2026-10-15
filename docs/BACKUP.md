@@ -11,7 +11,7 @@ The newest 30 are kept (`KEEP=60` to change). `backups/` is git-ignored. **A bac
 ## Taking backups
 - By hand: `node scripts/backup.mjs` (uses the deployment your Convex CLI points at).
 - Production: set `CONVEX_DEPLOY_KEY` to the **production** key in the environment of the machine that runs it, then run the same command. Never commit the key.
-- Schedule it (cron or a CI job) at least daily, and copy the files off that machine.
+- Schedule it: `.github/workflows/backup.yml` runs it every 6 hours and keeps each backup as a GitHub artifact for 14 days. To switch it on, add the repository secret `CONVEX_DEPLOY_KEY` (Settings, Secrets and variables, Actions) holding the production key, then run the workflow once by hand (Actions, Production backup, Run workflow) and check it succeeds. Anyone who can read the repository can download the artifacts, so keep the repository private, limit who has access, and also copy backups to separate encrypted storage.
 
 ## Restore drill (do this before go-live, then every quarter)
 1. In the Convex dashboard create a **scratch** deployment (not production). Generate a deploy key for it.

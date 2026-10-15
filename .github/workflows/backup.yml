@@ -1,0 +1,44 @@
+name: Production backup
+
+# Takes a full export of the production database and files, plus a fingerprint to check a restore against.
+# Needs the repository secret CONVEX_DEPLOY_KEY (the production deploy key). Never put the key in this file.
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours (UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the secret is set
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then echo "::error::Add the repository secret CONVEX_DEPLOY_KEY (production deploy key)."; exit 1; fi
+      - name: Back up
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          BACKUP_DIR: backups
+        run: node scripts/backup.mjs
+      - name: Keep the backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: dire-mall-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 14
+          if-no-files-found: error
