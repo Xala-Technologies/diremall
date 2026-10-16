@@ -66,7 +66,7 @@ export default function Properties() {
           <ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} />
         </>}
         actions={can("propertyManager") ? <>
-          {building && <button className="btn primary" onClick={() => setModal("unit")}>{t("prop.addUnit")}</button>}
+          {(buildings?.length ?? 0) > 0 && <button className="btn primary" onClick={() => setModal("unit")}>{t("prop.addUnit")}</button>}
         </> : undefined} />
       <UnitInsights units={units} buildings={buildings} building={building} />
       <Message error={error} />
@@ -112,7 +112,7 @@ export default function Properties() {
         ]} />
       </Card>
       )}
-      {modal === "unit" && building && <UnitForm buildingId={building as Id<"buildings">} onClose={() => setModal(null)} />}
+      {modal === "unit" && <UnitForm buildingId={(building || (buildings?.length === 1 ? buildings[0]!._id : "")) as Id<"buildings"> | ""} onClose={() => setModal(null)} />}
       {editUnit && <UnitForm buildingId={editUnit.buildingId} unit={editUnit} onClose={() => setEditUnit(null)} />}
     </div>
   );
@@ -121,9 +121,12 @@ export default function Properties() {
 type UnitRow = { _id: Id<"units">; buildingId: Id<"buildings">; floorId: Id<"floors">; number: string; areaM2: number; category: "office" | "retail" | "storage" | "residential"; ratePerM2: number; status: "vacant" | "occupied" | "maintenance"; notes?: string };
 
 /** Add a unit, or edit one. A leased unit's area and rate are locked: those change through an agreement term. */
-function UnitForm({ buildingId, unit, onClose }: { buildingId: Id<"buildings">; unit?: UnitRow; onClose: () => void }) {
+function UnitForm({ buildingId: presetBuilding, unit, onClose }: { buildingId: Id<"buildings"> | ""; unit?: UnitRow; onClose: () => void }) {
+  // from the unit board with no building chosen, the form asks which building the unit belongs to
+  const [pickedBuilding, setPickedBuilding] = useState<string>(presetBuilding); const buildings = useQuery(api.properties.listBuildings, {});
+  const buildingId = pickedBuilding as Id<"buildings">;
   const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const update = useMutation(api.properties.updateUnit); const removeUnit = useMutation(api.removals.deleteUnit); const { run, error, busy } = useRun();
-  const floors = useQuery(api.properties.listFloors, { buildingId });
+  const floors = useQuery(api.properties.listFloors, buildingId ? { buildingId } : "skip");
   const [floorId, setFloorId] = useState<string>(unit?.floorId ?? ""); const [number, setNumber] = useState(unit?.number ?? ""); const [area, setArea] = useState(unit ? String(unit.areaM2) : "");
   const [category, setCategory] = useState<UnitRow["category"]>(unit?.category ?? "retail"); const [rate, setRate] = useState<number | null>(unit ? unit.ratePerM2 : null);
   const [status, setStatus] = useState<"vacant" | "maintenance">("vacant"); const [notes, setNotes] = useState(unit?.notes ?? "");
@@ -135,13 +138,14 @@ function UnitForm({ buildingId, unit, onClose }: { buildingId: Id<"buildings">; 
     <Modal title={unit ? `${t("prop.editUnit")}: ${unit.number}` : t("prop.addUnit")} onClose={onClose}>
       <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
-        const found = failures({ floor: chosenFloor ? null : t("v.pick"), number: req(number, t), area: Number(area) > 0 ? null : t("v.positive"), rate: nonNegative(rate, t) });
+        const found = failures({ building: buildingId ? null : t("v.pick"), floor: chosenFloor ? null : t("v.pick"), number: req(number, t), area: Number(area) > 0 ? null : t("v.positive"), rate: nonNegative(rate, t) });
         setErrs(found); if (Object.keys(found).length) return;
         const ok = unit
           ? await run(() => update({ unitId: unit._id, number: number.trim(), floorId: chosenFloor as Id<"floors">, notes, category, ...(locked ? {} : { areaM2: Number(area), ratePerM2: rate! }) }), t("saved"))
           : await run(() => create({ buildingId, floorId: chosenFloor as Id<"floors">, number: number.trim(), areaM2: Number(area), category, ratePerM2: rate!, notes, status }), t("saved"));
         if (ok !== undefined) onClose();
       }}>
+        {!unit && !presetBuilding && <Field label={t("building")} error={errs.building}><select value={pickedBuilding} onChange={(e) => { setPickedBuilding(e.target.value); setFloorId(""); clear("building"); }}><option value="" />{buildings?.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}</select></Field>}
         <Field label={t("prop.floor")} error={errs.floor}><select value={chosenFloor} onChange={(e) => { setFloorId(e.target.value); clear("floor"); }}>{(floors?.length ?? 0) === 0 && <option value="">—</option>}{floors?.map((f) => <option key={f._id} value={f._id}>{f.label}</option>)}</select></Field>
         <Field label={t("prop.unitNumber")} error={errs.number}><input autoFocus value={number} onChange={(e) => { setNumber(e.target.value); clear("number"); }} /></Field>
         <Field label={t("prop.area")} error={errs.area}><input inputMode="decimal" value={area} disabled={locked} onChange={(e) => { setArea(e.target.value); clear("area"); }} /></Field>
