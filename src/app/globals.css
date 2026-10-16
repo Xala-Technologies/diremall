@@ -340,6 +340,7 @@ textarea { font: inherit; resize: vertical; }
 .filter-select.is-icon .filter-select-menu { left: auto; right: 0; min-width: 11rem; }
 
 @media (max-width: 440px) { .app-header .brand-mark-name { display: none; } }
+.app-header .mark > rect { fill: none; } .app-header .mark > path { fill: var(--ds-color-accent-text-subtle); }
 
 /* Bank matching */
 .bank-note { margin: -4px 0 0; max-width: 60rem; }

@@ -10,6 +10,8 @@ import { Billing } from "./Billing";
 import { Buildings } from "./Buildings";
 import { Organisation } from "./Organisation";
 import { Security } from "./Security";
+import { Health } from "./Health";
+import { useMe } from "@/lib/useMe";
 
 type Tab = "overview" | "org" | "buildings" | "billing" | "security";
 const TABS: Tab[] = ["overview", "org", "buildings", "billing", "security"];
@@ -29,7 +31,7 @@ export default function Settings() {
 
 /** What still has to be set up before the system can be used for real, with a way into each item. */
 function Overview({ go }: { go: (t: string) => void }) {
-  const { t } = useI18n();
+  const { t } = useI18n(); const { can } = useMe();
   const org = useQuery(api.settings.org) as { name?: string; tin?: string; phone?: string; bankAccounts?: string } | undefined; const buildings = useQuery(api.properties.buildingOverview);
   const s = useQuery(api.settings.get); const gw = useQuery(api.smsQueue.gateway); const mfa = useQuery(api.mfa.status);
   if (!org || !buildings || !s || !gw || !mfa) return <Card><Skeleton lines={6} /></Card>;
@@ -57,6 +59,7 @@ function Overview({ go }: { go: (t: string) => void }) {
             </li>))}
         </ul>
       </Card>
+      {can("approver") && <Health />}
       <div className="cols-2">
         <Card title={t("org.title")}><dl className="facts"><div><dt>{t("org.name")}</dt><dd>{org.name ?? "—"}</dd></div><div><dt>{t("renter.tin")}</dt><dd>{org.tin ?? "—"}</dd></div><div><dt>{t("renter.phone")}</dt><dd>{org.phone ?? "—"}</dd></div></dl></Card>
         <Card title={t("set.buildingsTitle")}><dl className="facts"><div><dt>{t("set.inService")}</dt><dd>{live.length}</dd></div><div><dt>{t("rep.k.units")}</dt><dd>{units}</dd></div><div><dt>{t("set.archived")}</dt><dd>{buildings.length - live.length}</dd></div></dl></Card>

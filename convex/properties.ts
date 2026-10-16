@@ -169,6 +169,11 @@ export const updateUnit = mutation({
     assertBuilding(u, unit.buildingId);
     // A rate change on a leased unit must go through an agreement term, so issued bills never move.
     if (unit.status === "occupied" && (patch.ratePerM2 !== undefined || patch.areaM2 !== undefined)) fail("use_agreement_term_for_rate_change");
+    // Rent per m² is worked out from the unit's area, so the area cannot change while a lease (even one not started yet or not approved yet) rests on it.
+    if (patch.areaM2 !== undefined && patch.areaM2 !== unit.areaM2) {
+      const leases = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", unitId)).collect();
+      if (leases.some((a) => a.status === "active" || a.status === "inReview" || a.status === "draft")) fail("use_agreement_term_for_rate_change");
+    }
     if (patch.areaM2 !== undefined && !(Number.isFinite(patch.areaM2) && patch.areaM2 > 0)) fail("invalid_amount");
     if (patch.ratePerM2 !== undefined && !(Number.isSafeInteger(patch.ratePerM2) && patch.ratePerM2 >= 0)) fail("invalid_amount");
     if (patch.number !== undefined) {
@@ -196,6 +201,11 @@ export const setUnitAvailability = mutation({
     const unit = (await ctx.db.get(unitId)) ?? fail("not_found");
     assertBuilding(u, unit.buildingId);
     if (unit.status === "occupied") fail("unit_occupied");
+    // a unit with an approved lease still to run cannot be taken out of service: the tenant would arrive at a unit shown as under repair
+    if (status === "maintenance") {
+      const live = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", unitId).eq("status", "active")).collect();
+      if (live.some((a) => a.endsAt > Date.now())) fail("unit_has_active_lease");
+    }
     await ctx.db.patch(unitId, { status });
     await audit(ctx, u, "unit.availability", "units", unitId, status);
   },

@@ -117,8 +117,8 @@ export const rentRoll = query({
       let renter = null, rent = 0;
       if (ag) {
         renter = renters.get(ag.renterId) ?? null;
-        const t = termAt(terms.get(ag._id) ?? [], Date.now());
-        if (t) rent = monthlyRent(t.rent.kind === "fixed" ? { kind: "fixed", amount: t.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: t.rent.ratePerM2 });
+        // the same figure billing charges this month, yearly increases included
+        rent = rentOf(terms.get(ag._id) ?? [], unit.areaM2, ag.endsAt);
       }
       return { buildingId: unit.buildingId, unitNumber: unit.number, category: unit.category, areaM2: unit.areaM2, status: unit.status, renterName: renter?.name ?? "", startsAt: ag?.startsAt ?? null, endsAt: ag?.endsAt ?? null, monthlyRent: rent };
     });

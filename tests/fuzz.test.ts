@@ -60,6 +60,15 @@ async function play(seed: number, steps: number) {
     else if (op === 24) await ok("depositToBill", async () => { const id = pick(ags); const ag = (await w.t.run((c) => c.db.get(id as never))) as any; const open = await w.fin.query(w.api.payments.openBills, { renterId: ag.renterId }); const b = open[0]; if (!b) return; await w.fin.mutation(w.api.deposits.requestDeduction, { agreementId: id, amount: Math.max(1, Math.floor(b.due * r())), reason: "fuzz", invoiceId: b.invoiceId }); const dep = (await w.fin.query(w.api.deposits.get, { agreementId: id })); await w.ap.mutation(w.api.deposits.approveDeduction, { agreementId: id, index: dep.deductions.length - 1 }); });
     // the books must agree with themselves after every single step
     const res = await w.t.run((c) => scan(c as never));
+    // the reports must add up to the same figures as the records they are built from
+    const open = await w.fin.query(w.api.billing.list, { openOnly: true });
+    const aging = await w.fin.query(w.api.reports.aging, {});
+    const agingTotal = Object.values(aging.totals).reduce((a: number, b: number) => a + b, 0);
+    if (agingTotal !== open.reduce((a, b) => a + b.due, 0)) throw new Error(`seed ${seed} step ${step} after [${log.slice(-3).join(", ")}]: arrears ageing ${agingTotal} differs from the open bills ${open.reduce((a, b) => a + b.due, 0)}`);
+    const now = Date.now(); const leases = await w.fin.query(w.api.agreements.list, { status: "active" });
+    const roll = await w.fin.query(w.api.reports.rentRoll, {});
+    const live = leases.filter((a) => a.startsAt <= now && a.endsAt > now).reduce((a, b) => a + b.rent, 0);
+    if (roll.totalMonthlyRent !== live) throw new Error(`seed ${seed} step ${step} after [${log.slice(-3).join(", ")}]: rent roll ${roll.totalMonthlyRent} differs from the live leases ${live}`);
     if (res.findings.length) throw new Error(`seed ${seed} step ${step} after [${log.slice(-4).join(", ")}]: ${JSON.stringify(res.findings.slice(0, 3))}`);
   }
   if (process.env.FUZZ_DEBUG) { const c: Record<string, number> = {}; for (const n of log) c[n] = (c[n] ?? 0) + 1; (await import("node:fs")).appendFileSync(process.env.FUZZ_DEBUG!, `${seed} ${JSON.stringify(c)}\n`); }

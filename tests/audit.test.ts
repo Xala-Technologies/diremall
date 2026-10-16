@@ -93,3 +93,59 @@ describe("corrections, payments and readings keep the books straight", () => {
     expect((await w.pm.mutation(w.api.utilities.enterReading, { meterId, value: 200, readAt: utc(2026, 9, 29) })).status).toBe("draft");
   });
 });
+
+describe("a full go-live load leaves the books consistent and the numbers provable", () => {
+  it("imports units, renters, leases and opening balances, then bills, takes payments and reports agree with the source", async () => {
+    const w = await world();
+    const units = [
+      { row: 2, building: "Dire Mall", floor: "Ground", unit: "G-01", area: "150", category: "retail", rate: "2300" },
+      { row: 3, building: "Dire Mall", floor: "Ground", unit: "G-02", area: "100", category: "retail", rate: "2300" },
+      { row: 4, building: "Dire Mall", floor: "First", unit: "F-01", area: "80", category: "office", rate: "1500" },
+    ];
+    await w.pm.mutation(w.api.imports.commitUnits, { rows: units });
+    const renters = ["Abebe Trading", "Selam Pharmacy"].map((name, i) => ({ row: i + 2, kind: "company", name, tin: `00${i}1234567`.slice(0, 10), license: "", phone: `091120010${i}`, email: "", rep: "" }));
+    await w.pm.mutation(w.api.imports.commitRenters, { rows: renters });
+    const ag = (row: number, unit: string, renter: string, extra: object = {}) => ({ row, building: "", unit, renter, startsAt: utc(2025, 9), endsAt: utc(2027, 9), basis: "perM2" as const, amount: etb(2300), dueDay: 5, deposit: etb(100000), ...extra });
+    await w.ap.mutation(w.api.imports.commitAgreements, { rows: [ag(2, "G-01", "Abebe Trading"), ag(3, "G-02", "Selam Pharmacy", { basis: "fixed", amount: etb(200000), depositPaid: etb(60000) })] });
+    const op = (row: number, renter: string, amount: number, dueAt: number) => ({ row, building: "", unit: "", renter, amount, dueAt, note: "old balance" });
+    await w.ap.mutation(w.api.imports.commitOpening, { rows: [op(2, "Abebe Trading", etb(120000), utc(2026, 7, 5)), op(3, "Selam Pharmacy", etb(-30000), utc(2026, 8, 1))] });
+    await healthy(w);
+    // the source says: 2 leases, rent 345,000 + 200,000 = 545,000 a month, arrears 120,000, 30,000 credit, deposits 100,000 + 60,000
+    const rr = await w.fin.query(w.api.reports.rentRoll, {});
+    expect(rr.totalMonthlyRent).toBe(etb(545000));
+    const aging = await w.fin.query(w.api.reports.aging, {});
+    expect(Object.values(aging.totals).reduce((a, b) => a + b, 0)).toBe(etb(120000));
+    expect(aging.totals.d90plus).toBe(etb(120000)); // due 5 Jul is more than 90 days before 16 Oct
+    const selam = (await w.fin.query(w.api.renters.list, {})).find((r) => r.name === "Selam Pharmacy")!;
+    expect(await w.fin.query(w.api.payments.credit, { renterId: selam._id })).toBe(etb(30000));
+    const dep = await w.fin.query(w.api.reports.deposits, {});
+    expect(dep.totals.held).toBe(etb(100000) + etb(60000));
+    // a month is billed on top, a payment clears the arrears first, and the books still agree
+    await w.fin.mutation(w.api.billing.generate, { period: "2026-10" });
+    const bills = await w.fin.query(w.api.billing.list, { period: "2026-10" });
+    await w.fin.mutation(w.api.billing.issue, { invoiceIds: bills.map((b) => b._id) });
+    const abebe = (await w.fin.query(w.api.renters.list, {})).find((r) => r.name === "Abebe Trading")!;
+    const pay = await w.fin.mutation(w.api.payments.record, { renterId: abebe._id, amount: etb(150000), method: "transfer", reference: "TX1", receivedAt: utc(2026, 10, 10) });
+    await w.ap.mutation(w.api.payments.confirm, { paymentId: pay });
+    await w.fin.mutation(w.api.payments.apply, { paymentId: pay });
+    const open = await w.fin.query(w.api.payments.openBills, { renterId: abebe._id });
+    expect(open.map((b) => b.number).some((n) => n.startsWith("OPEN-"))).toBe(false); // the oldest bill (the opening balance) was paid first
+    expect(open.reduce((s, b) => s + b.due, 0)).toBe(etb(120000) + etb(345000) - etb(150000));
+    await healthy(w);
+  });
+});
+
+describe("the rent roll equals what billing charges", () => {
+  it("includes the yearly increase, so the monthly total matches the bills", async () => {
+    const w = await world();
+    await w.pm.mutation(w.api.imports.commitUnits, { rows: [{ row: 2, building: "Dire Mall", floor: "Ground", unit: "G-01", area: "100", category: "retail", rate: "2000" }] });
+    await w.pm.mutation(w.api.imports.commitRenters, { rows: [{ row: 2, kind: "company", name: "Abebe", tin: "0012345678", license: "", phone: "0911200100", email: "", rep: "" }] });
+    await w.ap.mutation(w.api.imports.commitAgreements, { rows: [{ row: 2, building: "", unit: "G-01", renter: "Abebe", startsAt: utc(2025, 9), endsAt: utc(2028, 9), basis: "perM2" as const, amount: etb(2000), dueDay: 5, deposit: 0, escPercent: 10, escMonths: 12 }] });
+    const base = etb(200000);
+    expect((await w.fin.query(w.api.reports.rentRoll, {})).totalMonthlyRent).toBe(Math.round(base * 1.1)); // Oct 2026 is past the first anniversary
+    await w.fin.mutation(w.api.billing.generate, { period: "2026-10" });
+    expect((await w.fin.query(w.api.billing.list, { period: "2026-10" }))[0]!.total).toBe(Math.round(base * 1.1));
+    const l = (await w.fin.query(w.api.agreements.list, {}))[0]!; expect(l.rent).toBe(Math.round(base * 1.1));
+    await healthy(w);
+  });
+});
