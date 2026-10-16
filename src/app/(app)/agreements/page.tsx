@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 import { failures, inRange, nonNegative } from "@/lib/validate";
+import { dayAfter, lastDay } from "@/lib/format";
 
 export default function Agreements() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
@@ -32,7 +33,7 @@ export default function Agreements() {
       <Card flush><Table rows={list} empty={t("empty.agreements")} onRow={(a) => router.push(`/agreements/${a._id}`)} cols={[
         { head: t("ag.unit"), cell: (a) => <strong>{a.unitNumber}</strong>, sort: (a) => a.unitNumber }, { head: t("ag.renter"), cell: (a) => a.renterName, sort: (a) => a.renterName },
         { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} />, sort: (a) => a.startsAt },
-        { head: t("ag.end"), cell: (a) => <div className="two-line"><DateText ms={a.endsAt} />{a.status === "active" && <Badge tone={endingSoon(a) ? "warn" : "muted"}>{t("ag.daysLeft").replace("{n}", String(Math.max(0, Math.ceil((a.endsAt - Date.now()) / 86400000))))}</Badge>}</div>, sort: (a) => a.endsAt },
+        { head: t("ag.end"), cell: (a) => <div className="two-line"><DateText ms={lastDay(a.endsAt)} />{a.status === "active" && <Badge tone={endingSoon(a) ? "warn" : "muted"}>{t("ag.daysLeft").replace("{n}", String(Math.max(0, Math.ceil((a.endsAt - Date.now()) / 86400000))))}</Badge>}</div>, sort: (a) => a.endsAt },
         { head: t("ag.rentMonth"), cell: (a) => <Money v={a.rent} />, right: true, money: true, sort: (a) => a.rent },
         { head: t("ag.signed"), cell: (a) => (a.signedFileId ? "✓" : "—") }, { head: t("status"), cell: (a) => <StatusBadge status={a.status} /> },
       ]} /></Card>
@@ -58,9 +59,9 @@ function NewAgreement({ presetUnit, onClose, onCreated }: { presetUnit?: string;
       <form className="form" noValidate onSubmit={async (e) => {
         e.preventDefault();
         const esc = escPct.trim() === "" ? null : inRange(Number(escPct), 0.01, 100, t("v.percent")) ?? inRange(Number(escEvery), 1, 60, t("v.months"));
-        const found = failures({ unit: unitId ? null : t("v.pick"), renter: renterId ? null : t("v.pick"), start: start == null ? t("v.date") : null, end: end == null ? t("v.date") : start != null && end <= start ? t("v.dateOrder") : null, amount: nonNegative(amount, t), dueDay: inRange(dueDay, 1, 28, t("v.dueDay")), deposit: nonNegative(deposit, t), esc });
+        const found = failures({ unit: unitId ? null : t("v.pick"), renter: renterId ? null : t("v.pick"), start: start == null ? t("v.date") : null, end: end == null ? t("v.date") : start != null && end < start ? t("v.dateOrder") : null, amount: nonNegative(amount, t), dueDay: inRange(dueDay, 1, 28, t("v.dueDay")), deposit: nonNegative(deposit, t), esc });
         setErrs(found); if (Object.keys(found).length) return;
-        const id = await run(() => create({ unitId: unitId as Id<"units">, renterId: renterId as Id<"renters">, startsAt: start!, endsAt: end!, rent: basis === "fixed" ? { kind: "fixed", amount: amount! } : { kind: "perM2", ratePerM2: amount! }, dueDay, depositAmount: deposit!, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }));
+        const id = await run(() => create({ unitId: unitId as Id<"units">, renterId: renterId as Id<"renters">, startsAt: start!, endsAt: dayAfter(end!), rent: basis === "fixed" ? { kind: "fixed", amount: amount! } : { kind: "perM2", ratePerM2: amount! }, dueDay, depositAmount: deposit!, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }));
         if (id) onCreated(id);
       }}>
         <SelectField label={t("ag.unit")} error={errs.unit} value={unitId} onChange={(v) => { clear("unit"); setUnitId(v); const u = vacant?.find((x) => x._id === v); if (u && basis === "perM2") setAmount(u.ratePerM2); }} options={(vacant ?? []).map((u) => ({ value: u._id, label: `${u.number} — ${u.areaM2} m²` }))} />

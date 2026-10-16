@@ -8,6 +8,7 @@ import { OrgHeader } from "@/components/OrgHeader";
 import { Card, PageHeader, Skeleton } from "@/components/ui";
 import { monthlyRent } from "../../../../../../convex/lib/billing";
 import { formatDate, formatEtb } from "@/lib/format";
+import { lastDay } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 /** A lease document built from the agreement's recorded terms. A template: counsel must review the wording. */
@@ -35,7 +36,7 @@ export default function Contract() {
         <p>This lease is made on {dual(Date.now())} between <b>{org?.name ?? "Dire Mall"}</b>{org?.tin ? `, TIN ${org.tin}` : ""}{org?.address ? `, ${org.address}` : ""} (the Lessor) and <b>{renter?.name}</b>{renter?.tin ? `, TIN ${renter.tin}` : ""}{renter?.address ? `, ${renter.address}` : ""}{renter?.businessLicenseNo ? `, business licence ${renter.businessLicenseNo}` : ""}{renter?.legalRepresentative ? `, represented by ${renter.legalRepresentative}` : ""} (the Lessee).</p>
         <ol>
           <li><h2>Premises</h2>Unit <b>{unit.number}</b> in {building}, {unit.areaM2} m², used as {unit.category} space.</li>
-          <li><h2>Term</h2>From <b>{dual(a.startsAt)}</b> to <b>{dual(a.endsAt)}</b>.</li>
+          <li><h2>Term</h2>From <b>{dual(a.startsAt)}</b> to <b>{dual(lastDay(a.endsAt))}</b>.</li>
           <li><h2>Rent</h2>{formatEtb(rent)} per month ({basis}), payable by day {first?.dueDay} of each month.{first?.escalation ? ` The rent increases by ${first.escalation.percent}% every ${first.escalation.everyMonths} months.` : ""}</li>
           <li><h2>Deposit</h2>{formatEtb(first?.depositAmount ?? 0)}, held separately from rent and returned at the end of the lease after approved deductions.</li>
           <li><h2>Utilities and service charges</h2>Water and electricity are charged from the unit's sub-meter readings. Shared costs such as generator, security and cleaning are divided by floor area.</li>

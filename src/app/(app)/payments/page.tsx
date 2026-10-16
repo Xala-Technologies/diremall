@@ -40,7 +40,7 @@ export default function Payments() {
   const { from, to } = rangeOf(range);
   const all = useQuery(api.payments.list, { status: tab || undefined });
   const summary = useQuery(api.payments.summary, { from, to });
-  const confirm = useMutation(api.payments.confirm); const voidP = useMutation(api.payments.voidPayment);
+  const confirm = useMutation(api.payments.confirm); const voidP = useMutation(api.payments.voidPayment); const reverseP = useMutation(api.payments.reverse); const [reversing, setReversing] = useState<Id<"payments"> | null>(null);
   const { run, error, notice } = useRun();
   const needle = q.trim().toLowerCase();
   const rows = all?.filter((p) => (!method || p.method === method) && (from === undefined || (p.receivedAt >= from && p.receivedAt < to!)) && (!needle || `${p.renterName} ${p.reference} ${p.payerName ?? ""}`.toLowerCase().includes(needle)));
@@ -59,6 +59,7 @@ export default function Payments() {
       {p.status === "recorded" && can("approver") && <button className="btn sm primary" disabled={p.recordedBy === me?._id} title={p.recordedBy === me?._id ? t("err.same_person_cannot_approve") : ""} onClick={() => void run(() => confirm({ paymentId: p._id }), t("saved"))}>{t("pay.confirm")}</button>}
       {p.status === "confirmed" && can("financeOfficer") && <button className="btn sm primary" onClick={() => setApplying(p._id)}>{t("pay.apply")}</button>}
       {(p.status === "recorded" || p.status === "confirmed") && can("approver") && <button className="btn sm danger" onClick={() => setVoiding(p._id)}>{t("pay.void")}</button>}
+      {p.status === "applied" && can("approver") && <button className="btn sm danger" onClick={() => setReversing(p._id)}>{t("pay.reverse")}</button>}
     </div>);
 
   return (
@@ -91,6 +92,7 @@ export default function Payments() {
       {adding && <RecordForm prefill={prefill} onClose={() => { setAdding(false); setPrefill(null); }} />}
       {applying && <ApplyDialog paymentId={applying} onClose={() => setApplying(null)} />}
       {open && <PaymentDetail paymentId={open} onClose={() => setOpen(null)} onApply={() => { setApplying(open); setOpen(null); }} onVoid={() => { setVoiding(open); setOpen(null); }} />}
+      {reversing && <ReasonDialog title={t("pay.reverse")} onClose={() => setReversing(null)} onSave={(reason) => run(() => reverseP({ paymentId: reversing, reason }), t("saved"))} />}
       {voiding && <ReasonDialog title={t("pay.void")} onClose={() => setVoiding(null)} onSave={(reason) => run(() => voidP({ paymentId: voiding, reason }), t("saved"))} />}
     </div>
   );

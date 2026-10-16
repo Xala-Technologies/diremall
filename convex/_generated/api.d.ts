@@ -19,6 +19,7 @@ import type * as deposits from "../deposits.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as imports from "../imports.js";
+import type * as integrity from "../integrity.js";
 import type * as invites from "../invites.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_billing from "../lib/billing.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   http: typeof http;
   imports: typeof imports;
+  integrity: typeof integrity;
   invites: typeof invites;
   "lib/access": typeof lib_access;
   "lib/billing": typeof lib_billing;

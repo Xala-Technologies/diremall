@@ -30,7 +30,7 @@ describe("rental cycle", () => {
     expect(inv!.payStatus).toBe("partial");
 
     // deposit stays separate from rent
-    await w.fin.mutation(w.api.deposits.receive, { agreementId, amount: etb(50000) });
+    await w.fin.mutation(w.api.deposits.receive, { agreementId, amount: etb(50000), method: "cash", reference: "DEP-" + Math.random().toString(36).slice(2) });
     expect((await w.fin.query(w.api.billing.list, { period: "2026-09" }))[0]!.due).toBe(etb(145000));
   });
 

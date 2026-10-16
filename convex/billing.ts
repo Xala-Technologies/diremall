@@ -172,6 +172,8 @@ export const requestAdjustment = mutation({
     if (!a.reason.trim()) fail("reason_and_amount_required");
     assertSantim(a.delta, { allowNegative: true });
     if (a.delta === 0) fail("reason_and_amount_required");
+    // a correction cannot take more off than the bill is worth
+    if (inv.total + (await invoiceBalance(ctx, inv)).adjustments + a.delta < 0) fail("adjustment_exceeds_bill");
     const id = await ctx.db.insert("invoiceAdjustments", { invoiceId: a.invoiceId, delta: a.delta, reason: a.reason, requestedBy: u._id });
     await audit(ctx, u, "invoice.adjustRequest", "invoices", a.invoiceId, a.reason);
     return id;
@@ -187,8 +189,16 @@ export const approveAdjustment = mutation({
     await assertUnitVisible(ctx, u, inv.unitId);
     if (adj.approvedBy) fail("already_approved");
     assertDifferentPerson(adj.requestedBy, u._id);
+    const before = await invoiceBalance(ctx, inv);
+    if (inv.total + before.adjustments + adj.delta < 0) fail("adjustment_exceeds_bill");
     await ctx.db.patch(adjustmentId, { approvedBy: u._id });
     await refreshInvoice(ctx, adj.invoiceId);
+    // If the bill was already paid, a reduction leaves the renter with money they should not have paid: it becomes their credit.
+    const after = (await ctx.db.get(adj.invoiceId))!;
+    if ((after.due ?? 0) < 0) {
+      await ctx.db.insert("renterCredits", { renterId: after.renterId, invoiceId: after._id, amount: -(after.due ?? 0) });
+      await refreshInvoice(ctx, adj.invoiceId);
+    }
     await audit(ctx, u, "invoice.adjustApprove", "invoices", adj.invoiceId, String(adj.delta));
   },
 });

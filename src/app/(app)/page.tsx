@@ -6,7 +6,7 @@ import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
 import { BarChart, BuildingSelect, Card, DateText, Donut, Kpi, Money, PageHeader, PeriodPicker, Skeleton } from "@/components/ui";
-import { formatPeriod, pct, shiftPeriod } from "@/lib/format";
+import { formatPeriod, pct, shiftPeriod, lastDay } from "@/lib/format";
 import { usePeriod } from "@/lib/usePeriod";
 import { useI18n } from "@/lib/i18n";
 
@@ -90,7 +90,7 @@ export default function Dashboard() {
 
           <Card title={t("dash.renewals")}>
             {!ending ? <Skeleton lines={2} /> : ending.length === 0 ? <p className="muted">{t("dash.noEnding")}</p> : (
-              <div className="mini-list">{ending.slice(0, 6).map((e) => <Link key={e.agreementId} href={`/agreements/${e.agreementId}`}><span><b>{e.unitNumber}</b></span><span className="muted"><DateText ms={e.endsAt} /></span></Link>)}</div>
+              <div className="mini-list">{ending.slice(0, 6).map((e) => <Link key={e.agreementId} href={`/agreements/${e.agreementId}`}><span><b>{e.unitNumber}</b></span><span className="muted"><DateText ms={lastDay(e.endsAt)} /></span></Link>)}</div>
             )}
           </Card>
         </>

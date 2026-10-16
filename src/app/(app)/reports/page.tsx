@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Users } from "lucide-react";
 import { FilterSelect } from "@/components/FilterSelect";
 import { currentPeriod } from "@/lib/format";
-import { pct, periodText } from "@/lib/format";
+import { lastDay, pct, periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 const etb = (v: number) => <Money bare v={v} />;
@@ -55,10 +55,10 @@ function RentRoll({ b, buildings }: { b?: Id<"buildings">; buildings?: { _id: st
         {!one && <><h3 className="mini-h">{t("rep.c.rentByCategory")}</h3><HBars items={group(rows, (r) => t(r.category), (r) => r.monthlyRent)} /></>}
       </Card>
     </Charts>}
-    <Card title={t("rep.rentRoll")} actions={<ExportMenu name="rent-roll" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, category: r.category, area_m2: r.areaM2, status: r.status, renter: r.renterName, start: r.startsAt ? new Date(r.startsAt).toISOString().slice(0, 10) : "", end: r.endsAt ? new Date(r.endsAt).toISOString().slice(0, 10) : "", monthly_rent: r.monthlyRent / 100 })) : []} />}>
+    <Card title={t("rep.rentRoll")} actions={<ExportMenu name="rent-roll" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, category: r.category, area_m2: r.areaM2, status: r.status, renter: r.renterName, start: r.startsAt ? new Date(r.startsAt).toISOString().slice(0, 10) : "", end: r.endsAt ? new Date(lastDay(r.endsAt)).toISOString().slice(0, 10) : "", monthly_rent: r.monthlyRent / 100 })) : []} />}>
     <Table rows={d?.rows.map((r, i) => ({ ...r, _id: String(i) }))} empty={t("empty.rep.rentRoll")} cols={[
       { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("prop.category"), cell: (r) => t(r.category), sort: (r) => r.category }, { head: t("prop.area"), cell: (r) => r.areaM2, right: true, sort: (r) => r.areaM2 },
-      { head: t("status"), cell: (r) => <StatusBadge status={r.status} />, sort: (r) => r.status }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName }, { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt} />, sort: (r) => r.endsAt },
+      { head: t("status"), cell: (r) => <StatusBadge status={r.status} />, sort: (r) => r.status }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName }, { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt == null ? null : lastDay(r.endsAt)} />, sort: (r) => r.endsAt },
       { head: t("rent"), cell: (r) => <Money v={r.monthlyRent} />, right: true, money: true, sort: (r) => r.monthlyRent }]} />
     {d && <p style={{ textAlign: "right" }}>{t("total")}: <Money v={d.totalMonthlyRent} strong /></p>}
   </Card></>;
@@ -170,7 +170,7 @@ function Expiry({ b }: { b?: Id<"buildings"> }) {
   const { t } = useI18n(); const router = useRouter(); const [days, setDays] = useState("90");
   const d = useQuery(api.reports.leaseExpiry, { withinDays: Number(days), buildingId: b });
   const rows = d?.rows ?? [];
-  const months = group(rows, (r) => (r.daysLeft < 0 ? "0" : iso(r.endsAt).slice(0, 7)), (r) => r.rent).sort((x, y) => x.label.localeCompare(y.label));
+  const months = group(rows, (r) => (r.daysLeft < 0 ? "0" : iso(lastDay(r.endsAt)).slice(0, 7)), (r) => r.rent).sort((x, y) => x.label.localeCompare(y.label));
   return <>
     {!d ? <Loading /> : <Strip>
       <Kpi tone="info" icon="agreements" label={t("rep.k.leasesEnding")} value={d.totals.leases} sub={t("rep.withinDays").replace("{n}", days)} />
@@ -183,10 +183,10 @@ function Expiry({ b }: { b?: Id<"buildings"> }) {
       <Card title={t("rep.c.biggestRent")}><HBars items={rows.map((r) => ({ label: r.renterName, sub: r.unitNumber, value: r.rent, color: r.daysLeft < 0 ? SERIES[3] : r.daysLeft <= 60 ? SERIES[2] : SERIES[0] }))} /></Card>
     </Charts>}
     <Card title={t("rep.expiry")} actions={<><FilterSelect label={t("rep.within")} value={days} onChange={setDays} options={["30", "60", "90", "180", "365"].map((n) => ({ value: n, label: t("rep.withinDays").replace("{n}", n), icon: <Users size={16} /> }))} />
-    <ExportMenu name="lease-expiry" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, renter: r.renterName, ends: iso(r.endsAt), days_left: r.daysLeft, monthly_rent: r.rent / 100, deposit_held: r.deposit / 100 })) : []} /></>}>
+    <ExportMenu name="lease-expiry" rows={d ? d.rows.map((r) => ({ unit: r.unitNumber, renter: r.renterName, ends: iso(lastDay(r.endsAt)), days_left: r.daysLeft, monthly_rent: r.rent / 100, deposit_held: r.deposit / 100 })) : []} /></>}>
     <Table rows={d?.rows.map((r) => ({ ...r, _id: r.agreementId }))} empty={t("empty.rep.expiry")} onRow={(r) => router.push(`/agreements/${r.agreementId}`)} cols={[
       { head: t("ag.unit"), cell: (r) => <strong>{r.unitNumber}</strong>, sort: (r) => r.unitNumber }, { head: t("ag.renter"), cell: (r) => r.renterName, sort: (r) => r.renterName },
-      { head: t("ag.end"), cell: (r) => <DateText ms={r.endsAt} />, sort: (r) => r.endsAt },
+      { head: t("ag.end"), cell: (r) => <DateText ms={lastDay(r.endsAt)} />, sort: (r) => r.endsAt },
       { head: t("rep.timeLeft"), cell: (r) => <Badge tone={r.daysLeft < 0 ? "bad" : r.daysLeft <= 60 ? "warn" : "muted"}>{r.daysLeft < 0 ? t("rep.pastEnd").replace("{n}", String(-r.daysLeft)) : t("ag.daysLeft").replace("{n}", String(r.daysLeft))}</Badge>, sort: (r) => r.daysLeft },
       { head: t("ag.rentMonth"), cell: (r) => <Money v={r.rent} />, right: true, money: true, sort: (r) => r.rent }, { head: t("rep.depositHeld"), cell: (r) => <Money v={r.deposit} />, right: true, money: true },
     ]} />

@@ -56,7 +56,7 @@ export function readAgreementRows(rows: ({ row: number } & Record<keyof typeof A
     const escM = r.escMonths.trim() === "" ? undefined : num(r.escMonths);
     if (escM === null) bad("escMonths", "invalid_escalation");
     if (problems.some((p) => p.row === r.row)) continue;
-    server.push({ row: r.row, building: r.building, unit: r.unit, renter: r.renter, startsAt: startsAt!, endsAt: endsAt!, basis: basis!, amount: amount!, dueDay: dueDay!, deposit: deposit!, ...(paid != null ? { depositPaid: paid } : {}), ...(esc ? { escPercent: esc } : {}), ...(escM ? { escMonths: escM } : {}) });
+    server.push({ row: r.row, building: r.building, unit: r.unit, renter: r.renter, startsAt: startsAt!, endsAt: endsAt! + 86_400_000, basis: basis!, amount: amount!, dueDay: dueDay!, deposit: deposit!, ...(paid != null ? { depositPaid: paid } : {}), ...(esc ? { escPercent: esc } : {}), ...(escM ? { escMonths: escM } : {}) });
   }
   return { server, problems };
 }

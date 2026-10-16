@@ -37,6 +37,9 @@ export const currentPeriod = () => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
+/** A lease is stored as ending at the start of the day AFTER its last day. People think and type in last days. */
+export const lastDay = (endsAt: number) => endsAt - 86_400_000;
+export const dayAfter = (lastDayMs: number) => lastDayMs + 86_400_000;
 export const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 /** "2026-09" shifted by n months. */

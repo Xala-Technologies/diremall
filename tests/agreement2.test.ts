@@ -40,7 +40,7 @@ describe("agreement page data", () => {
 
   it("lets a deposit be deducted from and refunded once the lease has ended, but not before", async () => {
     const w = await lease();
-    await w.fin.mutation(w.api.deposits.receive, { agreementId: w.agreementId, amount: etb(50000) });
+    await w.fin.mutation(w.api.deposits.receive, { agreementId: w.agreementId, amount: etb(50000), method: "cash", reference: "DEP-" + Math.random().toString(36).slice(2) });
     await expect(w.ap.mutation(w.api.deposits.refund, { agreementId: w.agreementId, amount: etb(1000) })).rejects.toThrow(/agreement_still_active/);
     await w.ap.mutation(w.api.agreements.terminate, { agreementId: w.agreementId, reason: "Moved out", effectiveAt: utc(2026, 10, 1) });
     await w.fin.mutation(w.api.deposits.requestDeduction, { agreementId: w.agreementId, amount: etb(8000), reason: "Repainting" });

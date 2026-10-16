@@ -69,15 +69,15 @@ describe("review fixes: money", () => {
       await w.ap.mutation(w.api.agreements.approve, { agreementId: id });
       return id;
     };
-    await lease(r1, utc(2026, 9), utc(2026, 9, 11));
-    await lease(r2, utc(2026, 9, 11), utc(2027, 9));
+    await lease(r1, utc(2026, 11), utc(2026, 11, 11));
+    await lease(r2, utc(2026, 11, 11), utc(2027, 11));
     const meterId = await w.pm.mutation(w.api.utilities.addMeter, { unitId, kind: "electricity", serial: "M" });
-    for (const [v, at] of [[100, utc(2026, 8, 31)], [200, utc(2026, 9, 30)]] as const) {
+    for (const [v, at] of [[100, utc(2026, 10, 31)], [200, utc(2026, 11, 30)]] as const) {
       const r = await w.pm.mutation(w.api.utilities.enterReading, { meterId, value: v, readAt: at });
       await w.fin.mutation(w.api.utilities.approveReading, { readingId: r.id });
     }
-    await w.fin.mutation(w.api.billing.generate, { period: "2026-09" });
-    const invs = await w.fin.query(w.api.billing.list, { period: "2026-09" });
+    await w.fin.mutation(w.api.billing.generate, { period: "2026-11" });
+    const invs = await w.fin.query(w.api.billing.list, { period: "2026-11" });
     const withElec = [];
     for (const i of invs) if ((await w.fin.query(w.api.billing.get, { invoiceId: i._id })).lines.some((l) => l.kind === "electricity")) withElec.push(i);
     expect(withElec).toHaveLength(1);
@@ -86,8 +86,8 @@ describe("review fixes: money", () => {
   it("deposit is refunded only after the tenancy ends, and never above what is held", async () => {
     const w = await world();
     const { agreementId } = await issuedInvoice(w);
-    await w.fin.mutation(w.api.deposits.receive, { agreementId, amount: etb(50000) });
-    await expect(w.fin.mutation(w.api.deposits.receive, { agreementId, amount: etb(1) })).rejects.toThrow(/exceeds_required_deposit/);
+    await w.fin.mutation(w.api.deposits.receive, { agreementId, amount: etb(50000), method: "cash", reference: "DEP-" + Math.random().toString(36).slice(2) });
+    await expect(w.fin.mutation(w.api.deposits.receive, { agreementId, amount: etb(1), method: "cash", reference: "DEP-" + Math.random().toString(36).slice(2) })).rejects.toThrow(/exceeds_required_deposit/);
     await expect(w.ap.mutation(w.api.deposits.refund, { agreementId, amount: etb(100) })).rejects.toThrow(/agreement_still_active/);
     await w.ap.mutation(w.api.agreements.terminate, { agreementId, reason: "end" });
     await expect(w.ap.mutation(w.api.deposits.refund, { agreementId, amount: etb(60000) })).rejects.toThrow(/exceeds_deposit/);

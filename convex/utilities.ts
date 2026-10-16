@@ -54,6 +54,9 @@ export const enterReading = mutation({
         if (last > 0 && delta > 3 * last) status = "flagged";
       }
     }
+    // A reading dated before one that is already there must not be higher than it, or the later one would look like a step backwards.
+    const later = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", a.meterId)).collect()).filter((r) => r.status !== "flagged" && r.readAt > a.readAt && !r.isReset).sort((x, y) => x.readAt - y.readAt)[0];
+    if (later && !a.isReset && a.value > later.value) status = "flagged";
     const id = await ctx.db.insert("meterReadings", { meterId: a.meterId, value: a.value, readAt: a.readAt, status, enteredBy: u._id, isReset: !!a.isReset });
     await audit(ctx, u, "reading.enter", "meterReadings", id, status);
     return { id, status };

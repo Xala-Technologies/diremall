@@ -11,8 +11,8 @@ describe("agreement spreadsheet", () => {
     expect(missing).toEqual([]);
     const { server, problems } = readAgreementRows(rows);
     expect(problems).toEqual([]);
-    expect(server[0]).toMatchObject({ unit: "G-01", startsAt: utc(2025, 9, 1), endsAt: utc(2027, 8, 31), basis: "perM2", amount: etb(2300), deposit: etb(690000), depositPaid: etb(690000), escPercent: 10, escMonths: 12 });
-    expect(server[1]).toMatchObject({ basis: "fixed", startsAt: utc(2024, 3, 1), endsAt: utc(2026, 2, 28), dueDay: 1 }); // 01/03/2024 is read day first
+    expect(server[0]).toMatchObject({ unit: "G-01", startsAt: utc(2025, 9, 1), endsAt: utc(2027, 9, 1), basis: "perM2", amount: etb(2300), deposit: etb(690000), depositPaid: etb(690000), escPercent: 10, escMonths: 12 });
+    expect(server[1]).toMatchObject({ basis: "fixed", startsAt: utc(2024, 3, 1), endsAt: utc(2026, 3, 1), dueDay: 1 }); // the typed end date is the last day, so the lease ends at the start of the next. 01/03/2024 is read day first
     expect(server[1]!.depositPaid).toBeUndefined(); // blank: the server assumes it was paid in full
   });
 

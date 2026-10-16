@@ -101,6 +101,7 @@ export const approve = mutation({
     assertDifferentPerson(ag.createdBy, u._id);
     if (!ag.signedFileId) fail("signed_copy_required");
     if (unit.status === "maintenance") fail("unit_in_maintenance");
+    if (ag.endsAt <= Date.now()) fail("agreement_already_ended"); // a lease that is already over is history: bring it in with Import data
     const others = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", ag.unitId).eq("status", "active")).collect();
     if (others.some((o) => rangesOverlap([o.startsAt, o.endsAt], [ag.startsAt, ag.endsAt]))) fail("overlapping_active_agreement");
     await ctx.db.patch(agreementId, { status: "active", approvedBy: u._id });
@@ -130,6 +131,9 @@ export const addTerm = mutation({
       if (a.newEndsAt <= ag.endsAt) fail("renewal_must_extend");
       await ctx.db.patch(a.agreementId, { endsAt: a.newEndsAt });
     }
+    // a renewal that changes the deposit changes what is required; what is already held stays, so a shortfall or an excess shows
+    const dep = await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", a.agreementId)).unique();
+    if (dep && dep.required !== a.depositAmount) await ctx.db.patch(dep._id, { required: a.depositAmount });
     await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.effectiveFrom, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.term", "agreements", a.agreementId, JSON.stringify({ effectiveFrom: a.effectiveFrom, rent: a.rent }));
   },
@@ -143,8 +147,10 @@ export const terminate = mutation({
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "active") fail("agreement_not_active");
     if (!reason.trim()) fail("reason_required");
-    // Billing stops at the termination date: the end date is pulled forward so later months are never billed.
-    const end = Math.min(ag.endsAt, Math.max(ag.startsAt + 1, effectiveAt ?? Date.now()));
+    // The last day of the tenancy is the termination date itself (today unless another date is given), so billing stops at the end of
+    // that day. endsAt is the start of the day after the last day, the same way every lease end is stored.
+    const lastDay = Math.floor((effectiveAt ?? Date.now()) / 86_400_000) * 86_400_000;
+    const end = Math.min(ag.endsAt, Math.max(ag.startsAt + 1, lastDay + 86_400_000));
     await ctx.db.patch(agreementId, { status: "terminated", terminationReason: reason, endsAt: end });
     await refreshUnitStatus(ctx, ag.unitId);
     await audit(ctx, u, "agreement.terminate", "agreements", agreementId, reason);

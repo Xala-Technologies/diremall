@@ -183,8 +183,11 @@ export default defineSchema({
     agreementId: v.id("agreements"),
     required: money,
     held: money,
-    deductions: v.array(v.object({ amount: money, reason: v.string(), requestedBy: v.id("users"), approvedBy: v.optional(v.id("users")) })),
+    // a deduction may settle a bill the renter still owes (invoiceId), or cover damage and other costs (no bill)
+    deductions: v.array(v.object({ amount: money, reason: v.string(), requestedBy: v.id("users"), approvedBy: v.optional(v.id("users")), invoiceId: v.optional(v.id("invoices")) })),
     refunded: money,
+    // how each part of the deposit arrived, so it can be traced to a bank line or a cash receipt
+    receipts: v.optional(v.array(v.object({ amount: money, method: v.string(), reference: v.string(), receivedAt: ts, recordedBy: v.id("users") }))),
   }).index("by_agreement", ["agreementId"]),
 
   meters: defineTable({ unitId: v.id("units"), kind: v.union(v.literal("water"), v.literal("electricity")), serial: v.string() }).index("by_unit", ["unitId"]),

@@ -57,11 +57,37 @@ export const voidPayment = mutation({
     const u = await requireRole(ctx, "approver");
     const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
     await assertRenterVisible(ctx, u, p.renterId);
-    if (p.status === "applied") fail("applied_payment_needs_reversal");
+    if (p.status === "applied") fail("applied_payment_needs_reversal"); // use reverse(), which keeps the trail
     if (p.status === "voided") fail("already_voided");
     if (!reason.trim()) fail("reason_required");
     await ctx.db.patch(paymentId, { status: "voided", voidedBy: u._id, voidedAt: Date.now(), voidReason: reason.trim() });
+    // A bank line that was matched to this payment goes back to the to-do list: the money is still in the bank, with no payment behind it.
+    for (const line of await ctx.db.query("bankStatementEntries").withIndex("by_payment", (q) => q.eq("matchedPaymentId", paymentId)).collect()) await ctx.db.patch(line._id, { matchedPaymentId: undefined, matchedBy: undefined, matchedAt: undefined });
     await audit(ctx, u, "payment.void", "payments", paymentId, reason);
+  },
+});
+
+/**
+ * Undo a payment that was applied by mistake (wrong renter, a bounced deposit). The money's trail stays: matching negative rows are added,
+ * nothing is deleted, so the receipt and the history still tell the whole story. Credit that came from the payment must still be unspent.
+ */
+export const reverse = mutation({
+  args: { paymentId: v.id("payments"), reason: v.string() },
+  handler: async (ctx, { paymentId, reason }) => {
+    const u = await requireRole(ctx, "approver");
+    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    await assertRenterVisible(ctx, u, p.renterId);
+    if (p.status !== "applied") fail("not_applied");
+    if (!reason.trim()) fail("reason_required");
+    const allocs = await ctx.db.query("paymentAllocations").withIndex("by_payment", (q) => q.eq("paymentId", paymentId)).collect();
+    const credits = (await ctx.db.query("renterCredits").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect()).filter((c) => c.paymentId === paymentId);
+    const fromThisPayment = credits.reduce((s, c) => s + c.amount, 0);
+    if (fromThisPayment > 0 && (await creditBalance(ctx, p.renterId)) < fromThisPayment) fail("credit_already_used");
+    for (const a of allocs) { await ctx.db.insert("paymentAllocations", { paymentId, invoiceId: a.invoiceId, amount: -a.amount }); await refreshInvoice(ctx, a.invoiceId); }
+    if (fromThisPayment !== 0) await ctx.db.insert("renterCredits", { renterId: p.renterId, paymentId, amount: -fromThisPayment });
+    await ctx.db.patch(paymentId, { status: "voided", voidedBy: u._id, voidedAt: Date.now(), voidReason: `Reversed: ${reason.trim()}` });
+    for (const line of await ctx.db.query("bankStatementEntries").withIndex("by_payment", (q) => q.eq("matchedPaymentId", paymentId)).collect()) await ctx.db.patch(line._id, { matchedPaymentId: undefined, matchedBy: undefined, matchedAt: undefined });
+    await audit(ctx, u, "payment.reverse", "payments", paymentId, reason.trim());
   },
 });
 

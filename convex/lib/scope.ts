@@ -15,6 +15,7 @@ export async function renterVisible(ctx: QueryCtx, u: Doc<"users">, renterId: Id
 }
 
 export async function assertRenterVisible(ctx: QueryCtx, u: Doc<"users">, renterId: Id<"renters">) {
+  if (!(await ctx.db.get(renterId))) fail("not_found"); // a renter who was deleted cannot be given a lease or a payment
   if (!(await renterVisible(ctx, u, renterId))) fail("forbidden_renter");
 }
 

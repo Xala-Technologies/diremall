@@ -1,0 +1,30 @@
+---
+description: Log every piece of work on Dire Mall as a Linear issue in the Dire Mall Rentals project
+alwaysApply: true
+---
+
+# Linear tracking
+
+All work in this repo is tracked in Linear: team **Platform** (`PLAT`), project **Dire Mall Rentals**
+(https://linear.app/xala-technologies/project/dire-mall-rentals-42b727e3296b). Use the `user-linear` MCP tools.
+
+## For every task that changes code, config, data or deployments
+
+1. **Before starting**, search the project's open issues (`list_issues` with `project: "Dire Mall Rentals"`).
+   Reuse a matching issue; otherwise create one with `save_issue`:
+   - `team: "Platform"`, `project: "Dire Mall Rentals"`, `assignee: "me"`
+   - A plain-language title, plus a description with the goal and what "done" means
+   - Labels: one `type:*` (`feature`, `chore`, `docs`, `test`, `refactor`) or `Bug`, plus a `module:*` when one fits
+2. Move it to **In Progress** when work starts.
+3. **When finished**, comment (`save_comment`) with what changed (files, commands run, test/build results), then set:
+   - **In Review**: changes are local or in an open PR
+   - **Done**: merged/pushed, or an operational task that's completed and verified
+   - **Blocked**: waiting on the user or an outside step (say what's blocking)
+4. Work you discover but don't do (bugs, follow-ups, manual steps for the user) becomes its own issue,
+   usually **Backlog** or **Todo**. Link dependencies with `blockedBy` / `relatedTo`.
+
+## Don't
+
+- Don't create issues for pure questions or read-only exploration.
+- Never put secrets (deploy keys, API keys, `.env.local` values) in issues or comments.
+- Mention the issue ID (e.g. `PLAT-31`) in commit messages and in the summary to the user.

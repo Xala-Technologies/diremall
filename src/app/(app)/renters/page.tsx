@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Building2, User, Users } from "lucide-react";
 import { downloadCsv } from "@/lib/csv";
+import { lastDay } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -170,7 +171,7 @@ function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void 
           ]} />
         </Card>
         <Card title={t("nav.agreements")}><Table rows={data.agreements} cols={[
-          { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} /> }, { head: t("ag.end"), cell: (a) => <DateText ms={a.endsAt} /> }, { head: t("status"), cell: (a) => <StatusBadge status={a.status} /> },
+          { head: t("ag.start"), cell: (a) => <DateText ms={a.startsAt} /> }, { head: t("ag.end"), cell: (a) => <DateText ms={lastDay(a.endsAt)} /> }, { head: t("status"), cell: (a) => <StatusBadge status={a.status} /> },
         ]} /></Card>
       </div>}
     </Modal>

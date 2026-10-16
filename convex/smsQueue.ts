@@ -77,7 +77,7 @@ export const queueExpiryWarnings = internalMutation({
       if (ag.endsAt > horizon || ag.endsAt <= now) continue;
       const unit = (await ctx.db.get(ag.unitId))?.number ?? "";
       const left = Math.ceil((ag.endsAt - now) / DAY);
-      const r = await queueTemplatedFor(ctx, { renterId: ag.renterId, template: "leaseEnding", agreementId: ag._id, org, dedupeKey: `expiry:${ag._id}:${ag.endsAt}`, varsFor: (lang) => ({ unit, end: smsDate(ag.endsAt, lang), days: left }) });
+      const r = await queueTemplatedFor(ctx, { renterId: ag.renterId, template: "leaseEnding", agreementId: ag._id, org, dedupeKey: `expiry:${ag._id}:${ag.endsAt}`, varsFor: (lang) => ({ unit, end: smsDate(ag.endsAt - DAY, lang), days: left }) });
       if (r === "queued") queued++;
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.smsQueue.queueExpiryWarnings, { cursor: page.continueCursor });

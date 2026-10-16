@@ -10,6 +10,7 @@ import { formatEtb, periodText } from "@/lib/format";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { Icon } from "@/components/icons";
 import { DeleteButton } from "@/components/DeleteButton";
+import { dayAfter, lastDay } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useOpenFile } from "@/lib/useOpenFile";
@@ -55,7 +56,7 @@ export default function AgreementPage() {
         <div className="lease-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label={t("ag.progress")}><span style={{ width: `${progress * 100}%` }} /></div>
         <div className="lease-meta"><span><DateText ms={a.startsAt} /></span>
           {a.status === "active" || a.status === "expired" || a.status === "terminated" ? <Badge tone={a.status !== "active" ? "muted" : daysLeft <= 60 ? "warn" : "good"}>{a.status !== "active" ? t("ag.endedAgo").replace("{n}", String(Math.max(0, -daysLeft))) : t("ag.daysLeft").replace("{n}", String(Math.max(0, daysLeft)))}</Badge> : null}
-          <span><DateText ms={a.endsAt} /></span></div>
+          <span><DateText ms={lastDay(a.endsAt)} /></span></div>
       </div>
       {dep && a.status !== "active" && d.account.due > 0 && <div className="msg bad" role="status"><Icon name="alert" size={16} />{t("ag.depositOwed").replace("{x}", formatEtb(d.account.due))}</div>}
       <div className="split">
@@ -88,7 +89,7 @@ export default function AgreementPage() {
               <div><dt>{t("ag.unit")}</dt><dd>{d.unit.number} · {d.unit.areaM2} m²</dd></div>
               <div><dt>{t("ag.renter")}</dt><dd>{d.renter?.name}</dd></div>
               <div><dt>{t("ag.start")}</dt><dd><DateText ms={a.startsAt} /></dd></div>
-              <div><dt>{t("ag.end")}</dt><dd><DateText ms={a.endsAt} /></dd></div>
+              <div><dt>{t("ag.end")}</dt><dd><DateText ms={lastDay(a.endsAt)} /></dd></div>
               <div><dt>{t("ag.signed")}</dt><dd>{d.hasSigned ? <button type="button" className="linklike" onClick={() => void openFile("signed", d.agreement._id)}>{t("ag.view")}</button> : <span className="muted">—</span>}</dd></div>
               {d.rentNow != null && <div><dt>{t("ag.rentNow")}</dt><dd><Money v={d.rentNow} strong /></dd></div>}
               {d.nextIncrease && <div><dt>{t("ag.nextIncrease")}</dt><dd><DateText ms={d.nextIncrease.at} /> → <Money v={d.nextIncrease.amount} /></dd></div>}
@@ -115,22 +116,31 @@ export default function AgreementPage() {
       {dlg === "terminate" && <ReasonDialog title={t("ag.terminate")} error={error} onClose={() => setDlg(null)} onSave={(reason) => run(() => terminate({ agreementId, reason }), t("saved"))} />}
       {dlg === "approve" && <ConfirmDialog title={t("confirm.approveTitle")} message={t("confirm.approveBody")} confirmLabel={t("ag.approve")} onClose={() => setDlg(null)} onConfirm={async () => { await run(() => approve({ agreementId }), t("saved")); }} />}
       {dlg === "return" && <ReasonDialog title={t("ag.return")} error={error} onClose={() => setDlg(null)} onSave={(reason) => run(() => back({ agreementId, reason }), t("saved"))} />}
-      {dlg === "deduct" && <AmountDialog title={t("dep.deduct")} reason error={error} onClose={() => setDlg(null)} onSave={(amount, reason) => run(() => reqDed({ agreementId, amount, reason: reason! }))} />}
-      {dlg === "receive" && <AmountDialog title={t("dep.receive")} error={error} onClose={() => setDlg(null)} onSave={(amount) => run(() => receive({ agreementId, amount }))} />}
+      {dlg === "deduct" && <AmountDialog title={t("dep.deduct")} reason renterId={a.renterId} error={error} onClose={() => setDlg(null)} onSave={(amount, reason, invoiceId) => run(() => reqDed({ agreementId, amount, reason: reason!, ...(invoiceId ? { invoiceId: invoiceId as Id<"invoices"> } : {}) }))} />}
+      {dlg === "receive" && <AmountDialog title={t("dep.receive")} receipt error={error} onClose={() => setDlg(null)} onSave={(amount, _reason, _inv, how) => run(() => receive({ agreementId, amount, method: how!.method, reference: how!.reference, receivedAt: how!.at ?? undefined }))} />}
       {dlg === "refund" && <AmountDialog title={t("dep.refund")} error={error} onClose={() => setDlg(null)} onSave={(amount) => run(() => refund({ agreementId, amount }))} />}
     </div>
   );
 }
 
-function AmountDialog({ title, reason, error, onClose, onSave }: { title: string; reason?: boolean; error?: string | null; onClose: () => void; onSave: (amount: number, reason?: string) => Promise<unknown> }) {
+type Method = "cash" | "bankDeposit" | "transfer" | "telebirr" | "cbeBirr";
+/** An amount, and as needed: a reason, how and when the money arrived (with its reference), or the bill a deduction settles. */
+function AmountDialog({ title, reason, receipt, renterId, error, onClose, onSave }: { title: string; reason?: boolean; receipt?: boolean; renterId?: Id<"renters">; error?: string | null; onClose: () => void; onSave: (amount: number, reason?: string, invoiceId?: string, how?: { method: Method; reference: string; at: number | null }) => Promise<unknown> }) {
   const { t } = useI18n(); const [amount, setAmount] = useState<number | null>(null); const [r, setR] = useState(""); const [errs, setErrs] = useState<Record<string, string>>({});
+  const [method, setMethod] = useState<Method>("cash"); const [ref, setRef] = useState(""); const [at, setAt] = useState<number | null>(null); const [invoiceId, setInvoiceId] = useState("");
+  const bills = useQuery(api.payments.openBills, renterId ? { renterId } : "skip");
   return <Modal title={title} onClose={onClose}><form className="form" noValidate onSubmit={async (e) => {
     e.preventDefault();
-    const found = failures({ amount: positive(amount, t), reason: reason ? req(r, t) : null }); setErrs(found); if (Object.keys(found).length) return;
-    if ((await onSave(amount!, r.trim())) !== undefined) onClose();
+    const found = failures({ amount: positive(amount, t), reason: reason ? req(r, t) : null, ref: receipt ? req(ref, t) : null }); setErrs(found); if (Object.keys(found).length) return;
+    if ((await onSave(amount!, r.trim(), invoiceId || undefined, receipt ? { method, reference: ref.trim(), at } : undefined)) !== undefined) onClose();
   }}>
     <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
+    {receipt && <>
+      <SelectField label={t("pay.method")} value={method} onChange={(v) => setMethod(v as Method)} options={(["cash", "bankDeposit", "transfer", "telebirr", "cbeBirr"] as const).map((m) => ({ value: m, label: t(m) }))} />
+      <Field label={t("pay.reference")} error={errs.ref} hint={t("dep.refHint")}><input value={ref} onChange={(e) => { setRef(e.target.value); setErrs({ ...errs, ref: "" }); }} /></Field>
+      <Field label={t("pay.receivedOn")} hint={t("optional")}><DateField value={at} onChange={setAt} /></Field></>}
     {reason && <Field label={t("reason")} error={errs.reason}><input value={r} onChange={(e) => { setR(e.target.value); setErrs({ ...errs, reason: "" }); }} /></Field>}
+    {renterId && (bills?.length ?? 0) > 0 && <SelectField label={t("dep.settleBill")} hint={t("dep.settleBillHint")} value={invoiceId} onChange={setInvoiceId} placeholder={t("dep.noBill")} options={[{ value: "", label: t("dep.noBill") }, ...(bills ?? []).map((b) => ({ value: b.invoiceId as string, label: `${b.number} · ${b.unitNumber} · ${formatEtb(b.due)}` }))]} />}
     <div className="wide"><Message error={error} /><button className="btn primary">{t("save")}</button></div></form></Modal>;
 }
 
@@ -155,7 +165,7 @@ function TermsDialog({ onClose, agreementId, endsAt }: { onClose: () => void; ag
   const [escPct, setEscPct] = useState(""); const [escEvery, setEscEvery] = useState("12");
   return <Modal title={t("ag.renew")} onClose={onClose}><form className="form" onSubmit={async (e) => {
     e.preventDefault(); if (from == null || amount == null || deposit == null) return;
-    if (await run(() => add({ agreementId, effectiveFrom: from, rent: basis === "fixed" ? { kind: "fixed", amount } : { kind: "perM2", ratePerM2: amount }, dueDay, depositAmount: deposit, newEndsAt: newEnd && newEnd > endsAt ? newEnd : undefined, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }))) onClose();
+    if (await run(() => add({ agreementId, effectiveFrom: from, rent: basis === "fixed" ? { kind: "fixed", amount } : { kind: "perM2", ratePerM2: amount }, dueDay, depositAmount: deposit, newEndsAt: newEnd && dayAfter(newEnd) > endsAt ? dayAfter(newEnd) : undefined, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }))) onClose();
   }}>
     <Field label={t("date")}><DateField value={from} onChange={setFrom} /></Field>
     <SelectField label={t("ag.rentBasis")} value={basis} onChange={(v) => setBasis(v as typeof basis)} options={[{ value: "perM2", label: t("ag.perM2") }, { value: "fixed", label: t("ag.fixed") }]} />
