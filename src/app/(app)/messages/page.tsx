@@ -4,7 +4,7 @@ import { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { FilterSelect } from "@/components/FilterSelect";
 import { api } from "../../../../convex/_generated/api";
-import { Badge, Card, DateText, Kpi, Message, PageHeader, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Badge, Card, DateText, Kpi, Message, PageHeader, SearchInput, SectionTabs, StatusBadge, Table } from "@/components/ui";
 import { ComposeTab } from "./Compose";
 import { RulesTab } from "./Rules";
 import { TemplatesTab } from "./Templates";
@@ -52,7 +52,7 @@ export default function Messages() {
   const { t } = useI18n(); const [tab, setTab] = useState<"log" | "templates" | "rules" | "send">("log");
   return (
     <div className="stack">
-      <PageHeader title={t("nav.messages")} filters={<Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["log", t("sms.tab.log")], ["templates", t("sms.tab.templates")], ["rules", t("sms.tab.rules")], ["send", t("sms.tab.send")]]} />} />
+      <PageHeader title={t("nav.messages")} tabs={<SectionTabs label={t("nav.messages")} value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["log", t("sms.tab.log")], ["templates", t("sms.tab.templates")], ["rules", t("sms.tab.rules")], ["send", t("sms.tab.send")]]} />} />
       {tab === "log" ? <MessagesList /> : tab === "templates" ? <TemplatesTab /> : tab === "rules" ? <RulesTab /> : <ComposeTab />}
     </div>
   );

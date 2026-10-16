@@ -461,3 +461,13 @@ textarea { font: inherit; resize: vertical; }
 .paper { background: #fff; color: #0f172a; border: 1px solid var(--ds-color-neutral-border-default); border-radius: 10px; padding: 18px; display: grid; gap: 14px; box-shadow: var(--ds-shadow-sm); font-size: .8125rem; } .paper-head { display: grid; gap: 2px; } .paper-head b { font-size: 1rem; } .paper-head span { color: #475569; }
 .paper-body { display: grid; gap: 8px; padding: 6px 0; } .paper-body i { display: block; height: 8px; border-radius: 4px; background: #e2e8f0; } .paper-body i.short { width: 55%; } .paper-foot { display: grid; gap: 2px; border-top: 1px solid #e2e8f0; padding-top: 10px; } .paper-foot small { color: #64748b; text-transform: uppercase; letter-spacing: .05em; font-size: .6875rem; } .paper-note { color: #475569; font-style: italic; }
 .bld-stats dt { text-transform: capitalize; }
+
+/* Section tabs: underline style, for the parts of a page (filters keep the pill style) */
+.section-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--ds-color-neutral-border-default); margin-top: 4px; scrollbar-width: none; } .section-tabs::-webkit-scrollbar { display: none; }
+.section-tabs button { position: relative; flex: none; min-height: 44px; padding: 0 16px; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 500; cursor: pointer; white-space: nowrap; border-radius: var(--r-md) var(--r-md) 0 0; }
+.section-tabs button:hover { color: var(--ink); background: var(--ds-color-neutral-surface-hover); } .section-tabs button:focus-visible { outline: 3px solid var(--ds-color-accent-border-default); outline-offset: -3px; }
+.section-tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; } .section-tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--viz); }
+@media print { .section-tabs { display: none; } }
+
+.bld { grid-template-columns: minmax(0, 1fr) auto; } .bld-stats { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(4, minmax(5.5rem, 10rem)); gap: 16px 28px; padding-top: 4px; } .bld-stats dt { text-transform: none; white-space: nowrap; } .bld-actions { grid-column: 2; grid-row: 1; }
+@media (max-width: 640px) { .bld { grid-template-columns: minmax(0, 1fr); } .bld-actions { grid-column: 1; grid-row: auto; } .bld-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

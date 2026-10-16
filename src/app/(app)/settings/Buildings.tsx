@@ -27,10 +27,10 @@ export function Buildings() {
         {b.contactName && <span className="muted">{t("prop.contactName")}: {b.contactName}{b.contactPhone ? ` · ${b.contactPhone}` : ""}</span>}
       </div>
       <dl className="bld-stats">
-        <div><dt>{t("prop.floorsTitle")}</dt><dd className="num">{b.floors}</dd></div>
-        <div><dt>{t("rep.k.units")}</dt><dd className="num">{b.units}</dd></div>
+        <div><dt>{t("set.floors")}</dt><dd className="num">{b.floors}</dd></div>
+        <div><dt>{t("set.units")}</dt><dd className="num">{b.units}</dd></div>
         <div><dt>{t("dash.occupancy")}</dt><dd className="num">{b.units ? pct(b.occupied / b.units) : "—"}</dd></div>
-        <div><dt>{t("prop.area")}</dt><dd className="num">{Math.round(b.areaM2).toLocaleString()}</dd></div>
+        <div><dt>{t("set.area")}</dt><dd className="num">{Math.round(b.areaM2).toLocaleString()}</dd></div>
       </dl>
       {edit && <div className="bld-actions">
         {!b.archivedAt && <button className="btn sm" onClick={() => setManaging(b._id)}>{t("prop.manage")}</button>}

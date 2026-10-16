@@ -38,7 +38,7 @@ export function StatusBadge({ status }: { status: string }) {
 /**
  * Every page: the title with its main buttons on the right, then a row of filters (pickers, tabs, search) beneath.
  */
-export function PageHeader({ title, sub, actions, filters, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; children?: ReactNode }) {
+export function PageHeader({ title, sub, actions, filters, tabs, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; tabs?: ReactNode; children?: ReactNode }) {
   // each screen names its browser tab, so several open tabs stay distinguishable
   useEffect(() => { document.title = `${title} · Dire Mall Rentals`; }, [title]);
   const buttons = actions ?? children;
@@ -49,6 +49,7 @@ export function PageHeader({ title, sub, actions, filters, children }: { title: 
         {filters && <div className="filter-bar">{filters}</div>}
         {buttons && <div className="actions">{buttons}</div>}
       </header>
+      {tabs}
     </div>
   );
 }
@@ -184,6 +185,21 @@ export function BuildingSelect({ buildings, value, onChange }: { buildings: { _i
   return (
     <FilterSelect label={t("building")} placeholder={t("building")} value={value} onChange={onChange}
       options={[{ value: "", label: t("allBuildings"), icon: <Building2 size={16} /> }, ...(buildings ?? []).map((b) => ({ value: b._id, label: b.name, icon: <Building2 size={16} /> }))]} />
+  );
+}
+
+/** Page sections as real tabs: an underline marks the open one, and the arrow keys, Home and End move between them. */
+export function SectionTabs({ tabs, value, onChange, label }: { tabs: [string, string][]; value: string; onChange: (v: string) => void; label: string }) {
+  const move = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const i = tabs.findIndex(([k]) => k === value); let n = i;
+    if (e.key === "ArrowRight") n = (i + 1) % tabs.length; else if (e.key === "ArrowLeft") n = (i - 1 + tabs.length) % tabs.length; else if (e.key === "Home") n = 0; else if (e.key === "End") n = tabs.length - 1; else return;
+    e.preventDefault(); onChange(tabs[n]![0]);
+    requestAnimationFrame(() => (e.currentTarget.querySelector('[aria-selected="true"]') as HTMLElement | null)?.focus());
+  };
+  return (
+    <div className="section-tabs" role="tablist" aria-label={label} onKeyDown={move}>
+      {tabs.map(([k, text]) => <button key={k} type="button" role="tab" aria-selected={value === k} tabIndex={value === k ? 0 : -1} onClick={() => onChange(k)}>{text}</button>)}
+    </div>
   );
 }
 

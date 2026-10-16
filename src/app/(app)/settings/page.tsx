@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
-import { Card, PageHeader, Skeleton, Tabs } from "@/components/ui";
+import { Card, PageHeader, SectionTabs, Skeleton } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { Billing } from "./Billing";
 import { Buildings } from "./Buildings";
@@ -21,7 +21,7 @@ export default function Settings() {
   const pick = (v: string) => { setTab(v as Tab); window.history.replaceState(null, "", v === "overview" ? "/settings" : `/settings?tab=${v}`); };
   return (
     <div className="stack">
-      <PageHeader title={t("nav.settings")} filters={<Tabs value={tab} onChange={pick} tabs={TABS.map((k) => [k, t(`set.tab.${k}`)] as [string, string])} />} />
+      <PageHeader title={t("nav.settings")} tabs={<SectionTabs label={t("nav.settings")} value={tab} onChange={pick} tabs={TABS.map((k) => [k, t(`set.tab.${k}`)] as [string, string])} />} />
       {tab === "overview" ? <Overview go={pick} /> : tab === "org" ? <Organisation /> : tab === "buildings" ? <Buildings /> : tab === "billing" ? <Billing /> : <Security />}
     </div>
   );

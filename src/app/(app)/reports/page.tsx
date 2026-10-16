@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Badge, BuildingSelect, Card, DateText, ExportMenu, Field, Kpi, Money, PageHeader, Skeleton, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Badge, BuildingSelect, Card, DateText, ExportMenu, Field, Kpi, Money, PageHeader, SectionTabs, Skeleton, StatusBadge, Table } from "@/components/ui";
 import { BarChart } from "@/components/ui";
 import { Columns, HBars, Ring, SERIES, StackBar, Trend, compact } from "@/components/charts";
 import { useRouter } from "next/navigation";
@@ -27,7 +27,8 @@ export default function Reports() {
   const buildings = useQuery(api.properties.listBuildings, {}); const b = (building || undefined) as Id<"buildings"> | undefined;
   return (
     <div className="stack">
-      <PageHeader title={t("nav.reports")} filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")], ["expiry", t("rep.expiry")], ["deposits", t("rep.deposits")]]} /></>}
+      <PageHeader title={t("nav.reports")} filters={<BuildingSelect buildings={buildings} value={building} onChange={setBuilding} />}
+        tabs={<SectionTabs label={t("nav.reports")} value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")], ["expiry", t("rep.expiry")], ["deposits", t("rep.deposits")]]} />}
         actions={<Link className="btn primary no-print" href="/reports/month-end">{t("rep.monthEnd")}</Link>} />
       {tab === "rentRoll" && <RentRoll b={b} buildings={buildings} />}{tab === "vacancy" && <Vacancy b={b} />}{tab === "aging" && <Aging b={b} />}{tab === "revenue" && <Revenue b={b} />}{tab === "ledger" && <Ledger />}{tab === "expiry" && <Expiry b={b} />}{tab === "deposits" && <Deposits b={b} />}
     </div>
