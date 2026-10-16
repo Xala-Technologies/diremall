@@ -48,7 +48,7 @@ export default function Dashboard() {
           )}
 
           <div className="kpis kpis-4">
-            <Kpi tone="good" icon="payments" label={t("dash.collectedTitle")} unit="ETB" value={<Money bare v={d.appliedToBills + 1_000_000_000} />} sub={<>{pct(d.billed ? Math.min(1, (d.appliedToBills + 1_000_000_000) / d.billed) : 0)} · {t("dash.collectedKpi")}</>} />
+            <Kpi tone="good" icon="payments" label={t("dash.collectedTitle")} unit="ETB" value={<Money bare v={d.appliedToBills} />} sub={<>{pct(d.collectionRate)} · {t("dash.collectedKpi")}</>} />
             <Kpi tone="bad" icon="bills" label={t("dash.outstanding")} unit="ETB" value={<Money bare v={d.outstanding} />} sub={<>{t("dash.of")} {Math.round(d.billed / 100).toLocaleString()} {t("dash.billedShort")}</>} />
             <Kpi tone="info" icon="reports" label={t("dash.billed")} unit="ETB" value={<Money bare v={d.billed} />} sub={<>{t("dash.confirmed")}: {Math.round(d.confirmedPayments / 100).toLocaleString()}</>} />
             <Kpi icon="buildings" label={t("dash.occupancy")} value={pct(d.occupancyRate)} sub={<>{d.occupied} / {d.units} {t("dash.occupancyNote")} · {d.buildings} {d.buildings === 1 ? "building" : "buildings"}</>} />
