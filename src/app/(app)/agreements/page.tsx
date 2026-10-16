@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Badge, Card, Skeleton, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Badge, Card, Skeleton, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, SearchInput, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
 import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
 import { Kpi } from "@/components/ui";
 import { pct } from "@/lib/format";
@@ -63,11 +63,11 @@ function NewAgreement({ presetUnit, onClose, onCreated }: { presetUnit?: string;
         const id = await run(() => create({ unitId: unitId as Id<"units">, renterId: renterId as Id<"renters">, startsAt: start!, endsAt: end!, rent: basis === "fixed" ? { kind: "fixed", amount: amount! } : { kind: "perM2", ratePerM2: amount! }, dueDay, depositAmount: deposit!, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }));
         if (id) onCreated(id);
       }}>
-        <Field label={t("ag.unit")} error={errs.unit}><select value={unitId} onChange={(e) => { clear("unit"); setUnitId(e.target.value); const u = vacant?.find((x) => x._id === e.target.value); if (u && basis === "perM2") setAmount(u.ratePerM2); }}><option value="" />{vacant?.map((u) => <option key={u._id} value={u._id}>{u.number} — {u.areaM2} m²</option>)}</select></Field>
-        <Field label={t("ag.renter")} error={errs.renter}><select value={renterId} onChange={(e) => { setRenterId(e.target.value); clear("renter"); }}><option value="" />{renters?.map((r) => <option key={r._id} value={r._id}>{r.name}</option>)}</select></Field>
+        <SelectField label={t("ag.unit")} error={errs.unit} value={unitId} onChange={(v) => { clear("unit"); setUnitId(v); const u = vacant?.find((x) => x._id === v); if (u && basis === "perM2") setAmount(u.ratePerM2); }} options={(vacant ?? []).map((u) => ({ value: u._id, label: `${u.number} — ${u.areaM2} m²` }))} />
+        <SelectField label={t("ag.renter")} error={errs.renter} value={renterId} onChange={(v) => { setRenterId(v); clear("renter"); }} options={(renters ?? []).map((r) => ({ value: r._id, label: r.name }))} />
         <Field label={t("ag.start")} error={errs.start}><DateField value={start} onChange={(v) => { setStart(v); clear("start"); clear("end"); }} /></Field>
         <Field label={t("ag.end")} error={errs.end}><DateField value={end} onChange={(v) => { setEnd(v); clear("end"); }} /></Field>
-        <Field label={t("ag.rentBasis")}><select value={basis} onChange={(e) => { setBasis(e.target.value as "perM2" | "fixed"); setAmount(e.target.value === "perM2" && unit ? unit.ratePerM2 : null); }}><option value="perM2">{t("ag.perM2")}</option><option value="fixed">{t("ag.fixed")}</option></select></Field>
+        <SelectField label={t("ag.rentBasis")} value={basis} onChange={(v) => { setBasis(v as "perM2" | "fixed"); setAmount(v === "perM2" && unit ? unit.ratePerM2 : null); }} options={[{ value: "perM2", label: t("ag.perM2") }, { value: "fixed", label: t("ag.fixed") }]} />
         <Field label={basis === "perM2" ? t("prop.rate") : t("amount")} error={errs.amount}><MoneyInput key={basis + unitId} value={amount} onChange={(v) => { setAmount(v); clear("amount"); }} /></Field>
         <Field label={t("ag.dueDay")} error={errs.dueDay}><input type="number" min={1} max={28} value={dueDay} onChange={(e) => { setDueDay(Number(e.target.value)); clear("dueDay"); }} /></Field>
         <Field label={t("ag.deposit")} error={errs.deposit}><MoneyInput value={deposit} onChange={(v) => { setDeposit(v); clear("deposit"); }} /></Field>

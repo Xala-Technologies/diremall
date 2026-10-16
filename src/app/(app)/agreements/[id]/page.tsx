@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Badge, Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table } from "@/components/ui";
+import { Badge, Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table , SelectField } from "@/components/ui";
 import { formatEtb, periodText } from "@/lib/format";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { Icon } from "@/components/icons";
@@ -141,7 +141,7 @@ function HandoverDialog({ error, onClose, onSave }: { error?: string | null; onC
     const found = failures({ condition: req(condition, t), keys: inRange(keys, 0, 99, t("v.nonneg")) }); setErrs(found); if (Object.keys(found).length) return;
     if (await onSave({ kind, keys, condition: condition.trim(), readings: readings.trim() || undefined }) !== undefined) onClose();
   }}>
-    <Field label={t("status")}><select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}><option value="moveIn">{t("ag.moveIn")}</option><option value="moveOut">{t("ag.moveOut")}</option></select></Field>
+    <SelectField label={t("status")} value={kind} onChange={(v) => setKind(v as typeof kind)} options={[{ value: "moveIn", label: t("ag.moveIn") }, { value: "moveOut", label: t("ag.moveOut") }]} />
     <Field label={t("ag.keys")} error={errs.keys}><input type="number" min={0} value={keys} onChange={(e) => setKeys(Number(e.target.value))} /></Field>
     <Field label={t("ag.condition")} error={errs.condition}><input value={condition} onChange={(e) => { setCondition(e.target.value); setErrs({ ...errs, condition: "" }); }} /></Field>
     <Field label={t("util.reading")} hint={t("optional")}><input value={readings} onChange={(e) => setReadings(e.target.value)} /></Field>
@@ -158,7 +158,7 @@ function TermsDialog({ onClose, agreementId, endsAt }: { onClose: () => void; ag
     if (await run(() => add({ agreementId, effectiveFrom: from, rent: basis === "fixed" ? { kind: "fixed", amount } : { kind: "perM2", ratePerM2: amount }, dueDay, depositAmount: deposit, newEndsAt: newEnd && newEnd > endsAt ? newEnd : undefined, escalation: Number(escPct) > 0 ? { percent: Number(escPct), everyMonths: Number(escEvery) } : undefined }))) onClose();
   }}>
     <Field label={t("date")}><DateField value={from} onChange={setFrom} /></Field>
-    <Field label={t("ag.rentBasis")}><select value={basis} onChange={(e) => setBasis(e.target.value as typeof basis)}><option value="perM2">{t("ag.perM2")}</option><option value="fixed">{t("ag.fixed")}</option></select></Field>
+    <SelectField label={t("ag.rentBasis")} value={basis} onChange={(v) => setBasis(v as typeof basis)} options={[{ value: "perM2", label: t("ag.perM2") }, { value: "fixed", label: t("ag.fixed") }]} />
     <Field label={basis === "perM2" ? t("prop.rate") : t("amount")}><MoneyInput value={amount} onChange={setAmount} /></Field>
     <Field label={t("ag.dueDay")}><input type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} /></Field>
     <Field label={t("ag.deposit")}><MoneyInput value={deposit} onChange={setDeposit} /></Field>

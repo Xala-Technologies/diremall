@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table } from "@/components/ui";
+import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, StatusBadge, Table , SelectField } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { OrgHeader } from "@/components/OrgHeader";
 import { etbInWords } from "@/lib/words";
@@ -134,7 +134,7 @@ function AdjustDialog({ error, onClose, onSave }: { error?: string | null; onClo
     const found = failures({ amount: positive(amount, t), reason: req(reason, t) }); setErrs(found); if (Object.keys(found).length) return;
     if ((await onSave(sign * amount!, reason.trim())) !== undefined) onClose();
   }}>
-    <Field label={t("bill.adjustKind")}><select value={sign} onChange={(e) => setSign(Number(e.target.value) as 1 | -1)}><option value={-1}>{t("bill.reduce")}</option><option value={1}>{t("bill.increase")}</option></select></Field>
+    <SelectField label={t("bill.adjustKind")} value={String(sign)} onChange={(v) => setSign(Number(v) as 1 | -1)} options={[{ value: "-1", label: t("bill.reduce") }, { value: "1", label: t("bill.increase") }]} />
     <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
     <Field label={t("reason")} error={errs.reason}><input value={reason} onChange={(e) => { setReason(e.target.value); setErrs({ ...errs, reason: "" }); }} /></Field>
     <div className="wide"><Message error={error} /><button className="btn primary">{t("save")}</button></div></form></Modal>;

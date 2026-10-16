@@ -7,7 +7,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Icon } from "@/components/icons";
-import { Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, SearchInput, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, SearchInput, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
 import { formatEtb, periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -129,7 +129,7 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
       }}>
         {prefill?.lineId && <p className="muted wide">{t("pay.fromBank")}: {prefill.narration}</p>}
         {prefill?.renterId && !prefill.lineId && prefill.narration && <p className="muted wide">{t("bill.number")}: {prefill.narration}</p>}
-        <Field label={t("ag.renter")} error={errs.renter}><select value={chosen} onChange={(e) => { setRenterId(e.target.value); clear("renter"); }}><option value="" />{renters?.map((r) => <option key={r._id} value={r._id}>{r.name}</option>)}</select></Field>
+        <SelectField label={t("ag.renter")} error={errs.renter} value={chosen} onChange={(v) => { setRenterId(v); clear("renter"); }} options={(renters ?? []).map((r) => ({ value: r._id, label: r.name }))} />
         <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput key={String(amount)} value={amount} onChange={(v) => { setAmount(v); clear("amount"); }} /></Field>
         {chosen && bills && (
           <div className="wide open-bills">
@@ -145,7 +145,7 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
             <label className="row"><input type="checkbox" checked={different} onChange={(e) => { setDifferent(e.target.checked); clear("dup"); }} />{t("pay.dup.different")}</label>
             {errs.dup && <small className="field-error">{errs.dup}</small>}
           </div>)}
-        <Field label={t("pay.method")}><select value={method} onChange={(e) => setMethod(e.target.value as Method)}>{METHODS.map((m) => <option key={m} value={m}>{t(m)}</option>)}</select></Field>
+        <SelectField label={t("pay.method")} value={method} onChange={(v) => setMethod(v as Method)} options={METHODS.map((m) => ({ value: m, label: t(m) }))} />
         <Field label={t("pay.reference")} error={errs.reference}><input value={reference} onChange={(e) => { setReference(e.target.value); clear("reference"); }} /></Field>
         <Field label={t("pay.received")} error={errs.at}><DateField value={at} onChange={setAt} /></Field>
         <Field label={t("pay.payer")} hint={t("pay.payerHint")}><input value={payer} onChange={(e) => setPayer(e.target.value)} /></Field>

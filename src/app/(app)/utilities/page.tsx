@@ -1,10 +1,11 @@
 "use client";
 import { useMutation, useQuery } from "convex/react";
 import { Droplets, Zap } from "lucide-react";
+import { FilterSelect } from "@/components/FilterSelect";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { BuildingSelect, Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, PeriodPicker, StatusBadge, Table, Tabs } from "@/components/ui";
+import { BuildingSelect, Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, PeriodPicker, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
 import { currentPeriod } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -92,8 +93,8 @@ function ReadingForm({ units, preset, onClose }: { units: { _id: Id<"units">; nu
   return (
     <Modal title={t("util.reading")} onClose={onClose}>
       <div className="form">
-        <Field label={t("ag.unit")}><select value={unitId} onChange={(e) => { setUnitId(e.target.value as Id<"units">); setMeterId(""); }}><option value="" />{units.map((u) => <option key={u._id} value={u._id}>{u.number}</option>)}</select></Field>
-        <Field label={t("util.meters")}><select value={meterId} onChange={(e) => setMeterId(e.target.value)}><option value="" />{meters?.map((m) => <option key={m._id} value={m._id}>{t(m.kind)} · {m.serial}</option>)}</select></Field>
+        <SelectField label={t("ag.unit")} value={unitId} onChange={(v) => { setUnitId(v as Id<"units">); setMeterId(""); }} options={units.map((u) => ({ value: u._id, label: u.number }))} />
+        <SelectField label={t("util.meters")} value={meterId} onChange={setMeterId} options={(meters ?? []).map((m) => ({ value: m._id, label: `${t(m.kind)} · ${m.serial}` }))} />
         {meterId && <p className="muted wide">{last ? <>{t("util.lastReading")}: <b className="num">{last.value}</b> · <DateText ms={last.readAt} /></> : t("util.firstReading")}{usage != null && <> · {t("util.usage")}: <b className="num">+{usage}</b></>}</p>}
         <Field label={t("util.value")}><input inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} /></Field>
         <Field label={t("date")}><DateField value={at} onChange={setAt} /></Field>
@@ -101,7 +102,7 @@ function ReadingForm({ units, preset, onClose }: { units: { _id: Id<"units">; nu
         {lower && <p className="msg bad wide" role="alert">{t("util.lowWarn").replace("{v}", String(last!.value))}</p>}
         <div className="wide"><button className="btn primary" disabled={!meterId || value === "" || at == null || !Number.isFinite(num)} onClick={() => void run(async () => { const r = await enter({ meterId: meterId as Id<"meters">, value: Number(value), readAt: at!, isReset: reset }); setValue(""); return r; }, t("saved"))}>{t("save")}</button></div>
         {unitId && <><hr className="wide" style={{ width: "100%", border: 0, borderTop: "1px solid var(--line)" }} />
-          <Field label={t("util.addMeter")}><select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}><option value="electricity">{t("electricity")}</option><option value="water">{t("water")}</option></select></Field>
+          <SelectField label={t("util.addMeter")} value={kind} onChange={(v) => setKind(v as typeof kind)} options={[{ value: "electricity", label: t("electricity") }, { value: "water", label: t("water") }]} />
           <Field label={t("util.serial")}><input value={serial} onChange={(e) => setSerial(e.target.value)} /></Field>
           <div className="wide"><button className="btn" disabled={!serial} onClick={() => void run(async () => { await addMeter({ unitId, kind, serial }); setSerial(""); })}>{t("util.addMeter")}</button></div></>}
         <div className="wide"><Message error={error} notice={notice} /></div>
@@ -139,7 +140,7 @@ function Shared() {
       <div className="filter-bar" style={{ gridArea: "auto" }}><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><PeriodPicker value={period} onChange={setPeriod} /></div>
       <p className="muted">{t("util.sharedHint")}</p>
       {building && can("financeOfficer") && <Card title={t("util.newShared")}><div className="row">
-        <select aria-label={t("util.shared")} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>{(["generator", "security", "cleaning"] as const).map((k) => <option key={k} value={k}>{t(k)}</option>)}</select>
+        <FilterSelect label={t("util.shared")} value={kind} onChange={(v) => setKind(v as typeof kind)} options={(["generator", "security", "cleaning"] as const).map((k) => ({ value: k, label: t(k) }))} />
         <MoneyInput value={total} onChange={setTotal} placeholder={`${t("amount")} (ETB)`} />
         <button className="btn primary" disabled={!total} onClick={() => void run(() => create({ buildingId: building as Id<"buildings">, kind, period, total: total! }), t("saved"))}>{t("create")}</button></div></Card>}
       <Message error={error} notice={notice} />

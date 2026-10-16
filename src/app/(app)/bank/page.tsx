@@ -6,7 +6,7 @@ import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { FilterSelect } from "@/components/FilterSelect";
-import { Card, DateText, Empty, Field, Kpi, Message, Modal, Money, PageHeader, ReasonDialog, SearchInput, Skeleton, StatusBadge, Table, Tabs } from "@/components/ui";
+import { Card, DateText, Empty, Field, Kpi, Message, Modal, Money, PageHeader, ReasonDialog, SearchInput, Skeleton, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
 import { formatEtb } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { readTable } from "@/lib/importFile";
@@ -106,7 +106,7 @@ function ImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (batch
             <tbody>{lines.slice(0, 8).map((l) => <tr key={l.row}><td><DateText ms={l.postedAt} /></td><td className="txt">{l.description || l.reference}<br /><small className="muted">{l.description ? l.reference : ""}</small></td><td className="r"><Money v={l.amount} /></td></tr>)}</tbody></table></div>
           {lines.length > 8 && <p className="muted">{t("bank.import.more").replace("{n}", String(lines.length - 8))}</p>}
           <div className="form">
-            <Field label={t("bank.import.bank")}><select value={bank} onChange={(e) => setBank(e.target.value)}>{BANKS.map((b) => <option key={b}>{b}</option>)}</select></Field>
+            <SelectField label={t("bank.import.bank")} value={bank} onChange={setBank} options={BANKS.map((b) => ({ value: b, label: b }))} />
             <Field label={t("bank.import.name")}><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           </div>
           <Message error={error} />

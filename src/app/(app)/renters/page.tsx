@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, DateField, DateText, Empty, Field, Message, Modal, Money, PageHeader, SearchInput, Skeleton, StatusBadge, Table, ViewToggle } from "@/components/ui";
+import { Card, DateField, DateText, Empty, Field, Message, Modal, Money, PageHeader, SearchInput, Skeleton, StatusBadge, Table, ViewToggle , SelectField } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Building2, User, Users } from "lucide-react";
@@ -96,7 +96,7 @@ function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => vo
         }
         onClose();
       }}>
-        <Field label={t("renter.kind")}><select value={f.kind} disabled={!!renter} onChange={set("kind")}><option value="company">{t("company")}</option><option value="individual">{t("individual")}</option></select></Field>
+        <SelectField label={t("renter.kind")} value={f.kind} disabled={!!renter} onChange={(v) => set("kind")({ target: { value: v } })} options={[{ value: "company", label: t("company") }, { value: "individual", label: t("individual") }]} />
         <Field label={t("name")} error={errs.name}><input autoFocus value={f.name} onChange={set("name")} /></Field>
         {company ? <>
           <Field label={t("renter.tin")} error={errs.tin}><input inputMode="numeric" value={f.tin} onChange={set("tin")} placeholder="0012345678" /></Field>
@@ -112,7 +112,7 @@ function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => vo
         <Field label={t("email")} error={errs.email} hint={t("optional")}><input type="email" value={f.email} onChange={set("email")} /></Field>
         <Field label={t("renter.contactPerson")} hint={t("optional")}><input value={f.contactPerson} onChange={set("contactPerson")} /></Field>
         <Field label={t("renter.contactPhone")} error={errs.contactPhone} hint={t("optional")}><input type="tel" value={f.contactPhone} onChange={set("contactPhone")} /></Field>
-        <Field label={t("sms.language")}><select value={smsLang} onChange={(e) => setSmsLang(e.target.value as "en" | "am")}><option value="en">English</option><option value="am">አማርኛ</option></select></Field>
+        <SelectField label={t("sms.language")} value={smsLang} onChange={(v) => setSmsLang(v as "en" | "am")} options={[{ value: "en", label: "English" }, { value: "am", label: "አማርኛ" }]} />
         <label className="field"><span>{t("sms.tab.log")}</span><span className="row"><input type="checkbox" checked={smsOpt} onChange={(e) => setSmsOpt(e.target.checked)} />{t("sms.optOut")}</span></label>
         <div className="wide"><Field label={t("renter.address")} hint={t("optional")}><input value={f.address} onChange={set("address")} /></Field></div>
         <div className="wide"><Field label={t("renter.notes")} hint={t("optional")}><textarea rows={2} value={f.notes} onChange={set("notes")} /></Field></div>

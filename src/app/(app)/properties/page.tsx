@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, SearchInput, Skeleton, StatusBadge, Table, Money, ViewToggle } from "@/components/ui";
+import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, MoneyInput, PageHeader, SearchInput, Skeleton, StatusBadge, Table, Money, ViewToggle , SelectField } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { ArrowUpDown, Briefcase, Circle, CircleCheck, Home, LayoutGrid, Layers, Package, Store, Wrench } from "lucide-react";
 import { Icon } from "@/components/icons";
@@ -145,13 +145,13 @@ function UnitForm({ buildingId: presetBuilding, unit, onClose }: { buildingId: I
           : await run(() => create({ buildingId, floorId: chosenFloor as Id<"floors">, number: number.trim(), areaM2: Number(area), category, ratePerM2: rate!, notes, status }), t("saved"));
         if (ok !== undefined) onClose();
       }}>
-        {!unit && !presetBuilding && <Field label={t("building")} error={errs.building}><select value={pickedBuilding} onChange={(e) => { setPickedBuilding(e.target.value); setFloorId(""); clear("building"); }}><option value="" />{buildings?.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}</select></Field>}
-        <Field label={t("prop.floor")} error={errs.floor}><select value={chosenFloor} onChange={(e) => { setFloorId(e.target.value); clear("floor"); }}>{(floors?.length ?? 0) === 0 && <option value="">—</option>}{floors?.map((f) => <option key={f._id} value={f._id}>{f.label}</option>)}</select></Field>
+        {!unit && !presetBuilding && <SelectField label={t("building")} error={errs.building} value={pickedBuilding} onChange={(v) => { setPickedBuilding(v); setFloorId(""); clear("building"); }} options={(buildings ?? []).map((b) => ({ value: b._id, label: b.name }))} />}
+        <SelectField label={t("prop.floor")} error={errs.floor} value={chosenFloor} onChange={(v) => { setFloorId(v); clear("floor"); }} options={(floors ?? []).map((f) => ({ value: f._id, label: f.label }))} />
         <Field label={t("prop.unitNumber")} error={errs.number}><input autoFocus value={number} onChange={(e) => { setNumber(e.target.value); clear("number"); }} /></Field>
         <Field label={t("prop.area")} error={errs.area}><input inputMode="decimal" value={area} disabled={locked} onChange={(e) => { setArea(e.target.value); clear("area"); }} /></Field>
-        <Field label={t("prop.category")}><select value={category} onChange={(e) => setCategory(e.target.value as UnitRow["category"])}>{(["office", "retail", "storage", "residential"] as const).map((c) => <option key={c} value={c}>{t(c)}</option>)}</select></Field>
+        <SelectField label={t("prop.category")} value={category} onChange={(v) => setCategory(v as UnitRow["category"])} options={(["office", "retail", "storage", "residential"] as const).map((c) => ({ value: c, label: t(c) }))} />
         <Field label={t("prop.rate")} error={errs.rate}><MoneyInput value={rate} onChange={(v) => { if (!locked) { setRate(v); clear("rate"); } }} /></Field>
-        {!unit && <Field label={t("prop.unitStatus")}><select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}><option value="vacant">{t("vacant")}</option><option value="maintenance">{t("maintenance")}</option></select></Field>}
+        {!unit && <SelectField label={t("prop.unitStatus")} value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: "vacant", label: t("vacant") }, { value: "maintenance", label: t("maintenance") }]} />}
         {locked && <p className="muted wide">{t("prop.rateLocked")}</p>}
         <div className="wide"><Field label={t("prop.unitNotes")} hint={t("optional")}><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field></div>
         <div className="wide row"><Message error={error} /><button className="btn primary" disabled={busy}>{unit ? t("save") : t("create")}</button>{unit && <DeleteButton small={false} title={t("prop.deleteUnitTitle").replace("{n}", unit.number)} message={t("prop.deleteUnitBody")} disabledReason={locked ? t("prop.cannotDeleteUnit") : undefined} onDelete={() => removeUnit({ unitId: unit._id })} onDone={onClose} />}</div>

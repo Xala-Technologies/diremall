@@ -118,6 +118,17 @@ export function Field({ label, children, hint, error }: { label: string; childre
   return <label className={`field ${error ? "invalid" : ""}`}><span>{label}</span>{children}{error ? <small className="field-error" role="alert"><Icon name="alert" size={14} />{error}</small> : hint && <small className="muted">{hint}</small>}</label>;
 }
 
+/** A labelled dropdown that looks and behaves like the filters elsewhere (the browser's own select is not used in forms). */
+export function SelectField({ label, value, onChange, options, error, hint, placeholder = "—", disabled }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; error?: string; hint?: string; placeholder?: string; disabled?: boolean }) {
+  return (
+    <div className={`field ${error ? "invalid" : ""}`} role="group" aria-label={label}>
+      <span>{label}</span>
+      <FilterSelect label={label} value={value} onChange={onChange} options={options} placeholder={placeholder} disabled={disabled} />
+      {error ? <small className="field-error" role="alert"><Icon name="alert" size={14} />{error}</small> : hint && <small className="muted">{hint}</small>}
+    </div>
+  );
+}
+
 export function Message({ error, notice }: { error?: string | null; notice?: string | null }) {
   if (error) return <div className="msg bad" role="alert"><Icon name="alert" />{error}</div>;
   if (notice) return <div className="msg good" role="status"><Icon name="check" />{notice}</div>;
