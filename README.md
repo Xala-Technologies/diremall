@@ -23,8 +23,9 @@ Convex Auth needs a signing key and the site URL on the deployment:
 npx @convex-dev/auth    # sets JWT_PRIVATE_KEY, JWKS and SITE_URL
 ```
 
-The first account to sign up becomes super admin. Later sign-ups are inactive until an access admin
-enables them under Staff access.
+The first account to sign up becomes super admin (on production, only the address in `BOOTSTRAP_ADMIN_EMAIL`).
+Later sign-ups become requests for access: an administrator approves them, with the roles and buildings to give,
+or declines them, under Staff access.
 
 ### SMS
 
@@ -70,7 +71,8 @@ Two pieces: the Convex production deployment (data and functions) and the websit
 4. **SMS** (when a provider is chosen): set `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` and
    `SMS_WEBHOOK_SECRET` on production with `npx convex env set --prod`.
 5. **Do not** run `seed:load` on production. It is demo data for the development deployment only.
-6. Sign up with the admin email, then add staff under Staff access.
+6. Sign up with the admin email first (set it in step 3 before sharing the address, or whoever registers first
+   without it becomes the super admin). Then staff create accounts, or you invite them, and you approve them under Staff access.
 
 ## Data migrations
 
