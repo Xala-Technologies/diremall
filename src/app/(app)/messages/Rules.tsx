@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
+import { FilterSelect } from "@/components/FilterSelect";
 import { Card, Field, Message, Skeleton } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useI18n } from "@/lib/i18n";
@@ -12,6 +13,7 @@ import { isPhone } from "../../../../convex/lib/validate";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
+const HOUR_OPTIONS = HOURS.map((h) => ({ value: String(h), label: hourLabel(h) }));
 
 /** When messages go out, how the overdue chasing escalates, and a button to prove the gateway works. */
 export function RulesTab() {
@@ -40,7 +42,7 @@ export function RulesTab() {
             if (r) toast(t("sms.testHint"));
           }}>
             <input aria-label={t("sms.testPhone")} placeholder={t("sms.testPhone")} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <select aria-label={t("language")} value={lang} onChange={(e) => setLang(e.target.value as "en" | "am")}><option value="en">English</option><option value="am">አማርኛ</option></select>
+            <FilterSelect label={t("language")} value={lang} onChange={(v) => setLang(v as "en" | "am")} options={[{ value: "en", label: "English" }, { value: "am", label: "አማርኛ" }]} />
             <button className="btn" disabled={!can("financeOfficer", "approver") || testRun.busy}>{t("sms.sendTest")}</button>
           </form>
           <Message error={phoneErr ?? testRun.error} />
@@ -64,8 +66,8 @@ export function RulesTab() {
           </section>
           <section className="rule">
             <div className="rule-text"><h3>{t("sms.ruleQuietTitle")}</h3><p>{quiet}</p></div>
-            <div className="rule-ctl"><label className="step"><span>{t("sms.quietFrom")}</span><select value={f.qs} disabled={!edit} onChange={(e) => set({ qs: Number(e.target.value) })}>{HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label>
-              <label className="step"><span>{t("sms.quietTo")}</span><select value={f.qe} disabled={!edit} onChange={(e) => set({ qe: Number(e.target.value) })}>{HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label></div>
+            <div className="rule-ctl"><label className="step"><span>{t("sms.quietFrom")}</span><FilterSelect label={t("sms.quietFrom")} value={String(f.qs)} disabled={!edit} onChange={(v) => set({ qs: Number(v) })} options={HOUR_OPTIONS} /></label>
+              <label className="step"><span>{t("sms.quietTo")}</span><FilterSelect label={t("sms.quietTo")} value={String(f.qe)} disabled={!edit} onChange={(v) => set({ qe: Number(v) })} options={HOUR_OPTIONS} /></label></div>
           </section>
           <section className="rule">
             <div className="rule-text"><h3>{t("sms.dailyCap")}</h3><p>{t("sms.dailyCapHint")}</p></div>

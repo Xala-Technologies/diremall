@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 export type FilterOption = {
   value: string;
   label: string;
-  icon: ReactNode;
+  icon?: ReactNode;
 };
 
 export function FilterSelect({
@@ -115,9 +115,9 @@ export function FilterSelect({
           setOpen(true);
         }}
       >
-        <span className="filter-select-icon" aria-hidden="true">
-          {selected?.icon}
-        </span>
+        {selected?.icon && <span className="filter-select-icon" aria-hidden="true">
+          {selected.icon}
+        </span>}
         {iconOnly ? (badge ? <span className="filter-select-badge" aria-hidden="true">{badge}</span> : null) : <>
           <span className={`filter-select-value ${placeholder && value === "" ? "is-placeholder" : ""}`}>{placeholder && value === "" ? placeholder : selected?.label}</span>
           <ChevronDown size={16} aria-hidden="true" />
@@ -149,9 +149,9 @@ export function FilterSelect({
               className="filter-select-option"
               onClick={() => choose(option.value)}
             >
-              <span className="filter-select-icon" aria-hidden="true">
+              {option.icon && <span className="filter-select-icon" aria-hidden="true">
                 {option.icon}
-              </span>
+              </span>}
               <span>{option.label}</span>
             </button>
           ))}

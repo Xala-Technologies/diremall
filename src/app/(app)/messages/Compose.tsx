@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { BROADCAST_PLACEHOLDERS, checkTemplate, renderTemplate, smsSegments } from "../../../../convex/lib/smsTemplates";
+import { FilterSelect } from "@/components/FilterSelect";
 import { Card, ConfirmDialog, Message } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useI18n } from "@/lib/i18n";
@@ -38,9 +39,8 @@ export function ComposeTab() {
       <Card title={t("sms.audience")}>
         <div className="stack">
           <div className="form">
-            <label className="field"><span>{t("sms.sendTo")}</span><select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-              <option value="activeLeases">{t("sms.aud.activeLeases")}</option><option value="overdue">{t("sms.aud.overdue")}</option><option value="building">{t("sms.aud.building")}</option><option value="renters">{t("sms.aud.renters")}</option></select></label>
-            {kind === "building" && <label className="field"><span>{t("building")}</span><select value={buildingId} onChange={(e) => setBuildingId(e.target.value)}><option value="" />{buildings?.map((b) => <option key={b._id} value={b._id}>{b.name}</option>)}</select></label>}
+            <div className="field"><span>{t("sms.sendTo")}</span><FilterSelect label={t("sms.sendTo")} value={kind} onChange={(v) => setKind(v as Kind)} options={(["activeLeases", "overdue", "building", "renters"] as const).map((k) => ({ value: k, label: t(`sms.aud.${k}`) }))} /></div>
+            {kind === "building" && <div className="field"><span>{t("building")}</span><FilterSelect label={t("building")} placeholder={t("building")} value={buildingId} onChange={setBuildingId} options={(buildings ?? []).map((b) => ({ value: b._id, label: b.name }))} /></div>}
           </div>
           {kind === "renters" && <div className="picker"><input aria-label={t("search")} placeholder={t("filter.searchRenters")} value={q} onChange={(e) => setQ(e.target.value)} />
             <ul>{shownRenters.slice(0, 60).map((r) => <li key={r._id}><label className="row"><input type="checkbox" checked={picked.has(r._id)} onChange={() => setPicked((s) => { const n = new Set(s); if (n.has(r._id)) n.delete(r._id); else n.add(r._id); return n; })} />{r.name}</label></li>)}</ul></div>}

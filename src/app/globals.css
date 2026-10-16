@@ -424,3 +424,5 @@ textarea { font: inherit; resize: vertical; }
 .rule .step { display: grid; gap: 6px; width: auto; font-size: .8125rem; font-weight: 500; } .rule .step select { width: 8rem; }
 .rule-foot { display: grid; gap: 10px; justify-items: start; padding-top: 20px; border-top: 1px solid var(--ds-color-neutral-border-subtle, var(--ds-color-neutral-border-default)); }
 @media (max-width: 860px) { .rule { grid-template-columns: minmax(0, 1fr); } }
+
+.rule .step .filter-select, .test-send .filter-select, .rule-ctl .filter-select { flex: 0 0 auto; width: 8.5rem; max-width: none; } .test-send .filter-select { width: 9rem; } .field > .filter-select { max-width: none; width: 100%; }
