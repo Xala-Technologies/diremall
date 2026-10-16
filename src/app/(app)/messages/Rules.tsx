@@ -47,23 +47,38 @@ export function RulesTab() {
         </div>
       </Card>
       <Card title={t("sms.schedule")}>
-        <form className="form rules-form" noValidate onSubmit={async (e) => {
+        <form className="rules" noValidate onSubmit={async (e) => {
           e.preventDefault(); if (problem) return;
           await run(() => save({ before: num(f.before), overdue1: num(f.o1), overdue2: num(f.o2), overdue3: num(f.o3), quietStart: f.qs, quietEnd: f.qe, dailyCap: num(f.cap), receipts: f.receipts, issued: f.issued }), t("saved"));
         }}>
-          <p className="muted wide">{t("sms.scheduleHint")}</p>
-          <Field label={t("sms.before")} hint={t("sms.beforeHint")}><input inputMode="numeric" value={f.before} disabled={!edit} onChange={(e) => set({ before: e.target.value })} /></Field>
-          <div className="wide"><span className="caption">{t("sms.overdueSteps")}</span><div className="row steps">
-            {([["o1", f.o1], ["o2", f.o2], ["o3", f.o3]] as const).map(([k, v], i) => <label key={k} className="field step"><span>{t("sms.step").replace("{n}", String(i + 1))}</span><input inputMode="numeric" value={v} disabled={!edit} onChange={(e) => set({ [k]: e.target.value } as Partial<typeof f>)} /><small>{t("sms.daysLate")}</small></label>)}
-          </div><small className="muted">{t("sms.stepsHint")}</small></div>
-          <Field label={t("sms.quietFrom")} hint={quiet}><select value={f.qs} disabled={!edit} onChange={(e) => set({ qs: Number(e.target.value) })}>{HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></Field>
-          <Field label={t("sms.quietTo")}><select value={f.qe} disabled={!edit} onChange={(e) => set({ qe: Number(e.target.value) })}>{HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></Field>
-          <Field label={t("sms.dailyCap")} hint={t("sms.dailyCapHint")}><input inputMode="numeric" value={f.cap} disabled={!edit} onChange={(e) => set({ cap: e.target.value })} /></Field>
-          <div className="wide stack">
-            <label className="row"><input type="checkbox" checked={f.receipts} disabled={!edit} onChange={(e) => set({ receipts: e.target.checked })} />{t("sms.optReceipts")}</label>
-            <label className="row"><input type="checkbox" checked={f.issued} disabled={!edit} onChange={(e) => set({ issued: e.target.checked })} />{t("sms.optIssued")}</label>
-          </div>
-          <div className="wide"><Message error={problem ?? error} />{edit ? <button className="btn primary" disabled={busy || !!problem}>{t("save")}</button> : <p className="muted">{t("sms.rulesApprover")}</p>}</div>
+          <p className="muted">{t("sms.scheduleHint")}</p>
+          <section className="rule">
+            <div className="rule-text"><h3>{t("sms.ruleBeforeTitle")}</h3><p>{t("sms.beforeHint")}</p></div>
+            <div className="rule-ctl"><label className="unit"><span className="sr-only">{t("sms.before")}</span><input inputMode="numeric" value={f.before} disabled={!edit} onChange={(e) => set({ before: e.target.value })} /><span>{t("sms.daysBefore")}</span></label></div>
+          </section>
+          <section className="rule">
+            <div className="rule-text"><h3>{t("sms.overdueSteps")}</h3><p>{t("sms.stepsHint")}</p></div>
+            <div className="rule-ctl steps">
+              {([["o1", f.o1], ["o2", f.o2], ["o3", f.o3]] as const).map(([k, v], i) => <label key={k} className="step"><span>{t("sms.step").replace("{n}", String(i + 1))}</span><span className="unit"><input inputMode="numeric" value={v} disabled={!edit} onChange={(e) => set({ [k]: e.target.value } as Partial<typeof f>)} /><span>{t("sms.daysLate")}</span></span></label>)}
+            </div>
+          </section>
+          <section className="rule">
+            <div className="rule-text"><h3>{t("sms.ruleQuietTitle")}</h3><p>{quiet}</p></div>
+            <div className="rule-ctl"><label className="step"><span>{t("sms.quietFrom")}</span><select value={f.qs} disabled={!edit} onChange={(e) => set({ qs: Number(e.target.value) })}>{HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label>
+              <label className="step"><span>{t("sms.quietTo")}</span><select value={f.qe} disabled={!edit} onChange={(e) => set({ qe: Number(e.target.value) })}>{HOURS.map((h) => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label></div>
+          </section>
+          <section className="rule">
+            <div className="rule-text"><h3>{t("sms.dailyCap")}</h3><p>{t("sms.dailyCapHint")}</p></div>
+            <div className="rule-ctl"><label className="unit"><span className="sr-only">{t("sms.dailyCap")}</span><input inputMode="numeric" value={f.cap} disabled={!edit} onChange={(e) => set({ cap: e.target.value })} /><span>{t("sms.perDay")}</span></label></div>
+          </section>
+          <section className="rule">
+            <div className="rule-text"><h3>{t("sms.ruleExtrasTitle")}</h3></div>
+            <div className="rule-ctl col">
+              <label className="row"><input type="checkbox" checked={f.receipts} disabled={!edit} onChange={(e) => set({ receipts: e.target.checked })} />{t("sms.optReceipts")}</label>
+              <label className="row"><input type="checkbox" checked={f.issued} disabled={!edit} onChange={(e) => set({ issued: e.target.checked })} />{t("sms.optIssued")}</label>
+            </div>
+          </section>
+          <div className="rule-foot"><Message error={problem ?? error} />{edit ? <button className="btn primary" disabled={busy || !!problem}>{t("save")}</button> : <p className="muted">{t("sms.rulesApprover")}</p>}</div>
         </form>
       </Card>
     </div>
