@@ -32,9 +32,8 @@ const GROUPS: { label: string; items: Item[] }[] = [
   ] },
   { label: "nav.g.admin", items: [
     { href: "/import", key: "nav.import", icon: "upload", roles: ["propertyManager", "financeOfficer"] },
-    { href: "/settings", key: "nav.settings", icon: "settings", roles: ["approver"] },
+    { href: "/settings", key: "nav.settings", icon: "settings" },
     { href: "/users", key: "nav.users", icon: "access", roles: ["accessAdmin"] },
-    { href: "/audit", key: "nav.audit", icon: "history", roles: ["auditor", "accessAdmin"] },
   ] },
 ];
 

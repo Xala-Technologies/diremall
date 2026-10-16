@@ -11,20 +11,23 @@ import { Buildings } from "./Buildings";
 import { Organisation } from "./Organisation";
 import { Security } from "./Security";
 import { Health } from "./Health";
+import { History } from "./History";
 import { useMe } from "@/lib/useMe";
 
-type Tab = "overview" | "org" | "buildings" | "billing" | "security";
-const TABS: Tab[] = ["overview", "org", "buildings", "billing", "security"];
+type Tab = "overview" | "org" | "buildings" | "billing" | "security" | "history";
 
 export default function Settings() {
-  const { t } = useI18n(); const [tab, setTab] = useState<Tab>("overview");
+  const { t } = useI18n(); const { can } = useMe();
+  // each person sees the tabs their role may use; the server enforces the same rules
+  const TABS: Tab[] = [...(can("approver") ? ["overview" as Tab] : []), "org", ...(can("propertyManager", "approver", "auditor") ? ["buildings" as Tab] : []), ...(can("approver", "financeOfficer") ? ["billing" as Tab] : []), "security", ...(can("auditor", "accessAdmin") ? ["history" as Tab] : [])];
+  const [chosen, setTab] = useState<Tab | null>(null); const tab: Tab = chosen && TABS.includes(chosen) ? chosen : TABS[0]!;
   // a link such as /settings?tab=buildings opens that tab
-  useEffect(() => { const q = new URLSearchParams(window.location.search).get("tab") as Tab | null; if (q && TABS.includes(q)) setTab(q); }, []);
-  const pick = (v: string) => { setTab(v as Tab); window.history.replaceState(null, "", v === "overview" ? "/settings" : `/settings?tab=${v}`); };
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("tab") as Tab | null; if (q) setTab(q); }, []);
+  const pick = (v: string) => { setTab(v as Tab); window.history.replaceState(null, "", `/settings?tab=${v}`); };
   return (
     <div className="stack">
       <PageHeader title={t("nav.settings")} tabs={<SectionTabs label={t("nav.settings")} value={tab} onChange={pick} tabs={TABS.map((k) => [k, t(`set.tab.${k}`)] as [string, string])} />} />
-      {tab === "overview" ? <Overview go={pick} /> : tab === "org" ? <Organisation /> : tab === "buildings" ? <Buildings /> : tab === "billing" ? <Billing /> : <Security />}
+      {tab === "overview" ? <Overview go={pick} /> : tab === "org" ? <Organisation /> : tab === "buildings" ? <Buildings /> : tab === "billing" ? <Billing /> : tab === "history" ? <History /> : <Security />}
     </div>
   );
 }

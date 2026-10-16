@@ -144,7 +144,7 @@ The Overview page's *Needs attention today* list shows what is waiting for you.
 
 ## Management and auditors
 You can see everything in your buildings but cannot change anything. Use **Overview** for occupancy, billed, collected and
-outstanding, **Reports** for detail, and **History** to see who did what and when.
+outstanding, **Reports** for detail, and **Settings → History** to see who did what and when.
 
 ---
 
@@ -173,11 +173,12 @@ Do not repeat the action. Note the page, the time and what you clicked, and tell
 actually happened.
 
 ## Settings
-Open **Settings**. Five tabs:
+Open **Settings**. Tabs (each person sees the ones their role may use):
 - **Overview**: a setup checklist (organisation details, buildings, units, utility tariffs, SMS gateway, two-step sign-in) with a button into each item.
 - **Organisation**: the legal name, TIN, VAT number, contact details, bank accounts and the note printed on every bill. A preview shows how it prints. Approvers edit.
 - **Buildings**: the register of buildings. **Add building** and **Manage building** (details, floors, floor plans) live here. Only buildings added here and not archived appear anywhere else in the app. *Archive* takes a building out of service without deleting anything; it is refused while the building has live agreements. *Restore* brings it back.
 - **Billing and leases**: electricity and water tariffs and how many days before a lease ends to warn. Reminder days and quiet hours are on the SMS page.
+- **History**: who did what and when, searchable by person or action. Read only, for auditors and access managers.
 - **Security**: your two-step sign-in, the rule that makes it compulsory for staff, and a shortcut to Staff access.
 
 ## Deleting records added by mistake
