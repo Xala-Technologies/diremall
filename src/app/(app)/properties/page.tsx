@@ -7,6 +7,9 @@ import { Badge, DateText, BuildingSelect, Card, Empty, Field, Message, Modal, Mo
 import { FilterSelect } from "@/components/FilterSelect";
 import { ArrowUpDown, Briefcase, Circle, CircleCheck, Home, LayoutGrid, Layers, Package, Store, Wrench } from "lucide-react";
 import { Icon } from "@/components/icons";
+import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
+import { Kpi } from "@/components/ui";
+import { pct } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -65,6 +68,7 @@ export default function Properties() {
           {building && <button className="btn" onClick={() => setModal("manage")}>{t("prop.manage")}</button>}
           {building && <button className="btn primary" onClick={() => setModal("unit")}>{t("prop.addUnit")}</button>}
         </> : undefined} />
+      <UnitInsights units={units} buildings={buildings} building={building} />
       <Message error={error} />
       {view === "grid" ? (
         !units ? <Card><Skeleton lines={4} /></Card> : (shown ?? []).length === 0 ? <Card><Empty title={units.length === 0 ? t("none") : t("filter.noMatch")} hint={units.length === 0 ? t("first.1") : undefined} action={filtered ? <button className="btn" onClick={clear}>{t("filter.clear")}</button> : undefined} /></Card> : (
@@ -98,7 +102,7 @@ export default function Properties() {
           { head: t("prop.unitNumber"), cell: (u) => <strong>{u.number}</strong>, sort: (u) => u.number },
           { head: t("prop.category"), cell: (u) => t(u.category) },
           { head: t("prop.area"), cell: (u) => u.areaM2, right: true, sort: (u) => u.areaM2 },
-          { head: t("prop.rate"), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
+          { head: t("prop.rate").replace(" (ETB)", ""), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
           { head: t("status"), cell: (u) => <StatusBadge status={u.status} />, sort: (u) => u.status },
           { head: "", cell: (u) => can("propertyManager") ? (
             <div className="row">
@@ -241,4 +245,34 @@ function UnitForm({ buildingId, unit, onClose }: { buildingId: Id<"buildings">; 
       </form>
     </Modal>
   );
+}
+
+type InsightUnit = { buildingId: string; status: string; category: string; areaM2: number; ratePerM2: number };
+const potential = (u: InsightUnit) => Math.round(u.areaM2 * u.ratePerM2);
+
+/** The numbers behind the board: how full it is, what it could earn, and where the vacant space is. */
+function UnitInsights({ units, buildings, building }: { units?: InsightUnit[]; buildings?: { _id: string; name: string }[]; building: string }) {
+  const { t } = useI18n();
+  if (!units) return <div className="kpis kpis-4">{[0, 1, 2, 3].map((i) => <div key={i} className="kpi"><Skeleton lines={3} /></div>)}</div>;
+  if (units.length === 0) return null;
+  const occ = units.filter((u) => u.status === "occupied"), vac = units.filter((u) => u.status === "vacant"), other = units.length - occ.length - vac.length;
+  const area = (l: InsightUnit[]) => l.reduce((a, u) => a + u.areaM2, 0);
+  const rent = (l: InsightUnit[]) => l.reduce((a, u) => a + potential(u), 0);
+  const cats = [...new Set(units.map((u) => u.category))];
+  const byBuilding = !building && (buildings?.length ?? 0) > 1;
+  const groups = byBuilding ? (buildings ?? []).map((b) => ({ label: b.name, list: units.filter((u) => u.buildingId === b._id) })) : cats.map((c) => ({ label: t(c), list: units.filter((u) => u.category === c) }));
+  return <>
+    <div className="kpis kpis-4">
+      <Kpi tone="good" icon="buildings" label={t("dash.occupancy")} value={pct(occ.length / units.length)} sub={`${occ.length} / ${units.length} ${t("rep.k.units")}`} />
+      <Kpi tone="info" icon="payments" label={t("prop.k.fullRent")} unit="ETB" value={Math.round(rent(units) / 100).toLocaleString()} sub={t("prop.k.fullRentNote")} />
+      <Kpi tone={vac.length ? "warn" : "good"} icon="buildings" label={t("rep.k.vacantUnits")} value={vac.length} sub={`${compact(rent(vac))} ETB ${t("prop.k.perMonth")}`} />
+      <Kpi icon="reports" label={t("prop.k.totalArea")} value={`${Math.round(area(units)).toLocaleString()} m²`} sub={`${Math.round(area(vac)).toLocaleString()} m² ${t("rep.k.notLet")}`} />
+    </div>
+    <div className="cols-2">
+      <Card title={t("rep.c.occupancy")}><Ring caption={t("dash.occupancy")} center={pct(occ.length / units.length)} parts={[{ label: t("occupied"), value: occ.length, color: SERIES[0] }, { label: t("vacant"), value: vac.length, color: SERIES[4] }, ...(other > 0 ? [{ label: t("maintenance"), value: other, color: SERIES[2] }] : [])]} /></Card>
+      <Card title={byBuilding ? t("prop.c.byBuilding") : t("prop.c.byCategory")}>
+        <ul className="hbars">{groups.filter((g) => g.list.length).map((g) => { const o = g.list.filter((u) => u.status === "occupied").length; return <li key={g.label}><span className="hb-l">{g.label}<small>{g.list.length} {t("rep.k.units")}</small></span><span className="hb-t"><span className="hb-f" style={{ width: `${(o / g.list.length) * 100}%`, background: SERIES[0] }} /></span><span className="hb-v num">{pct(o / g.list.length)}</span></li>; })}</ul>
+      </Card>
+    </div>
+  </>;
 }

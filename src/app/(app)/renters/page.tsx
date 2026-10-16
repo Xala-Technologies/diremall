@@ -12,6 +12,9 @@ import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 import { FILE_ACCEPT, email, failures, fileProblem, normalizePhone, phone, req, tin } from "@/lib/validate";
+import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
+import { Kpi } from "@/components/ui";
+import { pct } from "@/lib/format";
 import { useToast } from "@/components/toast";
 import { useOpenFile } from "@/lib/useOpenFile";
 import { useUpload } from "@/lib/useUpload";
@@ -29,6 +32,7 @@ export default function Renters() {
       <PageHeader title={t("nav.renters")}
         filters={<><SearchInput value={search} onChange={setSearch} placeholder={t("filter.searchRenters")} /><FilterSelect label={t("renter.kind")} placeholder={t("renter.kind")} value={kind} onChange={setKind} options={[{ value: "", label: t("filter.allTypes"), icon: <Users size={16} /> }, { value: "company", label: t("company"), icon: <Building2 size={16} /> }, { value: "individual", label: t("individual"), icon: <User size={16} /> }]} />{(search || kind) && <button type="button" className="btn ghost sm" onClick={() => { setSearch(""); setKind(""); }}>{t("filter.clear")}</button>}<span className="spacer" /><ViewToggle value={view} onChange={setView} labels={[t("view.cards"), t("view.table")]} /></>}
         actions={can("propertyManager", "financeOfficer") ? <button className="btn primary" onClick={() => setAdding(true)}>{t("renter.add")}</button> : undefined} />
+      <RenterInsights renters={rentersAll} />
       {view === "grid" ? (
         !renters ? <Card><Skeleton lines={4} /></Card> : renters.length === 0 ? <Card><Empty title={t("none")} hint={t("first.2")} /></Card> : (
           <div className="tiles">{renters.map((r) => (
@@ -170,4 +174,27 @@ function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void 
       </div>}
     </Modal>
   );
+}
+
+/** Who the renters are, and who pays the most rent. Rent comes from the active leases. */
+function RenterInsights({ renters }: { renters?: { _id: string; name: string; kind: "company" | "individual" }[] }) {
+  const { t } = useI18n(); const leases = useQuery(api.agreements.list, { status: "active" });
+  if (!renters || !leases) return <div className="kpis kpis-4">{[0, 1, 2, 3].map((i) => <div key={i} className="kpi"><Skeleton lines={3} /></div>)}</div>;
+  if (renters.length === 0) return null;
+  const rent = new Map<string, number>(), units = new Map<string, number>();
+  for (const a of leases) { rent.set(a.renterId, (rent.get(a.renterId) ?? 0) + a.rent); units.set(a.renterId, (units.get(a.renterId) ?? 0) + 1); }
+  const companies = renters.filter((r) => r.kind === "company").length, withLease = renters.filter((r) => rent.has(r._id)).length;
+  const total = [...rent.values()].reduce((a, b) => a + b, 0), top = [...rent.entries()].sort((a, b) => b[1] - a[1])[0];
+  return <>
+    <div className="kpis kpis-4">
+      <Kpi tone="info" icon="renters" label={t("nav.renters")} value={renters.length} sub={`${companies} ${t("company").toLowerCase()} · ${renters.length - companies} ${t("individual").toLowerCase()}`} />
+      <Kpi tone="good" icon="agreements" label={t("ren.k.withLease")} value={withLease} sub={`${renters.length - withLease} ${t("ren.k.noLease")}`} />
+      <Kpi tone="info" icon="payments" label={t("rep.k.monthlyRent")} unit="ETB" value={Math.round(total / 100).toLocaleString()} sub={t("ren.k.fromActive")} />
+      <Kpi icon="reports" label={t("ren.k.largest")} unit="ETB" value={top ? Math.round(top[1] / 100).toLocaleString() : "0"} sub={top ? renters.find((r) => r._id === top[0])?.name : undefined} />
+    </div>
+    {total > 0 && <div className="cols-2">
+      <Card title={t("ren.c.type")}><Ring caption={t("nav.renters")} center={renters.length} parts={[{ label: t("company"), value: companies, color: SERIES[0] }, { label: t("individual"), value: renters.length - companies, color: SERIES[1] }]} /></Card>
+      <Card title={t("ren.c.top")}><HBars items={[...rent.entries()].map(([id, v]) => ({ label: renters.find((r) => r._id === id)?.name ?? "", sub: `${t("ag.unit")}: ${units.get(id)}`, value: v })).filter((x) => x.label)} limit={6} /></Card>
+    </div>}
+  </>;
 }
