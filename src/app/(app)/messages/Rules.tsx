@@ -33,7 +33,7 @@ export function RulesTab() {
       <Card title={t("sms.gateway")}>
         <div className="stack">
           <p className={`msg ${gw?.configured ? "good" : "info"}`} role="status"><Icon name={gw?.configured ? "check" : "alert"} size={16} />{gw?.configured ? t("sms.gatewayOn").replace("{s}", gw.sender) : t("sms.noGateway")}</p>
-          <form className="row" onSubmit={async (e) => {
+          <form className="row test-send" onSubmit={async (e) => {
             e.preventDefault(); setPhoneErr(null);
             if (!isPhone(phone)) { setPhoneErr(t("v.phone")); return; }
             const r = await testRun.run(() => test({ phone, lang }), t("sms.testQueued"));
@@ -47,7 +47,7 @@ export function RulesTab() {
         </div>
       </Card>
       <Card title={t("sms.schedule")}>
-        <form className="form" noValidate onSubmit={async (e) => {
+        <form className="form rules-form" noValidate onSubmit={async (e) => {
           e.preventDefault(); if (problem) return;
           await run(() => save({ before: num(f.before), overdue1: num(f.o1), overdue2: num(f.o2), overdue3: num(f.o3), quietStart: f.qs, quietEnd: f.qe, dailyCap: num(f.cap), receipts: f.receipts, issued: f.issued }), t("saved"));
         }}>

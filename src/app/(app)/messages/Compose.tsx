@@ -49,17 +49,19 @@ export function ComposeTab() {
         </div>
       </Card>
       <Card title={t("sms.message")}>
+        <div className="sms-split">
         <div className="stack">
           <label className="field"><span>{t("sms.text")} (English)</span><textarea ref={enRef} rows={3} value={en} onChange={(e) => setEn(e.target.value)} placeholder={t("sms.composePlaceholder")} /></label>
           <Chips names={BROADCAST_PLACEHOLDERS} onInsert={(n) => insertAt(enRef.current, n, setEn, en, `{${n}}`)} />
           <label className="field"><span>{t("sms.text")} (አማርኛ) <small className="muted">{t("optional")}</small></span><textarea ref={amRef} rows={3} lang="am" value={am} onChange={(e) => setAm(e.target.value)} /><small className="muted">{t("sms.amHint")}</small></label>
           {!checkEn.ok && en.trim() !== "" && <div className="msg bad" role="alert">{problems(checkEn)}</div>}
           {!checkAm.ok && <div className="msg bad" role="alert">{problems(checkAm)}</div>}
-          {en.trim() && <div className="row previews"><div><span className="caption">{t("sms.preview")} (English)</span><Bubble text={sample(en)} lang="en" /></div>{am.trim() && <div><span className="caption">{t("sms.preview")} (አማርኛ)</span><Bubble text={sample(am)} lang="am" /></div>}</div>}
           {segs > 0 && <p className="muted">{t("sms.estimate").replace("{n}", String(segs))}</p>}
           {gw && !gw.configured && <p className="msg info" role="status">{t("sms.noGateway")}</p>}
           <Message error={error} />
           <div><button className="btn primary" disabled={!canSend} onClick={() => setConfirm(true)}>{t("sms.sendTo2").replace("{n}", String(pre?.count ?? 0))}</button></div>
+        </div>
+        <div className="sms-side"><span className="caption">{t("sms.preview")} (English)</span><Bubble text={sample(en)} lang="en" />{am.trim() && <><span className="caption">{t("sms.preview")} (አማርኛ)</span><Bubble text={sample(am)} lang="am" /></>}</div>
         </div>
       </Card>
       {confirm && <ConfirmDialog title={t("sms.confirmTitle").replace("{n}", String(pre?.count ?? 0))} message={t("sms.confirmBody")} confirmLabel={t("sms.send")} onClose={() => setConfirm(false)}

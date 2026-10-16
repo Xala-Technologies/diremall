@@ -13,7 +13,7 @@ export function Bubble({ text, lang }: { text: string; lang: Lang }) {
   const { t } = useI18n(); const s = smsSegments(text);
   return (
     <div className="sms-preview">
-      <div className="sms-bubble" lang={lang}>{text || "…"}</div>
+      <div className="phone" aria-hidden="false"><div className="phone-bar"><span className="phone-dot" />SMS</div><div className="sms-bubble" lang={lang}>{text || "…"}</div></div>
       <div className="sms-count">{s.length} {t("sms.chars")} · {s.segments} {s.segments === 1 ? t("sms.segment") : t("sms.segmentsN")}{s.unicode ? ` · ${t("sms.unicodeShort")}` : ""}</div>
     </div>
   );
@@ -22,7 +22,7 @@ export function Bubble({ text, lang }: { text: string; lang: Lang }) {
 /** Insert-a-placeholder buttons for a text box. */
 export function Chips({ names, onInsert }: { names: readonly string[]; onInsert: (name: string) => void }) {
   const { t } = useI18n();
-  return <div className="chips" role="group" aria-label={t("sms.placeholders")}>{names.map((n) => <button key={n} type="button" className="chip" onClick={() => onInsert(n)} title={t(`sms.ph.${n}`)}>{`{${n}}`}</button>)}</div>;
+  return <div className="chips" role="group" aria-label={t("sms.placeholders")}>{names.map((n) => <button key={n} type="button" className="chip" onClick={() => onInsert(n)} title={`{${n}}`} aria-label={`${t("sms.placeholders")}: ${t(`sms.ph.${n}`)}`}>+ {t(`sms.ph.${n}`)}</button>)}</div>;
 }
 
 export function insertAt(el: HTMLTextAreaElement | null, text: string, setValue: (v: string) => void, current: string, token: string) {
@@ -47,13 +47,13 @@ function TemplateCard({ tpl, org }: { tpl: NonNullable<ReturnType<typeof useQuer
   const canEdit = can("financeOfficer", "approver");
   return (
     <Card title={t(`sms.tpl.${tpl.kind}`)} actions={<><Badge tone={cur.edited ? "info" : "muted"}>{cur.edited ? t("sms.edited") : t("sms.builtin")}</Badge><Tabs value={lang} onChange={(v) => setLang(v as Lang)} tabs={[["en", "English"], ["am", "አማርኛ"]]} /></>}>
+      <p className="muted">{t(`sms.tplWhen.${tpl.kind}`)}</p>
+      <div className="sms-split">
       <div className="stack">
-        <p className="muted">{t(`sms.tplWhen.${tpl.kind}`)}</p>
         <label className="field"><span>{t("sms.text")} ({lang === "en" ? "English" : "አማርኛ"})</span>
           <textarea ref={ref} rows={3} value={d.body} disabled={!canEdit} lang={lang} onChange={(e) => set({ body: e.target.value })} /></label>
         {canEdit && <Chips names={tpl.placeholders} onInsert={(n) => insertAt(ref.current, n, (v) => set({ body: v }), d.body, `{${n}}`)} />}
         {!check.ok && <div className="msg bad" role="alert">{check.problems.map((p) => t(`sms.problem.${p.code}`) + (p.detail ? ` {${p.detail}}` : "")).join(" · ")}</div>}
-        <div><span className="caption">{t("sms.preview")}</span><Bubble text={preview} lang={lang} /></div>
         <label className="row"><input type="checkbox" checked={d.enabled} disabled={!canEdit} onChange={(e) => set({ enabled: e.target.checked })} />{t("sms.sendThis")}</label>
         <Message error={error} />
         {canEdit && <div className="row">
@@ -61,6 +61,8 @@ function TemplateCard({ tpl, org }: { tpl: NonNullable<ReturnType<typeof useQuer
           {cur.edited && <button className="btn" disabled={busy} onClick={async () => { if ((await run(() => reset({ kind: tpl.kind, lang }), t("saved"))) !== undefined) setDrafts({ ...drafts, [lang]: undefined as never }); }}>{t("sms.resetBuiltin")}</button>}
           {d.body !== cur.original && !cur.edited && <button className="btn ghost" onClick={() => set({ body: cur.original, enabled: true })}>{t("sms.useBuiltin")}</button>}
         </div>}
+      </div>
+      <div className="sms-side"><span className="caption">{t("sms.preview")}</span><Bubble text={preview} lang={lang} /></div>
       </div>
     </Card>
   );

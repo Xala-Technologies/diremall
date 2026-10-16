@@ -404,3 +404,14 @@ textarea { font: inherit; resize: vertical; }
 .picker { border: 1px solid var(--ds-color-neutral-border-default); border-radius: var(--r-lg); padding: 10px; display: grid; gap: 8px; } .picker ul { list-style: none; margin: 0; padding: 0; max-height: 14rem; overflow: auto; display: grid; gap: 4px; }
 .aud-sum { margin: 0; padding: 10px 14px; border-radius: var(--r-lg); background: var(--ds-color-accent-surface-tinted); } .steps { align-items: flex-end; gap: 12px; } .step { max-width: 8rem; } .step small { color: var(--muted); }
 .bad-text { color: var(--ds-color-danger-base-default); } .msg.good { background: var(--ds-color-success-surface-tinted); color: var(--ds-color-success-text-default); }
+
+.sms-split { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 28px; align-items: start; } .sms-side { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: var(--r-lg); background: var(--ds-color-neutral-surface-default, #f5f7fa); }
+@media (max-width: 1180px) { .sms-split { grid-template-columns: minmax(0, 1fr); } }
+.phone { border: 1px solid var(--ds-color-neutral-border-default); border-radius: 22px; background: var(--ds-color-neutral-background-default); padding: 10px 12px 16px; box-shadow: 0 1px 2px rgba(15, 23, 42, .06); } .phone-bar { display: flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 2px 4px 10px; } .phone-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-color-success-base-default); }
+.phone .sms-bubble { max-width: 100%; } .chip { font-family: inherit; }
+.sms-split { margin-top: 14px; }
+
+.test-send { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; } .test-send input { flex: 1 1 16rem; min-width: 0; } .test-send select { flex: 0 0 auto; width: auto; }
+.rules-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; } .rules-form .wide { grid-column: 1 / -1; } .rules-form input:not([type="checkbox"]) { max-width: 12rem; } .rules-form select { max-width: 12rem; }
+.steps { display: flex; flex-wrap: wrap; gap: 14px; } .step { width: 9rem; max-width: none; } @media (max-width: 760px) { .rules-form { grid-template-columns: minmax(0, 1fr); } }
+.step input { width: 100%; max-width: none !important; }
