@@ -95,7 +95,8 @@ export default function Users() {
       <Requests />
       <Card flush><Table rows={users} onRow={setEdit} cols={[
         { head: t("name"), cell: (u) => <strong>{u.name || "—"}</strong> }, { head: t("email"), cell: (u) => u.email }, { head: t("users.roles"), cell: (u) => (u.roles as string[]).map((r) => t(r)).join(", ") || "—" },
-        { head: t("status"), cell: (u) => <StatusBadge status={u.active ? "active" : "inactive"} /> }]} /></Card>
+        { head: t("status"), cell: (u) => <StatusBadge status={u.active ? "active" : "inactive"} /> },
+        { head: "", cell: (u) => <button className="btn sm" onClick={(e) => { e.stopPropagation(); setEdit(u); }}>{t("users.manage")}</button> }]} /></Card>
       {pending && pending.length > 0 && <Card title={t("invite.pending")}><Message error={invErr} /><Table rows={pending} cols={[
         { head: t("email"), cell: (i) => i.email }, { head: t("users.roles"), cell: (i) => (i.roles as string[]).map((r) => t(r)).join(", ") },
         { head: t("invite.expires"), cell: (i) => new Date(i.expiresAt).toISOString().slice(0, 10) },
