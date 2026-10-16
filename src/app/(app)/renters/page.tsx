@@ -49,7 +49,7 @@ export default function Renters() {
   );
 }
 
-type RenterDoc = { _id: Id<"renters">; kind: "company" | "individual"; name: string; tin?: string; phone: string; email?: string; businessLicenseNo?: string; legalRepresentative?: string; idNumber?: string; address?: string; contactPerson?: string; contactPhone?: string; vatNumber?: string; licenseExpiresAt?: number; notes?: string };
+type RenterDoc = { _id: Id<"renters">; kind: "company" | "individual"; name: string; tin?: string; phone: string; email?: string; businessLicenseNo?: string; legalRepresentative?: string; idNumber?: string; address?: string; contactPerson?: string; contactPhone?: string; vatNumber?: string; licenseExpiresAt?: number; notes?: string; smsLanguage?: "en" | "am"; smsOptOut?: boolean };
 
 /** Add a renter, or edit one. Companies and individuals are asked for different things. */
 function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => void }) {
@@ -58,6 +58,7 @@ function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => vo
   const [f, setF] = useState({ kind: renter?.kind ?? ("company" as "company" | "individual"), name: renter?.name ?? "", tin: renter?.tin ?? "", businessLicenseNo: renter?.businessLicenseNo ?? "", phone: renter?.phone ?? "", email: renter?.email ?? "",
     legalRepresentative: renter?.legalRepresentative ?? "", idNumber: renter?.idNumber ?? "", address: renter?.address ?? "", contactPerson: renter?.contactPerson ?? "", contactPhone: renter?.contactPhone ?? "", vatNumber: renter?.vatNumber ?? "", notes: renter?.notes ?? "" });
   const [expires, setExpires] = useState<number | null>(renter?.licenseExpiresAt ?? null);
+  const [smsLang, setSmsLang] = useState<"en" | "am">(renter?.smsLanguage ?? "en"); const [smsOpt, setSmsOpt] = useState(!!renter?.smsOptOut);
   const [files, setFiles] = useState<Record<string, File | null>>({ license: null, tin: null, id: null });
   const [errs, setErrs] = useState<Record<string, string>>({});
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => { setF({ ...f, [k]: e.target.value }); if (errs[k]) setErrs({ ...errs, [k]: "" }); };
@@ -78,10 +79,10 @@ function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => vo
         setErrs(found); if (Object.keys(found).length) return;
         const text = { name: f.name.trim(), tin: f.tin.replace(/\s/g, ""), phone: normalizePhone(f.phone), email: f.email.trim(), businessLicenseNo: f.businessLicenseNo, legalRepresentative: f.legalRepresentative, idNumber: f.idNumber, address: f.address,
           contactPerson: f.contactPerson, contactPhone: f.contactPhone.trim() ? normalizePhone(f.contactPhone) : "", vatNumber: f.vatNumber, notes: f.notes };
-        if (renter) { if ((await run(() => update({ renterId: renter._id, patch: { ...text, licenseExpiresAt: expires ?? 0 } }), t("saved"))) !== undefined) onClose(); return; }
+        if (renter) { if ((await run(() => update({ renterId: renter._id, patch: { ...text, licenseExpiresAt: expires ?? 0, smsLanguage: smsLang, smsOptOut: smsOpt } }), t("saved"))) !== undefined) onClose(); return; }
         const opt = <K extends keyof typeof text>(k: K) => (String(text[k]).trim() ? text[k] : undefined);
         const id = await run(() => create({ kind: f.kind, name: text.name, phone: text.phone, tin: opt("tin"), email: opt("email"), businessLicenseNo: opt("businessLicenseNo"), legalRepresentative: opt("legalRepresentative"), idNumber: opt("idNumber"),
-          address: opt("address"), contactPerson: opt("contactPerson"), contactPhone: opt("contactPhone"), vatNumber: opt("vatNumber"), notes: opt("notes"), licenseExpiresAt: expires ?? undefined }), t("saved"));
+          address: opt("address"), contactPerson: opt("contactPerson"), contactPhone: opt("contactPhone"), vatNumber: opt("vatNumber"), notes: opt("notes"), licenseExpiresAt: expires ?? undefined, smsLanguage: smsLang, smsOptOut: smsOpt || undefined }), t("saved"));
         if (!id) return;
         // the renter exists now; attach what was chosen. A failed upload must not create the renter twice, so it only warns.
         for (const [k, , kind] of docSlots) {
@@ -106,6 +107,8 @@ function RenterForm({ renter, onClose }: { renter?: RenterDoc; onClose: () => vo
         <Field label={t("email")} error={errs.email} hint={t("optional")}><input type="email" value={f.email} onChange={set("email")} /></Field>
         <Field label={t("renter.contactPerson")} hint={t("optional")}><input value={f.contactPerson} onChange={set("contactPerson")} /></Field>
         <Field label={t("renter.contactPhone")} error={errs.contactPhone} hint={t("optional")}><input type="tel" value={f.contactPhone} onChange={set("contactPhone")} /></Field>
+        <Field label={t("sms.language")}><select value={smsLang} onChange={(e) => setSmsLang(e.target.value as "en" | "am")}><option value="en">English</option><option value="am">አማርኛ</option></select></Field>
+        <label className="field"><span>{t("sms.tab.log")}</span><span className="row"><input type="checkbox" checked={smsOpt} onChange={(e) => setSmsOpt(e.target.checked)} />{t("sms.optOut")}</span></label>
         <div className="wide"><Field label={t("renter.address")} hint={t("optional")}><input value={f.address} onChange={set("address")} /></Field></div>
         <div className="wide"><Field label={t("renter.notes")} hint={t("optional")}><textarea rows={2} value={f.notes} onChange={set("notes")} /></Field></div>
         {!renter && <fieldset className="wide docs-now"><legend>{t("renter.attachNow")}</legend><p className="muted">{t("renter.attachHint")}</p>
