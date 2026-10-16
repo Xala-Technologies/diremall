@@ -124,7 +124,7 @@ function Revenue({ b }: { b?: Id<"buildings"> }) {
       <Card title={t("rep.c.trend")}><BarChart data={rows.map((x) => ({ label: x.period.slice(2), a: x.billed, b: x.collected }))} labelA={t("rep.k.billed")} labelB={t("rep.collected")} /></Card>
       <Card title={t("rep.c.rate")}><Trend format={pct} points={rows.map((x) => ({ label: x.period.slice(2), value: x.billed ? Math.min(1, x.collected / x.billed) : 0 }))} /></Card>
     </Charts>}
-    <Card title={t("rep.revenue")} actions={<><input type="month" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} /><input type="month" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
+    <Card title={t("rep.revenue")} actions={<><input type="month" aria-label={t("rep.fromMonth")} value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} /><input type="month" aria-label={t("rep.toMonth")} value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
     <ExportMenu name="revenue" rows={d ? d.rows.map((r) => ({ period: r.period, billed: r.billed / 100, collected: r.collected / 100, outstanding: r.outstanding / 100 })) : []} /></>}>
     <Table rows={d?.rows.map((r) => ({ ...r, _id: r.period }))} empty={t("empty.rep.revenue")} cols={[
       { head: t("period"), cell: (r) => periodText(r.period, t) }, { head: t("rep.k.billed"), cell: (r) => <Money v={r.billed} />, right: true, money: true }, { head: t("rep.collected"), cell: (r) => <Money v={r.collected} />, right: true, money: true }, { head: t("outstanding"), cell: (r) => <Money v={r.outstanding} />, right: true, money: true }]} />

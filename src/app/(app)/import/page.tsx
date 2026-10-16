@@ -66,7 +66,7 @@ function Picker({ f, spec, optional = [], label, template, templateName, hint }:
   return (
     <div className="source">
       <div className="source-cols">
-        <h3>{t("imp.fileNeeds")}</h3>
+        <h2>{t("imp.fileNeeds")}</h2>
         {hint && <p className="muted">{hint}</p>}
         <div className="chips-static" role="list">{required.map((k) => <span key={k} role="listitem" className="col-chip req">{label(k)}</span>)}{opt.map((k) => <span key={k} role="listitem" className="col-chip">{label(k)}</span>)}</div>
         <p className="muted small"><span className="col-chip req">{t("imp.required")}</span> <span className="col-chip">{t("imp.optionalCol")}</span></p>
