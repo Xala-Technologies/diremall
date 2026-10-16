@@ -180,6 +180,7 @@ export const EN: Record<string, string> = {
   "empty.rep.expiry": "No leases end in this period.", "empty.rep.deposits": "No deposits are held yet.",
   "sms.retryAll": "Retry all failed", "sms.kpi.queued": "Waiting to send", "sms.kpi.queuedSub": "sent in the next run", "sms.kpi.delivered": "Delivered", "sms.kpi.attention": "Need attention", "sms.kpi.attentionSub": "failed or unsure: retry them", "sms.kpi.segments": "SMS segments", "sms.kpi.segmentsSub": "latest 200 messages; what the operator bills",
   "sms.type": "Type", "sms.segments": "Segments", "sms.unicodeHint": "Amharic and other non-Latin text uses only 70 characters per segment, so it costs more.", "sms.kind.dueReminder": "Payment reminder", "sms.kind.paymentAck": "Payment received", "sms.kind.expiryWarning": "Lease ending",
+  "sms.noGateway": "No SMS gateway is connected yet. Reminders and receipts are prepared and listed here, but they stay queued and nothing is sent until the gateway details are added (see the README, SMS).", "sms.kpi.queuedNoGateway": "not sent: no gateway connected",
   all: "All", "dep.receive": "Record deposit received", "dep.deduct": "Request deduction", "dep.refund": "Refund deposit",
   saved: "Saved.",
 };
@@ -343,6 +344,7 @@ export const AM: Record<string, string> = {
   "empty.rep.expiry": "በዚህ ጊዜ የሚያበቃ ውል የለም።", "empty.rep.deposits": "እስካሁን የተያዘ ዋስትና የለም።",
   "sms.retryAll": "ያልተሳኩትን ሁሉ እንደገና ሞክር", "sms.kpi.queued": "ለመላክ የሚጠብቅ", "sms.kpi.queuedSub": "በሚቀጥለው ዙር ይላካል", "sms.kpi.delivered": "የደረሰ", "sms.kpi.attention": "ትኩረት የሚያስፈልገው", "sms.kpi.attentionSub": "ያልተሳካ ወይም እርግጠኛ ያልሆነ፦ እንደገና ሞክሩ", "sms.kpi.segments": "የSMS ክፍሎች", "sms.kpi.segmentsSub": "የመጨረሻዎቹ 200 መልዕክቶች፤ አገልግሎት ሰጪው የሚያስከፍለው",
   "sms.type": "ዓይነት", "sms.segments": "ክፍሎች", "sms.unicodeHint": "አማርኛና ሌሎች ከላቲን ውጭ ጽሑፎች በአንድ ክፍል 70 ፊደል ብቻ ስለሚይዙ ዋጋቸው ከፍ ይላል።", "sms.kind.dueReminder": "የክፍያ ማስታወሻ", "sms.kind.paymentAck": "ክፍያ ደርሷል", "sms.kind.expiryWarning": "ውል እያበቃ ነው",
+  "sms.noGateway": "እስካሁን የSMS መተላለፊያ አልተገናኘም። ማስታወሻዎችና ደረሰኞች ተዘጋጅተው እዚህ ይዘረዘራሉ፣ ነገር ግን የመተላለፊያው ዝርዝር እስኪጨመር ድረስ በወረፋ ይቆያሉ፤ ምንም አይላክም።", "sms.kpi.queuedNoGateway": "አልተላከም፦ መተላለፊያ አልተገናኘም",
   all: "ሁሉም", "dep.receive": "የደረሰ ዋስትና መዝግብ", "dep.deduct": "ተቀናሽ ጠይቅ", "dep.refund": "ዋስትና መልስ",
   saved: "ተቀምጧል።",
 };

@@ -151,3 +151,12 @@ export const retry = mutation({
     await audit(ctx, u, "sms.retry", "smsMessages", id);
   },
 });
+
+/** Whether an SMS gateway is connected. Without one, messages are prepared and simply wait in the queue. */
+export const gateway = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, ...READ_ROLES);
+    return { configured: !!process.env.SMS_API_URL && !!process.env.SMS_API_KEY };
+  },
+});

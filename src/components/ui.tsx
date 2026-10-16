@@ -192,7 +192,7 @@ export function Tabs({ tabs, value, onChange }: { tabs: [string, string][]; valu
 }
 
 export function Skeleton({ lines = 4 }: { lines?: number }) {
-  return <div className="skeleton" aria-busy="true" aria-label="Loading">{Array.from({ length: lines }, (_, i) => <div key={i} className="sk" style={{ width: `${92 - ((i * 13) % 38)}%` }} />)}</div>;
+  return <div className="skeleton" role="status" aria-busy="true" aria-label="Loading">{Array.from({ length: lines }, (_, i) => <div key={i} className="sk" style={{ width: `${92 - ((i * 13) % 38)}%` }} />)}</div>;
 }
 
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
