@@ -55,8 +55,10 @@ Two pieces: the Convex production deployment (data and functions) and the websit
 1. **Convex production.** In the Convex dashboard open the project, switch to *Production*, and create a
    production deploy key (Settings, URL & Deploy Key). Keep it secret; it can change production data.
 2. **Website.** In Vercel, import this GitHub repository. Add one environment variable,
-   `CONVEX_DEPLOY_KEY` (the production key). The included `vercel.json` makes each deploy push the Convex
-   functions and then build the site, and Convex fills in `NEXT_PUBLIC_CONVEX_URL` itself.
+   `CONVEX_DEPLOY_KEY` (the production key), ticked for the **Production** environment only. The included
+   `vercel.json` makes each deploy push the Convex functions and then build the site, and Convex fills in
+   `NEXT_PUBLIC_CONVEX_URL` itself. If Preview also had the production key, every pull-request preview would
+   push its unreviewed functions to the production database.
 3. **Sign-in keys and address.** Once the site has an address, run this yourself while signed in to Convex:
 
    ```bash

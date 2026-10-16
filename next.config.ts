@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 // Browser-side protections. The CSP keeps inline scripts because Next.js and the theme bootstrap need them;
@@ -18,6 +19,7 @@ const csp = [
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  turbopack: { root: fileURLToPath(new URL(".", import.meta.url)) },
   async headers() {
     return [{
       source: "/(.*)",

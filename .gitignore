@@ -1,7 +1,10 @@
 node_modules
 .next
 .env*
+!.env.example
 .DS_Store
 .claude
 public/__axe.js
 backups
+tsconfig.tsbuildinfo
+.vercel
