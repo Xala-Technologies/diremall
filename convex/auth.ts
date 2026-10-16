@@ -10,7 +10,8 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("invalid_email");
         // the invite code rides along on the new user record until the account is created, then it is removed
         const code = typeof params.inviteCode === "string" && params.inviteCode.trim() ? params.inviteCode.trim() : undefined;
-        return { email, name: String(params.name ?? ""), ...(code ? { inviteCode: code } : {}) };
+        const note = typeof params.accessNote === "string" && params.accessNote.trim() ? params.accessNote.trim().slice(0, 500) : undefined;
+        return { email, name: String(params.name ?? "").trim().slice(0, 120), ...(code ? { inviteCode: code } : {}), ...(note ? { accessNote: note } : {}) };
       },
     }),
   ],

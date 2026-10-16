@@ -42,6 +42,8 @@ const GROUPS: { label: string; items: Item[] }[] = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
+  const access = useQuery(api.users.myAccess, isAuthenticated && me === null ? {} : "skip");
+  const waiting = useQuery(api.users.pendingCount, isAuthenticated && me ? {} : "skip");
   const { signOut } = useAuthActions();
   const router = useRouter();
   const path = usePathname();
@@ -52,9 +54,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => setOpen(false), [path]);
 
   if (isLoading || !isAuthenticated || me === undefined) return <div className="center"><div style={{ width: 240 }}><Skeleton lines={3} /></div></div>;
-  if (me === null) return (
-    <div className="center"><div className="card auth"><Mark /><h1>{t("appName")}</h1><p className="muted">{t("pendingActivation")}</p><button className="btn" onClick={() => void signOut()}>{t("signOut")}</button></div></div>
-  );
+  if (me === null) {
+    const st = access?.status;
+    return (
+      <div className="center"><div className="card auth wait">
+        <Mark /><h1>{t("appName")}</h1>
+        <span className={`wait-ic ${st === "rejected" || st === "deactivated" ? "bad" : ""}`} aria-hidden="true"><Icon name={st === "rejected" || st === "deactivated" ? "alert" : "check"} size={26} /></span>
+        <h2>{st === "rejected" ? t("access.declinedTitle") : st === "deactivated" ? t("access.offTitle") : t("access.waitTitle")}</h2>
+        <p className="muted" role="status">{st === "rejected" ? t("access.declinedBody") : st === "deactivated" ? t("access.offBody") : t("access.waitBody")}</p>
+        {st === "rejected" && access && "reason" in access && access.reason && <blockquote className="reason">{access.reason}</blockquote>}
+        <button className="btn" onClick={() => void signOut()}>{t("signOut")}</button>
+      </div></div>
+    );
+  }
   if (me.mfa === "verify") return <MfaVerify />;
   if (me.mfa === "setup") return <MfaRequired />;
   const allowed = (i: Item) => !i.roles || me.roles.includes("superAdmin") || i.roles.some((r) => me.roles.includes(r as never));
@@ -83,7 +95,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   <div className="nav-label">{t(g.label)}</div>
                   {items.map((i) => {
                     const on = i.href === "/" ? path === "/" : path.startsWith(i.href);
-                    return <Link key={i.href} href={i.href} className="nav" aria-current={on ? "page" : undefined}><Icon name={i.icon} /><span>{t(i.key)}</span></Link>;
+                    return <Link key={i.href} href={i.href} className="nav" aria-current={on ? "page" : undefined}><Icon name={i.icon} /><span>{t(i.key)}</span>{i.href === "/users" && !!waiting && <span className="nav-badge" aria-label={t("access.waitingN").replace("{n}", String(waiting))}>{waiting}</span>}</Link>;
                   })}
                 </div>
               );

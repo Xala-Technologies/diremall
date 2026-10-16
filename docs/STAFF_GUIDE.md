@@ -10,6 +10,10 @@ the menu items and buttons your roles allow.
   **History**.
 
 ## Signing in for the first time
+There are two ways in.
+- **Ask for access:** choose **Create account**, enter your name, email and a password (8 characters or more), and a short note about who you are. You land on a "Waiting for approval" page. The administrator sees your request, decides, and picks your role. Sign in again later to see the result. If it was declined, the reason is shown.
+- **With an invitation code:** the administrator gives you a one-time code. Follow the steps below and you are in at once with the roles they chose.
+
 1. Your administrator gives you a one-time **invitation code** in person or by phone.
 2. On the sign-in page choose **Create account**, enter your name, the same email address the administrator used, a
    password of at least 8 characters, and the invitation code.
@@ -146,6 +150,8 @@ outstanding, **Reports** for detail, and **History** to see who did what and whe
 
 ## Access admins
 You decide who can use the system. You cannot approve financial items unless you are also given that role.
+- **Requests for access:** people who create an account without a code appear at the top of Staff access, and a red number on the menu item. *Approve* asks which roles and which buildings. *Decline* needs a reason, which the person sees. A declined request can be reopened or deleted. Before approving, make sure the person is who they say they are (call them): anyone can type any email address, and the system does not verify addresses.
+- **Roles:** Administrator (everything, including making other administrators), Access manager (decides who gets access, no money unless also given a finance role), Approver, Property staff, Finance and accounting, Management / auditor (read only). The approval form describes each one.
 - **Invite someone:** Staff access → *Invite person*. Enter their email, tick roles and buildings, and give them the code
   yourself. Never send it by email or chat. Cancel unused invitations in the *Pending invitations* list.
 - **Change or remove access:** click a person. Deactivating someone signs them out at once.

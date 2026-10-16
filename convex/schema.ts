@@ -34,6 +34,12 @@ export default defineSchema({
     active: v.optional(v.boolean()),
     lang: v.optional(v.union(v.literal("en"), v.literal("am"))),
     inviteCode: v.optional(v.string()), // only present for a moment during sign-up; removed as soon as it is checked
+    // Someone who signs up without an invitation asks for access. An access admin approves (and picks the roles) or declines.
+    accessStatus: v.optional(v.union(v.literal("pending"), v.literal("rejected"))),
+    accessNote: v.optional(v.string()), // what the person wrote to the administrator
+    requestedAt: v.optional(v.number()),
+    decisionReason: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
   }).index("email", ["email"]),
 
   buildings: defineTable({
