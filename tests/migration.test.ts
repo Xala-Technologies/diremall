@@ -168,3 +168,13 @@ describe("importing opening balances", () => {
     expect((await lim.query(w.api.imports.checkOpening, { rows: [op(2, { unit: "A-102" })] })).issues[0]).toMatchObject({ code: "forbidden_building" });
   });
 });
+
+describe("the go-live checklist", () => {
+  it("counts what is already loaded and the opening bills", async () => {
+    const w = await setup();
+    expect(await w.pm.query(w.api.imports.status, {})).toMatchObject({ units: 2, buildings: 1, renters: 2, agreements: 0, openingBills: 0, openingTotal: 0 });
+    await w.ap.mutation(w.api.imports.commitAgreements, { rows: [ag(2)] });
+    await w.ap.mutation(w.api.imports.commitOpening, { rows: [op(2)] });
+    expect(await w.pm.query(w.api.imports.status, {})).toMatchObject({ agreements: 1, activeAgreements: 1, openingBills: 1, openingTotal: etb(100000) });
+  });
+});

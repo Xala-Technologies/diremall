@@ -3,7 +3,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useMemo, useRef, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
-import { Card, ConfirmDialog, DateField, DateText, ExportMenu, Kpi, Message, Money, PageHeader, Skeleton, Table, Tabs } from "@/components/ui";
+import { downloadCsv } from "@/lib/csv";
+import { Badge, Card, ConfirmDialog, DateField, DateText, ExportMenu, Kpi, Message, Money, PageHeader, Skeleton, Table, Tabs } from "@/components/ui";
 import { RENTER_COLUMNS, RENTER_OPTIONAL, RENTER_TEMPLATE, UNIT_COLUMNS, UNIT_TEMPLATE, mapRows, readTable } from "@/lib/importFile";
 import { AGREEMENT_COLUMNS, AGREEMENT_OPTIONAL, AGREEMENT_TEMPLATE, OPENING_COLUMNS, OPENING_OPTIONAL, OPENING_TEMPLATE, readAgreementRows, readOpeningRows, type ClientProblem } from "@/lib/migrate";
 import { formatEtb } from "@/lib/format";
@@ -14,12 +15,27 @@ import { useRun } from "@/lib/useRun";
 type Kind = "units" | "renters" | "agreements" | "opening";
 
 export default function ImportPage() {
-  const { t } = useI18n(); const { can } = useMe();
-  const [kind, setKind] = useState<Kind>(can("propertyManager") ? "units" : "renters");
+  const { t } = useI18n(); const { can } = useMe(); const st = useQuery(api.imports.status);
+  const allowed: Kind[] = [...(can("propertyManager") ? ["units" as Kind] : []), "renters", ...(can("propertyManager", "approver") ? ["agreements" as Kind] : []), ...(can("financeOfficer", "approver") ? ["opening" as Kind] : [])];
+  const [kind, setKind] = useState<Kind>(allowed[0]!);
+  const steps: { k: Kind; done: boolean; line: string }[] = [
+    { k: "units", done: !!st && st.units > 0, line: st ? (st.units > 0 ? `${st.units} ${t("rep.k.units")} · ${st.buildings} ${t("building").toLowerCase()}` : t("imp.step.empty")) : "…" },
+    { k: "renters", done: !!st && st.renters > 0, line: st ? (st.renters > 0 ? `${st.renters} ${t("nav.renters").toLowerCase()}` : t("imp.step.empty")) : "…" },
+    { k: "agreements", done: !!st && st.agreements > 0, line: st ? (st.agreements > 0 ? `${st.agreements} ${t("nav.agreements").toLowerCase()} · ${st.activeAgreements} ${t("active").toLowerCase()}` : t("imp.step.empty")) : "…" },
+    { k: "opening", done: !!st && st.openingBills > 0, line: st ? (st.openingBills > 0 ? `${st.openingBills} ${t("imp.step.bills")} · ETB ${formatEtb(st.openingTotal)}` : t("imp.step.empty")) : "…" },
+  ];
   return (
     <div className="stack">
       <PageHeader title={t("imp.title")} sub={t("imp.sub")} />
-      <Tabs value={kind} onChange={(v) => setKind(v as Kind)} tabs={[...(can("propertyManager") ? [["units", t("imp.units")] as [string, string]] : []), ["renters", t("imp.renters")], ...(can("propertyManager", "approver") ? [["agreements", t("imp.agreements")] as [string, string]] : []), ...(can("financeOfficer", "approver") ? [["opening", t("imp.opening")] as [string, string]] : [])]} />
+      <p className="msg info" role="note"><Icon name="alert" size={16} />{t("imp.backupFirst")}</p>
+      <ol className="import-steps" aria-label={t("imp.stepsLabel")}>
+        {steps.map((x, i) => { const ok = allowed.includes(x.k); return (
+          <li key={x.k}><button type="button" disabled={!ok} aria-current={kind === x.k ? "step" : undefined} className={`istep${kind === x.k ? " is-current" : ""}${x.done ? " is-done" : ""}`} onClick={() => setKind(x.k)}>
+            <span className="istep-n" aria-hidden="true">{x.done ? <Icon name="check" size={16} /> : i + 1}</span>
+            <span className="istep-t"><b>{t(`imp.${x.k}`)}</b><small>{ok ? x.line : t("imp.step.locked")}</small></span>
+          </button></li>); })}
+      </ol>
+      <p className="muted">{t(`imp.what.${kind}`)}</p>
       {kind === "units" ? <UnitImport key="u" /> : kind === "renters" ? <RenterImport key="r" /> : kind === "agreements" ? <AgreementImport key="a" /> : <OpeningImport key="o" />}
     </div>
   );
@@ -43,22 +59,42 @@ function useFile<K extends string>(spec: Record<K, string[]>, optional: readonly
   return { rows, missing, name, readError, input, pick, reset };
 }
 
-function Picker({ f }: { f: ReturnType<typeof useFile<any>> }) {
-  const { t } = useI18n();
+/** A drop target for the spreadsheet, with the columns it must contain listed beside it. */
+function Picker({ f, spec, optional = [], label, template, templateName, hint }: { f: ReturnType<typeof useFile<any>>; spec: Record<string, string[]>; optional?: readonly string[]; label: (k: string) => string; template: Record<string, string | number>[]; templateName: string; hint?: string }) {
+  const { t } = useI18n(); const [over, setOver] = useState(false);
+  const required = Object.keys(spec).filter((k) => !optional.includes(k)), opt = Object.keys(spec).filter((k) => optional.includes(k));
   return (
-    <div className="row">
-      <label className="btn"><Icon name="upload" size={16} />{t("imp.choose")}<input ref={f.input} type="file" accept=".xlsx,.csv,.txt" hidden onChange={(e) => void f.pick(e.target.files?.[0])} /></label>
-      {f.name && <span className="muted">{f.name}</span>}
-      <span className="muted">{t("imp.max")}</span>
+    <div className="source">
+      <div className="source-cols">
+        <h3>{t("imp.fileNeeds")}</h3>
+        {hint && <p className="muted">{hint}</p>}
+        <div className="chips-static" role="list">{required.map((k) => <span key={k} role="listitem" className="col-chip req">{label(k)}</span>)}{opt.map((k) => <span key={k} role="listitem" className="col-chip">{label(k)}</span>)}</div>
+        <p className="muted small"><span className="col-chip req">{t("imp.required")}</span> <span className="col-chip">{t("imp.optionalCol")}</span></p>
+        <span className="caption">{t("imp.template")}</span>
+        <ExportMenu name={templateName} rows={template} print={false} />
+      </div>
+      <label className={`dropzone${over ? " is-over" : ""}${f.name ? " has-file" : ""}`} onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); void f.pick(e.dataTransfer.files?.[0]); }}>
+        <input ref={f.input} type="file" accept=".xlsx,.csv,.txt" hidden onChange={(e) => void f.pick(e.target.files?.[0])} />
+        <span className="dz-ic"><Icon name={f.name ? "agreements" : "upload"} size={26} /></span>
+        {f.name ? <><b className="dz-name">{f.name}</b><span className="muted">{t("imp.replaceFile")}</span></> : <><b>{t("imp.drop")}</b><span className="muted">{t("imp.choose")} · {t("imp.max")}</span></>}
+      </label>
     </div>
   );
 }
+
+/** What happened, in plain words, once the import has gone through. */
+function DoneCard({ text, again }: { text: string; again: () => void }) {
+  const { t } = useI18n();
+  return <Card><div className="done"><span className="done-ic"><Icon name="check" size={22} /></span><div><b>{t("imp.done")}</b><p>{text}</p></div><button className="btn" onClick={again}>{t("imp.another")}</button></div></Card>;
+}
+
+const StatusCol = (t: (k: string) => string, bad: Set<number>) => ({ head: t("status"), cell: (r: { row: number }) => (bad.has(r.row) ? <Badge tone="bad">{t("imp.problem")}</Badge> : <Badge tone="good">{t("imp.valid")}</Badge>) });
 
 function Problems({ issues, label }: { issues: { row: number; field: string; code: string }[]; label: (f: string) => string }) {
   const { t } = useI18n();
   if (issues.length === 0) return null;
   return (
-    <Card flush title={`${t("imp.problems")} (${issues.length})`}>
+    <Card flush title={`${t("imp.problems")} (${issues.length})`} actions={<button className="btn sm" onClick={() => downloadCsv("import-problems.csv", issues.map((i) => ({ row: i.row, column: label(i.field), problem: t(`imp.err.${i.code}`) })))}><Icon name="download" size={15} />{t("imp.downloadProblems")}</button>}>
       <Table rows={issues.slice(0, 200).map((i, n) => ({ ...i, _id: String(n) }))} cols={[
         { head: t("imp.row"), cell: (i) => i.row, right: true }, { head: t("imp.column"), cell: (i) => label(i.field) }, { head: t("imp.problem"), cell: (i) => t(`imp.err.${i.code}`), text: true },
       ]} />
@@ -67,13 +103,14 @@ function Problems({ issues, label }: { issues: { row: number; field: string; cod
 }
 
 function UnitImport() {
-  const { t } = useI18n(); const f = useFile(UNIT_COLUMNS); const commit = useMutation(api.imports.commitUnits); const { run, error } = useRun();
+  const { t } = useI18n(); const f = useFile(UNIT_COLUMNS); const commit = useMutation(api.imports.commitUnits); const { run, error } = useRun(); const [done, setDone] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const check = useQuery(api.imports.checkUnits, f.rows ? { rows: f.rows } : "skip");
   const label = (k: string) => ({ building: t("building"), floor: t("prop.floor"), unit: t("prop.unitNumber"), area: t("prop.area"), category: t("prop.category"), rate: t("prop.rate") } as Record<string, string>)[k] ?? k;
+  if (done) return <DoneCard text={done} again={() => setDone(null)} />;
   return (
     <div className="stack">
-      <Card title={t("imp.template")} actions={<ExportMenu name="units-template" rows={UNIT_TEMPLATE} print={false} />}><Picker f={f} /></Card>
+      <Picker f={f} spec={UNIT_COLUMNS} label={label} template={UNIT_TEMPLATE} templateName="units-template" />
       <Message error={error ?? f.readError} />
       {f.missing.length > 0 && <div className="msg bad" role="alert"><Icon name="alert" />{t("imp.missingCols")}: {f.missing.map(label).join(", ")}</div>}
       {f.rows && (!check ? <Card><Skeleton lines={4} /></Card> : (
@@ -89,11 +126,11 @@ function UnitImport() {
           <Card flush title={t("imp.preview")} actions={<button className="btn primary" disabled={check.issues.length > 0} onClick={() => setConfirm(true)}>{t("imp.run")} ({check.summary.rows})</button>}>
             <Table rows={f.rows.slice(0, 50).map((r) => ({ ...r, _id: String(r.row) }))} cols={[
               { head: t("imp.row"), cell: (r) => r.row, right: true }, { head: t("building"), cell: (r) => r.building }, { head: t("prop.floor"), cell: (r) => r.floor }, { head: t("prop.unitNumber"), cell: (r) => <strong>{r.unit}</strong> },
-              { head: t("prop.area"), cell: (r) => r.area, right: true }, { head: t("prop.category"), cell: (r) => r.category }, { head: t("prop.rate"), cell: (r) => r.rate, right: true },
+              { head: t("prop.area"), cell: (r) => r.area, right: true }, { head: t("prop.category"), cell: (r) => r.category }, { head: t("prop.rate"), cell: (r) => r.rate, right: true }, StatusCol(t, new Set(check.issues.map((i) => i.row))),
             ]} />
           </Card>
           {confirm && <ConfirmDialog title={t("imp.confirm").replace("{n}", String(check.summary.rows))} message={t("imp.confirmBody")} confirmLabel={t("imp.run")} onClose={() => setConfirm(false)}
-            onConfirm={async () => { const r = await run(() => commit({ rows: f.rows! }), t("imp.done")); if (r) f.reset(); }} />}
+            onConfirm={async () => { const r = await run(() => commit({ rows: f.rows! })); if (r) { setDone(t("imp.doneUnits").replace("{u}", String(r.units)).replace("{b}", String(r.buildings)).replace("{f}", String(r.floors))); f.reset(); } }} />}
         </>
       ))}
     </div>
@@ -101,13 +138,14 @@ function UnitImport() {
 }
 
 function RenterImport() {
-  const { t } = useI18n(); const f = useFile(RENTER_COLUMNS, RENTER_OPTIONAL); const commit = useMutation(api.imports.commitRenters); const { run, error } = useRun();
+  const { t } = useI18n(); const f = useFile(RENTER_COLUMNS, RENTER_OPTIONAL); const commit = useMutation(api.imports.commitRenters); const { run, error } = useRun(); const [done, setDone] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const check = useQuery(api.imports.checkRenters, f.rows ? { rows: f.rows } : "skip");
   const label = (k: string) => ({ kind: t("renter.kind"), name: t("name"), tin: t("renter.tin"), license: t("renter.license"), phone: t("renter.phone"), email: t("email"), rep: t("renter.rep"), idNumber: t("renter.idNumber"), address: t("renter.address"), contactPerson: t("renter.contactPerson"), contactPhone: t("renter.contactPhone"), vat: t("renter.vat"), notes: t("renter.notes") } as Record<string, string>)[k] ?? k;
+  if (done) return <DoneCard text={done} again={() => setDone(null)} />;
   return (
     <div className="stack">
-      <Card title={t("imp.template")} actions={<ExportMenu name="renters-template" rows={RENTER_TEMPLATE} print={false} />}><Picker f={f} /></Card>
+      <Picker f={f} spec={RENTER_COLUMNS} optional={RENTER_OPTIONAL} label={label} template={RENTER_TEMPLATE} templateName="renters-template" />
       <Message error={error ?? f.readError} />
       {f.missing.length > 0 && <div className="msg bad" role="alert"><Icon name="alert" />{t("imp.missingCols")}: {f.missing.map(label).join(", ")}</div>}
       {f.rows && (!check ? <Card><Skeleton lines={4} /></Card> : (
@@ -122,11 +160,11 @@ function RenterImport() {
           <Card flush title={t("imp.preview")} actions={<button className="btn primary" disabled={check.issues.length > 0} onClick={() => setConfirm(true)}>{t("imp.run")} ({check.summary.rows})</button>}>
             <Table rows={f.rows.slice(0, 50).map((r) => ({ ...r, _id: String(r.row) }))} cols={[
               { head: t("imp.row"), cell: (r) => r.row, right: true }, { head: t("renter.kind"), cell: (r) => r.kind }, { head: t("name"), cell: (r) => <strong>{r.name}</strong> },
-              { head: t("renter.tin"), cell: (r) => r.tin }, { head: t("renter.phone"), cell: (r) => r.phone }, { head: t("email"), cell: (r) => r.email },
+              { head: t("renter.tin"), cell: (r) => r.tin }, { head: t("renter.phone"), cell: (r) => r.phone }, { head: t("email"), cell: (r) => r.email }, StatusCol(t, new Set(check.issues.map((i) => i.row))),
             ]} />
           </Card>
           {confirm && <ConfirmDialog title={t("imp.confirm").replace("{n}", String(check.summary.rows))} message={t("imp.confirmBody")} confirmLabel={t("imp.run")} onClose={() => setConfirm(false)}
-            onConfirm={async () => { const r = await run(() => commit({ rows: f.rows! }), t("imp.done")); if (r) f.reset(); }} />}
+            onConfirm={async () => { const r = await run(() => commit({ rows: f.rows! })); if (r) { setDone(t("imp.doneRenters").replace("{n}", String(r.renters))); f.reset(); } }} />}
         </>
       ))}
     </div>
@@ -147,7 +185,7 @@ async function commitInChunks<R>(rows: R[], size: number, save: (part: R[]) => P
 }
 
 function AgreementImport() {
-  const { t } = useI18n(); const { can } = useMe(); const f = useFile(AGREEMENT_COLUMNS, AGREEMENT_OPTIONAL); const commit = useMutation(api.imports.commitAgreements); const { error, busy } = useRun();
+  const { t } = useI18n(); const { can } = useMe(); const f = useFile(AGREEMENT_COLUMNS, AGREEMENT_OPTIONAL); const commit = useMutation(api.imports.commitAgreements); const { error, busy } = useRun(); const [done, setDone] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false); const [msg, setMsg] = useState<string | null>(null); const [progress, setProgress] = useState<number | null>(null);
   const parsed = useMemo(() => (f.rows ? readAgreementRows(f.rows) : null), [f.rows]);
   const check = useQuery(api.imports.checkAgreements, parsed && parsed.server.length ? { rows: parsed.server } : "skip");
@@ -155,9 +193,10 @@ function AgreementImport() {
   const issues: ClientProblem[] = parsed ? [...parsed.problems, ...(check?.issues ?? [])].sort((a, b) => a.row - b.row) : [];
   const ready = !!parsed && (parsed.server.length === 0 || !!check);
   const bad = new Set(issues.map((i) => i.row)).size;
+  if (done) return <DoneCard text={done} again={() => setDone(null)} />;
   return (
     <div className="stack">
-      <Card title={t("imp.template")} actions={<ExportMenu name="agreements-template" rows={AGREEMENT_TEMPLATE} print={false} />}><p className="muted">{t("imp.ag.hint")}</p><Picker f={f} /></Card>
+      <Picker f={f} spec={AGREEMENT_COLUMNS} optional={AGREEMENT_OPTIONAL} label={label} template={AGREEMENT_TEMPLATE} templateName="agreements-template" hint={t("imp.ag.hint")} />
       <Message error={error ?? f.readError ?? msg} />
       {f.missing.length > 0 && <div className="msg bad" role="alert"><Icon name="alert" />{t("imp.missingCols")}: {f.missing.map(label).join(", ")}</div>}
       {f.rows && (!ready ? <Card><Skeleton lines={4} /></Card> : (
@@ -173,7 +212,7 @@ function AgreementImport() {
           <Card flush title={t("imp.preview")} actions={<button className="btn primary" disabled={issues.length > 0 || !can("approver") || busy || progress !== null} onClick={() => setConfirm(true)}>{progress !== null ? t("imp.progress").replace("{a}", String(progress)).replace("{b}", String(f.rows.length)) : `${t("imp.run")} (${f.rows.length})`}</button>}>
             <Table rows={f.rows.slice(0, 50).map((r) => ({ ...r, _id: String(r.row) }))} cols={[
               { head: t("imp.row"), cell: (r) => r.row, right: true }, { head: t("prop.unitNumber"), cell: (r) => <strong>{r.unit}</strong> }, { head: t("ag.renter"), cell: (r) => r.renter },
-              { head: t("ag.start"), cell: (r) => r.start }, { head: t("ag.end"), cell: (r) => r.end }, { head: t("imp.f.basis"), cell: (r) => r.basis }, { head: t("imp.f.amount"), cell: (r) => r.amount, right: true }, { head: t("imp.f.deposit"), cell: (r) => r.deposit, right: true },
+              { head: t("ag.start"), cell: (r) => r.start }, { head: t("ag.end"), cell: (r) => r.end }, { head: t("imp.f.basis"), cell: (r) => r.basis }, { head: t("imp.f.amount"), cell: (r) => r.amount, right: true }, { head: t("imp.f.deposit"), cell: (r) => r.deposit, right: true }, StatusCol(t, new Set(issues.map((i) => i.row))),
             ]} />
           </Card>
           {confirm && parsed && <ConfirmDialog title={t("imp.confirm").replace("{n}", String(parsed.server.length))} message={t("imp.ag.confirmBody")} confirmLabel={t("imp.run")} onClose={() => setConfirm(false)}
@@ -181,7 +220,7 @@ function AgreementImport() {
               setMsg(null); setProgress(0);
               const r = await commitInChunks(parsed.server, check?.chunk ?? 150, (part) => commit({ rows: part }), setProgress);
               setProgress(null);
-              if (r.failed) setMsg(t("imp.partial").replace("{a}", String(r.saved)).replace("{b}", String(parsed.server.length))); else { setMsg(null); f.reset(); }
+              if (r.failed) setMsg(t("imp.partial").replace("{a}", String(r.saved)).replace("{b}", String(parsed.server.length))); else { setMsg(null); setDone(t("imp.doneAgreements").replace("{n}", String(parsed.server.length)).replace("{a}", String(check?.summary.active ?? 0)).replace("{e}", String(check?.summary.expired ?? 0))); f.reset(); }
             }} />}
         </>
       ))}
@@ -190,7 +229,7 @@ function AgreementImport() {
 }
 
 function OpeningImport() {
-  const { t } = useI18n(); const { can } = useMe(); const f = useFile(OPENING_COLUMNS, OPENING_OPTIONAL); const commit = useMutation(api.imports.commitOpening); const { error, busy } = useRun();
+  const { t } = useI18n(); const { can } = useMe(); const f = useFile(OPENING_COLUMNS, OPENING_OPTIONAL); const commit = useMutation(api.imports.commitOpening); const { error, busy } = useRun(); const [done, setDone] = useState<string | null>(null);
   const [asOf, setAsOf] = useState<number | null>(() => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); });
   const [confirm, setConfirm] = useState(false); const [msg, setMsg] = useState<string | null>(null); const [progress, setProgress] = useState<number | null>(null);
   const parsed = useMemo(() => (f.rows && asOf != null ? readOpeningRows(f.rows, asOf) : null), [f.rows, asOf]);
@@ -199,13 +238,11 @@ function OpeningImport() {
   const issues: ClientProblem[] = parsed ? [...parsed.problems, ...(check?.issues ?? [])].sort((a, b) => a.row - b.row) : [];
   const ready = !!parsed && (parsed.server.length === 0 || !!check);
   const bad = new Set(issues.map((i) => i.row)).size;
+  if (done) return <DoneCard text={done} again={() => setDone(null)} />;
   return (
     <div className="stack">
-      <Card title={t("imp.template")} actions={<ExportMenu name="opening-balances-template" rows={OPENING_TEMPLATE} print={false} />}>
-        <p className="muted">{t("imp.op.hint")}</p>
-        <div className="row"><label className="field" style={{ minWidth: 220 }}><span>{t("imp.op.asOf")}</span><DateField value={asOf} onChange={setAsOf} /></label></div>
-        <Picker f={f} />
-      </Card>
+      <Picker f={f} spec={OPENING_COLUMNS} optional={OPENING_OPTIONAL} label={label} template={OPENING_TEMPLATE} templateName="opening-balances-template" hint={t("imp.op.hint")} />
+      <Card title={t("imp.op.asOf")}><div className="row"><label className="field" style={{ minWidth: 220 }}><span className="sr-only">{t("imp.op.asOf")}</span><DateField value={asOf} onChange={setAsOf} /></label><span className="muted">{t("imp.op.asOfHint")}</span></div></Card>
       <Message error={error ?? f.readError ?? msg} />
       {f.missing.length > 0 && <div className="msg bad" role="alert"><Icon name="alert" />{t("imp.missingCols")}: {f.missing.map(label).join(", ")}</div>}
       {f.rows && (!ready ? <Card><Skeleton lines={4} /></Card> : (
@@ -222,7 +259,7 @@ function OpeningImport() {
           <Card flush title={t("imp.preview")} actions={<button className="btn primary" disabled={issues.length > 0 || !can("approver") || busy || progress !== null} onClick={() => setConfirm(true)}>{progress !== null ? t("imp.progress").replace("{a}", String(progress)).replace("{b}", String(f.rows.length)) : `${t("imp.run")} (${f.rows.length})`}</button>}>
             <Table rows={(parsed?.server ?? []).slice(0, 50).map((r) => ({ ...r, _id: String(r.row) }))} cols={[
               { head: t("imp.row"), cell: (r) => r.row, right: true }, { head: t("ag.renter"), cell: (r) => <strong>{r.renter}</strong> }, { head: t("prop.unitNumber"), cell: (r) => r.unit || "—" },
-              { head: t("imp.f.amount"), cell: (r) => <Money v={r.amount} strong />, right: true, money: true }, { head: t("imp.f.due"), cell: (r) => <DateText ms={r.dueAt} /> }, { head: t("imp.f.note"), cell: (r) => r.note, text: true },
+              { head: t("imp.f.amount"), cell: (r) => <Money v={r.amount} strong />, right: true, money: true }, { head: t("imp.f.due"), cell: (r) => <DateText ms={r.dueAt} /> }, { head: t("imp.f.note"), cell: (r) => r.note, text: true }, StatusCol(t, new Set(issues.map((i) => i.row))),
             ]} />
           </Card>
           {confirm && parsed && <ConfirmDialog title={t("imp.confirm").replace("{n}", String(parsed.server.length))} message={t("imp.op.confirmBody")} confirmLabel={t("imp.run")} onClose={() => setConfirm(false)}
@@ -230,7 +267,7 @@ function OpeningImport() {
               setMsg(null); setProgress(0);
               const r = await commitInChunks(parsed.server, check?.chunk ?? 150, (part) => commit({ rows: part }), setProgress);
               setProgress(null);
-              if (r.failed) setMsg(t("imp.partial").replace("{a}", String(r.saved)).replace("{b}", String(parsed.server.length))); else { setMsg(null); f.reset(); }
+              if (r.failed) setMsg(t("imp.partial").replace("{a}", String(r.saved)).replace("{b}", String(parsed.server.length))); else { setMsg(null); setDone(t("imp.doneOpening").replace("{n}", String(parsed.server.length)).replace("{o}", formatEtb(check?.summary.owed ?? 0)).replace("{c}", formatEtb(check?.summary.credit ?? 0))); f.reset(); }
             }} />}
         </>
       ))}

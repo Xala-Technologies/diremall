@@ -364,3 +364,21 @@ export const commitOpening = mutation({
     return { bills, credits };
   },
 });
+
+
+/** What is already in the system, for the go-live checklist at the top of the import screen. */
+export const status = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "propertyManager", "financeOfficer", "approver");
+    const [units, renters, agreements, opening] = await Promise.all([
+      ctx.db.query("units").collect(), ctx.db.query("renters").collect(), ctx.db.query("agreements").collect(),
+      ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("period", "opening")).collect(),
+    ]);
+    return {
+      units: units.length, buildings: new Set(units.map((u) => u.buildingId)).size, renters: renters.length,
+      agreements: agreements.length, activeAgreements: agreements.filter((a) => a.status === "active").length,
+      openingBills: opening.length, openingTotal: opening.reduce((a, i) => a + i.total, 0),
+    };
+  },
+});
