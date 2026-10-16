@@ -8,6 +8,8 @@ import { invoiceBalance, refreshInvoice, termAt } from "./lib/ledger";
 import { etb, formatEtb } from "./lib/money";
 import { coveredDays, periodRange } from "./lib/period";
 import { assertUnitVisible } from "./lib/scope";
+import { queueTemplated, smsRules } from "./lib/sms";
+import { smsDate, smsMoney } from "./lib/smsTemplates";
 
 const DAY = 86_400_000;
 const lineKind = v.union(v.literal("rent"), v.literal("water"), v.literal("electricity"), v.literal("generator"), v.literal("security"), v.literal("cleaning"), v.literal("other"));
@@ -138,6 +140,7 @@ export const issue = mutation({
     // each bill takes about a dozen lookups; the screen sends them in groups that stay under the 4,096-lookup cap
     if (invoiceIds.length > 200) fail("issue_in_smaller_groups");
     const numbers: string[] = [];
+    const notify = (await smsRules(ctx)).issued; // optional "your bill is ready" message, off unless switched on in Settings
     for (const id of invoiceIds) {
       const inv = (await ctx.db.get(id)) ?? fail("not_found");
       await assertUnitVisible(ctx, u, inv.unitId);
@@ -148,6 +151,10 @@ export const issue = mutation({
       await ctx.db.patch(id, { status: "issued", number, issuedBy: u._id, issuedAt: Date.now(), buildingId: (await ctx.db.get(inv.unitId))?.buildingId });
       await refreshInvoice(ctx, id);
       await audit(ctx, u, "invoice.issue", "invoices", id, number);
+      if (notify) {
+        const renter = await ctx.db.get(inv.renterId); const lang = renter?.smsLanguage ?? "en";
+        await queueTemplated(ctx, { renterId: inv.renterId, template: "billIssued", dedupeKey: `issued:${id}`, invoiceId: id, renter, vars: { bill: number, amount: smsMoney(inv.total), due: smsDate(inv.dueAt, lang), unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
+      }
       numbers.push(number);
     }
     return numbers;
@@ -276,11 +283,11 @@ export const sendReminders = mutation({
       const key = `manual:${id}:${today}`;
       if (await ctx.db.query("smsMessages").withIndex("by_dedupe", (q) => q.eq("dedupeKey", key)).first()) { skipped.push({ invoiceId: id, reason: "already_reminded_today" }); continue; }
       const overdue = inv.dueAt < Date.now();
-      const due = new Date(inv.dueAt).toISOString().slice(0, 10);
-      await ctx.db.insert("smsMessages", {
-        renterId: inv.renterId, kind: "dueReminder", invoiceId: id, dedupeKey: key, status: "queued",
-        body: overdue ? `Reminder: bill ${inv.number} of ${formatEtb(bal.due)} was due on ${due}. Please pay as soon as possible. Thank you.` : `Reminder: bill ${inv.number} of ${formatEtb(bal.due)} is due on ${due}. Thank you.`,
-      });
+      const renter = await ctx.db.get(inv.renterId);
+      const lang = renter?.smsLanguage ?? "en";
+      const days = overdue ? Math.floor((Date.now() - inv.dueAt) / 86_400_000) : Math.max(0, Math.ceil((inv.dueAt - Date.now()) / 86_400_000));
+      const r = await queueTemplated(ctx, { renterId: inv.renterId, template: overdue ? "overdue" : "dueSoon", dedupeKey: key, invoiceId: id, renter, vars: { bill: inv.number, amount: smsMoney(bal.due), due: smsDate(inv.dueAt, lang), days, unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
+      if (r !== "queued") { skipped.push({ invoiceId: id, reason: r === "opted_out" ? "renter_opted_out" : r === "no_phone" ? "no_valid_phone" : r === "disabled" ? "template_off" : "already_reminded_today" }); continue; }
       sent++;
     }
     await audit(ctx, u, "bill.remind", "invoices", invoiceIds.length === 1 ? invoiceIds[0]! : "bulk", `sent=${sent} skipped=${skipped.length}`);

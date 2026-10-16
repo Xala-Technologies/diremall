@@ -17,6 +17,8 @@ const extra = {
   vatNumber: v.optional(v.string()),
   licenseExpiresAt: v.optional(v.number()),
   notes: v.optional(v.string()),
+  smsLanguage: v.optional(v.union(v.literal("en"), v.literal("am"))),
+  smsOptOut: v.optional(v.boolean()),
 };
 const fields = {
   kind: v.union(v.literal("individual"), v.literal("company")),
@@ -29,7 +31,7 @@ const fields = {
 const blank = (s: string | undefined) => (s && s.trim() ? s.trim() : undefined);
 
 /** Trim, validate and normalise what was typed. Throws a readable error code for the first problem. */
-function clean(kind: "individual" | "company", a: { name?: string; tin?: string; phone?: string; email?: string; contactPhone?: string; idNumber?: string; businessLicenseNo?: string; legalRepresentative?: string; address?: string; contactPerson?: string; vatNumber?: string; notes?: string; licenseExpiresAt?: number }) {
+function clean(kind: "individual" | "company", a: { smsLanguage?: "en" | "am"; smsOptOut?: boolean; name?: string; tin?: string; phone?: string; email?: string; contactPhone?: string; idNumber?: string; businessLicenseNo?: string; legalRepresentative?: string; address?: string; contactPerson?: string; vatNumber?: string; notes?: string; licenseExpiresAt?: number }) {
   if (a.name !== undefined && !a.name.trim()) fail("name_and_phone_required");
   if (a.phone !== undefined && !a.phone.trim()) fail("name_and_phone_required");
   if (a.phone && !isPhone(a.phone)) fail("invalid_phone");
@@ -44,6 +46,7 @@ function clean(kind: "individual" | "company", a: { name?: string; tin?: string;
     idNumber: blank(a.idNumber), businessLicenseNo: blank(a.businessLicenseNo), legalRepresentative: blank(a.legalRepresentative),
     address: blank(a.address), contactPerson: blank(a.contactPerson), vatNumber: blank(a.vatNumber)?.replace(/\s/g, ""), notes: blank(a.notes),
     licenseExpiresAt: a.licenseExpiresAt || undefined, // 0 clears it
+    smsLanguage: a.smsLanguage, smsOptOut: a.smsOptOut ? true : undefined,
   };
 }
 

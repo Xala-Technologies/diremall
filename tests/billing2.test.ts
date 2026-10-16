@@ -36,7 +36,7 @@ describe("payment reminders", () => {
     const sms = await w.t.run((c) => c.db.query("smsMessages").collect());
     expect(sms).toHaveLength(1);
     expect(sms[0]).toMatchObject({ kind: "dueReminder", status: "queued", invoiceId: w.draftId });
-    expect(sms[0]!.body).toMatch(/INV-2026-09-0001 of ETB 10,000\.00 was due on 2026-09-05/);
+    expect(sms[0]!.body).toMatch(/bill INV-2026-09-0001 of ETB 10,000\.00 was due on 5 Sep 2026 and is \d+ days overdue/);
     // once paid in full, nothing more is sent
     const p = await w.fin.mutation(w.api.payments.record, { renterId: w.renterId, amount: etb(10000), method: "cash", reference: "C1", receivedAt: utc(2026, 9, 4) });
     await w.ap.mutation(w.api.payments.confirm, { paymentId: p });

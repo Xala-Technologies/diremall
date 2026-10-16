@@ -9,6 +9,8 @@ import { renterMap } from "./lib/bulk";
 import { periodRange } from "./lib/period";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 import { assertUploadOk } from "./files";
+import { queueTemplated, smsRules } from "./lib/sms";
+import { smsMoney } from "./lib/smsTemplates";
 
 const method = v.union(v.literal("bankDeposit"), v.literal("transfer"), v.literal("telebirr"), v.literal("cbeBirr"), v.literal("cash"));
 
@@ -118,10 +120,10 @@ export const apply = mutation({
     await ctx.db.patch(paymentId, { status: "applied", receiptNumber, appliedBy: u._id, appliedAt: Date.now() });
     await audit(ctx, u, "payment.apply", "payments", paymentId, `applied=${p.amount - credit} credit=${credit}`);
 
-    // Receipt acknowledgment by SMS (once per payment).
-    const key = `ack:${paymentId}`;
-    if (!(await ctx.db.query("smsMessages").withIndex("by_dedupe", (q) => q.eq("dedupeKey", key)).first())) {
-      await ctx.db.insert("smsMessages", { renterId: p.renterId, kind: "paymentAck", body: `Payment of ${formatEtb(p.amount)} received. Thank you.`, status: "queued", dedupeKey: key });
+    // Receipt acknowledgment by SMS (once per payment), in the renter's language, unless receipts are switched off in Settings.
+    if ((await smsRules(ctx)).receipts) {
+      const renter = await ctx.db.get(p.renterId);
+      await queueTemplated(ctx, { renterId: p.renterId, template: "paymentReceived", dedupeKey: `ack:${paymentId}`, renter, vars: { amount: smsMoney(p.amount), receipt: receiptNumber } });
     }
     return { applied: p.amount - credit, credit };
   },

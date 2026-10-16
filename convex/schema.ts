@@ -69,6 +69,8 @@ export default defineSchema({
     vatNumber: v.optional(v.string()),
     licenseExpiresAt: v.optional(ts),
     notes: v.optional(v.string()),
+    smsLanguage: v.optional(v.union(v.literal("en"), v.literal("am"))), // the language their messages are sent in
+    smsOptOut: v.optional(v.boolean()), // never send them automatic messages
   }).index("by_name", ["name"]).index("by_tin", ["tin"]),
   renterDocuments: defineTable({
     renterId: v.id("renters"),
@@ -267,14 +269,27 @@ export default defineSchema({
   }).index("by_batch", ["importBatch"]).index("by_payment", ["matchedPaymentId"]).index("by_line", ["postedAt", "amount"]),
 
   smsMessages: defineTable({
-    renterId: v.id("renters"),
-    kind: v.union(v.literal("dueReminder"), v.literal("paymentAck"), v.literal("expiryWarning")),
+    renterId: v.optional(v.id("renters")), // empty only for a test message to a number typed in
+    to: v.optional(v.string()),
+    kind: v.union(v.literal("dueReminder"), v.literal("paymentAck"), v.literal("expiryWarning"), v.literal("billIssued"), v.literal("custom")),
+    template: v.optional(v.string()), // which template made it: "overdue", "dueSoon", "paymentReceived", "test", "broadcast"…
+    lang: v.optional(v.union(v.literal("en"), v.literal("am"))),
+    batch: v.optional(v.string()), // messages sent together as one announcement
+    urgent: v.optional(v.boolean()), // a test message: sent now, ignoring quiet hours and the daily limit
+    attempts: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    sendAfter: v.optional(v.number()), // do not send before this time (retry back-off)
+    sentAt: v.optional(v.number()),
+    segments: v.optional(v.number()),
     body: v.string(),
     status: v.union(v.literal("queued"), v.literal("accepted"), v.literal("delivered"), v.literal("failed"), v.literal("uncertain"), v.literal("cancelled"), v.literal("sending")),
     invoiceId: v.optional(v.id("invoices")),
     agreementId: v.optional(v.id("agreements")),
     dedupeKey: v.optional(v.string()),
-  }).index("by_renter", ["renterId"]).index("by_dedupe", ["dedupeKey"]).index("by_status", ["status"]),
+  }).index("by_renter", ["renterId"]).index("by_dedupe", ["dedupeKey"]).index("by_status", ["status"]).index("by_batch", ["batch"]),
+
+  // Edited wording of the automatic messages. A kind and language with no row here uses the built-in text.
+  smsTemplates: defineTable({ kind: v.string(), lang: v.union(v.literal("en"), v.literal("am")), body: v.string(), enabled: v.boolean(), updatedBy: v.id("users") }).index("by_kind_lang", ["kind", "lang"]),
 
   auditLog: defineTable({ actorId: v.id("users"), action: v.string(), entity: v.string(), entityId: v.string(), detail: v.string() })
     .index("by_entity", ["entity", "entityId"]),

@@ -23,3 +23,36 @@ describe("sms segments", () => {
     expect(smsSegments(body)).toMatchObject({ unicode: false, segments: 1 });
   });
 });
+
+import { DEFAULT_TEMPLATES, PLACEHOLDERS, TEMPLATE_KINDS, checkTemplate, renderTemplate, sampleVars, smsDate } from "../convex/lib/smsTemplates";
+
+describe("sms templates", () => {
+  it("renders placeholders, tidies leftover spaces and punctuation, and blanks missing values", () => {
+    expect(renderTemplate("Dear {renter}, bill {bill} is due on {due}. {org}", { renter: "Abebe", bill: "INV-1", due: "5 Oct 2026", org: "Dire Mall" })).toBe("Dear Abebe, bill INV-1 is due on 5 Oct 2026. Dire Mall");
+    expect(renderTemplate("Hello {renter} {unit} , thanks.", { renter: "Abebe" })).toBe("Hello Abebe, thanks.");
+  });
+
+  it("checks a template: empty, too long, unknown or stray braces", () => {
+    const allowed = PLACEHOLDERS.dueSoon;
+    expect(checkTemplate(allowed, "Hi {renter}, pay {amount} by {due}").ok).toBe(true);
+    expect(checkTemplate(allowed, " ").problems).toEqual([{ code: "empty" }]);
+    expect(checkTemplate(allowed, "x".repeat(481)).problems).toEqual([{ code: "too_long" }]);
+    expect(checkTemplate(allowed, "Hi {renter} {receipt}").problems).toEqual([{ code: "unknown_placeholder", detail: "receipt" }]);
+    expect(checkTemplate(allowed, "Hi {renter} {oops").problems).toEqual([{ code: "stray_brace" }]);
+  });
+
+  it("every built-in template is valid for its own placeholders, in both languages, and fits a reasonable number of segments", () => {
+    for (const kind of TEMPLATE_KINDS) for (const lang of ["en", "am"] as const) {
+      const body = DEFAULT_TEMPLATES[kind][lang];
+      expect(checkTemplate(PLACEHOLDERS[kind], body), `${kind}:${lang}`).toEqual({ ok: true, problems: [] });
+      const out = renderTemplate(body, sampleVars(kind, lang, "Dire Mall"));
+      expect(out).not.toMatch(/[{}]/);
+      expect(smsSegments(out).segments, `${kind}:${lang}`).toBeLessThanOrEqual(lang === "en" ? 2 : 4);
+    }
+  });
+
+  it("writes dates in the calendar the reader uses", () => {
+    expect(smsDate(Date.UTC(2026, 9, 5), "en")).toBe("5 Oct 2026");
+    expect(smsDate(Date.UTC(2026, 8, 11), "am")).toBe("1 መስከረም 2019"); // Ethiopian new year
+  });
+});

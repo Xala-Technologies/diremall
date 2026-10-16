@@ -5,7 +5,8 @@ import { internal } from "./_generated/api";
 /**
  * Sends queued messages through whichever SMS gateway Dire Mall contracts.
  * Configure SMS_API_URL, SMS_API_KEY and SMS_SENDER in the Convex environment.
- * With no gateway configured, messages simply stay queued.
+ * With no gateway configured, messages simply stay queued. Quiet hours, the daily limit and retry back-off are applied when
+ * messages are claimed (see smsQueue.claimQueued).
  */
 export const dispatch = internalAction({
   args: {},
@@ -23,11 +24,13 @@ export const dispatch = internalAction({
           headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
           body: JSON.stringify({ to: m.to, from: process.env.SMS_SENDER ?? "DireMall", message: m.body, reference: m.id }),
         });
-        await ctx.runMutation(internal.smsQueue.setStatus, { id: m.id, status: res.ok ? "accepted" : res.status >= 500 ? "uncertain" : "failed" });
+        // 2xx accepted; 429 "slow down" is retried later; 5xx and silence are "uncertain" (it may have been delivered, so we
+        // do not resend on our own); any other refusal is final
+        const outcome = res.ok ? "accepted" : res.status === 429 ? "rate_limited" : res.status >= 500 ? "unsure" : "rejected";
+        await ctx.runMutation(internal.smsQueue.finish, { id: m.id, outcome, ...(res.ok ? {} : { error: `gateway_${res.status}` }) });
         if (res.ok) sent++;
       } catch {
-        // network failure: we cannot tell whether the gateway got it
-        await ctx.runMutation(internal.smsQueue.setStatus, { id: m.id, status: "uncertain" });
+        await ctx.runMutation(internal.smsQueue.finish, { id: m.id, outcome: "unsure", error: "no_answer" });
       }
     }
     return { sent };
