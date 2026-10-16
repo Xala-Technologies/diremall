@@ -35,7 +35,7 @@ export default function Users() {
 }
 
 function Invite({ onClose }: { onClose: () => void }) {
-  const { t } = useI18n(); const create = useMutation(api.invites.create); const buildings = useQuery(api.properties.listBuildings); const { run, error, busy } = useRun();
+  const { t } = useI18n(); const create = useMutation(api.invites.create); const buildings = useQuery(api.properties.listBuildings, {}); const { run, error, busy } = useRun();
   const [email, setEmail] = useState(""); const [roles, setRoles] = useState<Set<string>>(new Set(["propertyManager"])); const [all, setAll] = useState(true); const [scope, setScope] = useState<Set<string>>(new Set());
   const [done, setDone] = useState<{ code: string; email: string } | null>(null);
   const flip = <T,>(s: Set<T>, v: T) => { const n = new Set(s); n.has(v) ? n.delete(v) : n.add(v); return n; };
@@ -67,7 +67,7 @@ function Invite({ onClose }: { onClose: () => void }) {
 }
 
 function Edit({ user, onClose }: { user: { _id: Id<"users">; name: string; roles: string[]; buildingScope: "all" | Id<"buildings">[]; active: boolean }; onClose: () => void }) {
-  const { t } = useI18n(); const resetMfa = useMutation(api.mfa.reset); const buildings = useQuery(api.properties.listBuildings); const set = useMutation(api.users.setAccess); const { run, error, busy } = useRun();
+  const { t } = useI18n(); const resetMfa = useMutation(api.mfa.reset); const buildings = useQuery(api.properties.listBuildings, {}); const set = useMutation(api.users.setAccess); const { run, error, busy } = useRun();
   const [roles, setRoles] = useState<Set<string>>(new Set(user.roles)); const [active, setActive] = useState(user.active); const [confirm, setConfirm] = useState(false);
   const [all, setAll] = useState(user.buildingScope === "all"); const [scope, setScope] = useState<Set<string>>(new Set(Array.isArray(user.buildingScope) ? user.buildingScope : []));
   const save = async () => { if (await run(() => set({ userId: user._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]), active }), t("saved"))) onClose(); };

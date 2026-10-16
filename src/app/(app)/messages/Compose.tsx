@@ -16,7 +16,7 @@ type Kind = "activeLeases" | "overdue" | "building" | "renters";
 /** Write a notice (maintenance, a closure, a reminder to everyone) and send it to a chosen group, in each renter's language. */
 export function ComposeTab() {
   const { t } = useI18n(); const toast = useToast();
-  const buildings = useQuery(api.properties.listBuildings); const renters = useQuery(api.renters.list, {});
+  const buildings = useQuery(api.properties.listBuildings, {}); const renters = useQuery(api.renters.list, {});
   const send = useMutation(api.smsQueue.sendBroadcast); const { run, error, busy } = useRun(); const gw = useQuery(api.smsQueue.gateway);
   const [kind, setKind] = useState<Kind>("activeLeases"); const [buildingId, setBuildingId] = useState(""); const [picked, setPicked] = useState<Set<string>>(new Set()); const [q, setQ] = useState("");
   const [en, setEn] = useState(""); const [am, setAm] = useState(""); const [confirm, setConfirm] = useState(false);

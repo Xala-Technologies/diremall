@@ -7,11 +7,45 @@ import { activeAgreementsByUnit, renterMap } from "./lib/bulk";
 
 const category = v.union(v.literal("office"), v.literal("retail"), v.literal("storage"), v.literal("residential"));
 
+/** The buildings in service. Archived ones are left out unless asked for (the Settings screen asks). */
 export const listBuildings = query({
+  args: { includeArchived: v.optional(v.boolean()) },
+  handler: async (ctx, { includeArchived }) => {
+    const u = await requireRole(ctx, ...READ_ROLES);
+    return (await ctx.db.query("buildings").collect()).filter((b) => canSeeBuilding(u, b._id) && (includeArchived || !b.archivedAt));
+  },
+});
+
+/** One line per building for the Settings screen: what is in it and whether it is in use. */
+export const buildingOverview = query({
   args: {},
   handler: async (ctx) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    return (await ctx.db.query("buildings").collect()).filter((b) => canSeeBuilding(u, b._id));
+    const [buildings, units, floors, agreements] = await Promise.all([ctx.db.query("buildings").collect(), ctx.db.query("units").collect(), ctx.db.query("floors").collect(), ctx.db.query("agreements").collect()]);
+    const unitBuilding = new Map(units.map((x) => [x._id, x.buildingId]));
+    return buildings.filter((b) => canSeeBuilding(u, b._id)).map((b) => {
+      const mine = units.filter((x) => x.buildingId === b._id);
+      const live = agreements.filter((a) => unitBuilding.get(a.unitId) === b._id && (a.status === "active" || a.status === "inReview" || a.status === "draft")).length;
+      return { ...b, floors: floors.filter((f) => f.buildingId === b._id).length, units: mine.length, occupied: mine.filter((x) => x.status === "occupied").length, areaM2: mine.reduce((a, x) => a + x.areaM2, 0), liveAgreements: live };
+    });
+  },
+});
+
+/** Take a building out of service (or bring it back). Refused while it has live leases, so nothing is left hanging. */
+export const setBuildingArchived = mutation({
+  args: { buildingId: v.id("buildings"), archived: v.boolean() },
+  handler: async (ctx, { buildingId, archived }) => {
+    const u = await requireRole(ctx, "propertyManager");
+    if (u.buildingScope !== "all") fail("forbidden_building");
+    const b = (await ctx.db.get(buildingId)) ?? fail("not_found");
+    if (archived) {
+      const units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", buildingId)).collect();
+      const ids = new Set(units.map((x) => x._id));
+      const live = (await ctx.db.query("agreements").collect()).some((a) => ids.has(a.unitId) && (a.status === "active" || a.status === "inReview" || a.status === "draft"));
+      if (live) fail("building_has_leases");
+    }
+    await ctx.db.patch(buildingId, { archivedAt: archived ? Date.now() : undefined });
+    await audit(ctx, u, archived ? "building.archive" : "building.restore", "buildings", buildingId, b.name);
   },
 });
 
@@ -55,7 +89,7 @@ export const updateBuilding = mutation({
     const n = name.trim();
     if (!n) fail("name_required");
     if ((await ctx.db.query("buildings").collect()).some((b) => b._id !== buildingId && sameName(b.name, n))) fail("building_name_exists");
-    await ctx.db.replace(buildingId, { name: n, ...cleanBuilding(rest) });
+    await ctx.db.patch(buildingId, { name: n, ...cleanBuilding(rest) });
     await audit(ctx, u, "building.update", "buildings", buildingId, n);
   },
 });
@@ -112,6 +146,7 @@ export const createUnit = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
     assertBuilding(u, a.buildingId);
+    if ((await ctx.db.get(a.buildingId))?.archivedAt) fail("building_archived");
     if (!(Number.isFinite(a.areaM2) && a.areaM2 > 0) || !Number.isSafeInteger(a.ratePerM2) || a.ratePerM2 < 0) fail("invalid_amount");
     const floor = await ctx.db.get(a.floorId);
     if (!floor || floor.buildingId !== a.buildingId) fail("floor_not_in_building");
@@ -174,7 +209,8 @@ export const listUnits = query({
       assertBuilding(u, a.buildingId);
       units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", a.buildingId!)).collect();
     } else {
-      units = (await ctx.db.query("units").collect()).filter((x) => canSeeBuilding(u, x.buildingId));
+      const inService = new Set((await ctx.db.query("buildings").collect()).filter((b) => !b.archivedAt).map((b) => b._id));
+      units = (await ctx.db.query("units").collect()).filter((x) => canSeeBuilding(u, x.buildingId) && inService.has(x.buildingId));
     }
     const shown = a.status ? units.filter((x) => x.status === a.status) : units;
     // the current renter, so the unit board can show who is in each space

@@ -39,6 +39,7 @@ export default defineSchema({
   buildings: defineTable({
     name: v.string(), address: v.optional(v.string()), city: v.optional(v.string()), subCity: v.optional(v.string()),
     contactName: v.optional(v.string()), contactPhone: v.optional(v.string()), notes: v.optional(v.string()),
+    archivedAt: v.optional(v.number()), // taken out of service: hidden from every list and picker, its history stays
   }),
   floors: defineTable({ buildingId: v.id("buildings"), label: v.string(), planFileId: v.optional(v.id("_storage")) })
     .index("by_building", ["buildingId"]),

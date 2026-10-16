@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [period, setPeriod] = usePeriod();
   const [building, setBuilding] = useState("");
   const b = (building || undefined) as any;
-  const buildings = useQuery(api.properties.listBuildings);
+  const buildings = useQuery(api.properties.listBuildings, {});
   const d = useQuery(api.reports.dashboard, { period, buildingId: b });
   const trend = useQuery(api.reports.revenue, { fromPeriod: shiftPeriod(period, -5), toPeriod: period, buildingId: b });
   const aging = useQuery(api.reports.aging, { buildingId: b });

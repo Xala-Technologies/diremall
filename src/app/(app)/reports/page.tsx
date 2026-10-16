@@ -24,7 +24,7 @@ const Loading = () => <Strip>{[0, 1, 2, 3].map((i) => <div key={i} className="kp
 
 export default function Reports() {
   const { t } = useI18n(); const [tab, setTab] = useState<"rentRoll" | "vacancy" | "aging" | "revenue" | "ledger" | "expiry" | "deposits">("rentRoll"); const [building, setBuilding] = useState("");
-  const buildings = useQuery(api.properties.listBuildings); const b = (building || undefined) as Id<"buildings"> | undefined;
+  const buildings = useQuery(api.properties.listBuildings, {}); const b = (building || undefined) as Id<"buildings"> | undefined;
   return (
     <div className="stack">
       <PageHeader title={t("nav.reports")} filters={<><BuildingSelect buildings={buildings} value={building} onChange={setBuilding} /><Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} tabs={[["rentRoll", t("rep.rentRoll")], ["vacancy", t("rep.vacancy")], ["aging", t("rep.aging")], ["revenue", t("rep.revenue")], ["ledger", t("rep.ledger")], ["expiry", t("rep.expiry")], ["deposits", t("rep.deposits")]]} /></>}

@@ -1,77 +1,66 @@
 "use client";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
-import { MfaEnroll } from "@/components/Mfa";
-import { Card, Field, Message, MoneyInput, PageHeader } from "@/components/ui";
-import { useMe } from "@/lib/useMe";
+import { Icon } from "@/components/icons";
+import { Card, PageHeader, Skeleton, Tabs } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
-import { useRun } from "@/lib/useRun";
-import { email as emailCheck, failures, phone as phoneCheck, req, tin as tinCheck } from "@/lib/validate";
+import { Billing } from "./Billing";
+import { Buildings } from "./Buildings";
+import { Organisation } from "./Organisation";
+import { Security } from "./Security";
+
+type Tab = "overview" | "org" | "buildings" | "billing" | "security";
+const TABS: Tab[] = ["overview", "org", "buildings", "billing", "security"];
 
 export default function Settings() {
-  const { t } = useI18n(); const s = useQuery(api.settings.get); const set = useMutation(api.settings.set); const { run, error, notice } = useRun();
-  const { can } = useMe(); const mfa = useQuery(api.mfa.status); const disable = useMutation(api.mfa.disable);
-  const [enrolling, setEnrolling] = useState(false); const [offCode, setOffCode] = useState(""); const [offMsg, setOffMsg] = useState<string | null>(null);
-  const [el, setEl] = useState<number | null>(null); const [wa, setWa] = useState<number | null>(null); const [due, setDue] = useState(""); const [exp, setExp] = useState("");
+  const { t } = useI18n(); const [tab, setTab] = useState<Tab>("overview");
+  // a link such as /settings?tab=buildings opens that tab
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("tab") as Tab | null; if (q && TABS.includes(q)) setTab(q); }, []);
+  const pick = (v: string) => { setTab(v as Tab); window.history.replaceState(null, "", v === "overview" ? "/settings" : `/settings?tab=${v}`); };
   return (
-    <div className="stack"><PageHeader title={t("nav.settings")} /><Message error={error} notice={notice} />
-      <OrgCard />
-      <Card title={t("mfa.title")}><div className="stack">
-        {mfa && <div className="row"><strong>{mfa.enabled ? t("mfa.on") : t("mfa.off")}</strong>{mfa.enabled && <span className="muted">{t("mfa.recoveryLeft")}: {mfa.recoveryLeft}</span>}</div>}
-        {mfa && (!mfa.enabled || enrolling) && <MfaEnroll onStart={() => setEnrolling(true)} onDone={() => setEnrolling(false)} />}
-        {mfa?.enabled && !mfa.required && <form className="row" onSubmit={async (e) => { e.preventDefault(); setOffMsg(null); const r = await run(() => disable({ code: offCode }), t("saved")); if (r && !r.ok) setOffMsg(t("mfa.wrong")); else setOffCode(""); }}>
-          <input aria-label={t("mfa.code")} placeholder={t("mfa.code")} autoComplete="one-time-code" inputMode="numeric" value={offCode} onChange={(e) => setOffCode(e.target.value)} />
-          <button className="btn" disabled={offCode.replace(/\s/g, "").length < 6}>{t("mfa.disable")}</button></form>}
-        {offMsg && <Message error={offMsg} />}
-        {can("accessAdmin") && s && <label className="row"><input type="checkbox" checked={s["mfa.required"] === 1} disabled={!mfa?.enabled && s["mfa.required"] !== 1} onChange={(e) => void run(() => set({ key: "mfa.required", value: e.target.checked ? 1 : 0 }), t("saved"))} />
-          <span>{t("mfa.requiredLabel")}<br /><small className="muted">{t("mfa.requiredHint")}</small></span></label>}
-      </div></Card>
-      <Card title={t("tariffs")}><div className="form">
-        <Field label={`${t("electricity")} / kWh (ETB)`} hint={s ? `Now: ${((s["tariff.electricity"] ?? 600) / 100).toFixed(2)}` : ""}><MoneyInput value={el} onChange={setEl} /></Field>
-        <Field label={`${t("water")} / m³ (ETB)`} hint={s ? `Now: ${((s["tariff.water"] ?? 0) / 100).toFixed(2)}` : ""}><MoneyInput value={wa} onChange={setWa} /></Field>
-        <div className="wide"><button className="btn primary" onClick={() => void run(async () => { if (el != null) await set({ key: "tariff.electricity", value: el }); if (wa != null) await set({ key: "tariff.water", value: wa }); }, t("saved"))}>{t("save")}</button></div></div></Card>
-      <Card title="SMS"><div className="form">
-        <Field label="Days before due date to remind" hint={`Now: ${s?.dueReminderDays ?? 3}`}><input type="number" min={0} value={due} onChange={(e) => setDue(e.target.value)} /></Field>
-        <Field label="Days before agreement end to warn" hint={`Now: ${s?.expiryWarnDays ?? 60}`}><input type="number" min={0} value={exp} onChange={(e) => setExp(e.target.value)} /></Field>
-        <div className="wide"><button className="btn primary" onClick={() => void run(async () => { if (due !== "") await set({ key: "dueReminderDays", value: Number(due) }); if (exp !== "") await set({ key: "expiryWarnDays", value: Number(exp) }); }, t("saved"))}>{t("save")}</button></div></div></Card>
+    <div className="stack">
+      <PageHeader title={t("nav.settings")} filters={<Tabs value={tab} onChange={pick} tabs={TABS.map((k) => [k, t(`set.tab.${k}`)] as [string, string])} />} />
+      {tab === "overview" ? <Overview go={pick} /> : tab === "org" ? <Organisation /> : tab === "buildings" ? <Buildings /> : tab === "billing" ? <Billing /> : <Security />}
     </div>
   );
 }
 
-/** The seller's details, printed on every bill, receipt and contract. Approvers edit them; everyone else reads. */
-function OrgCard() {
-  const { t } = useI18n(); const { can } = useMe(); const org = useQuery(api.settings.org); const save = useMutation(api.settings.setOrg); const { run, error, busy } = useRun();
-  const [f, setF] = useState({ name: "", tin: "", vatNumber: "", address: "", city: "", phone: "", email: "", bankAccounts: "", invoiceNote: "" });
-  const [loaded, setLoaded] = useState(false); const [errs, setErrs] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (!org || loaded) return;
-    const o = org as unknown as Record<string, string | undefined>;
-    setF({ name: o.name ?? "", tin: o.tin ?? "", vatNumber: o.vatNumber ?? "", address: o.address ?? "", city: o.city ?? "", phone: o.phone ?? "", email: o.email ?? "", bankAccounts: o.bankAccounts ?? "", invoiceNote: o.invoiceNote ?? "" });
-    setLoaded(true);
-  }, [org, loaded]);
-  const edit = can("approver");
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => { setF({ ...f, [k]: e.target.value }); if (errs[k]) setErrs({ ...errs, [k]: "" }); };
+/** What still has to be set up before the system can be used for real, with a way into each item. */
+function Overview({ go }: { go: (t: string) => void }) {
+  const { t } = useI18n();
+  const org = useQuery(api.settings.org) as { name?: string; tin?: string; phone?: string; bankAccounts?: string } | undefined; const buildings = useQuery(api.properties.buildingOverview);
+  const s = useQuery(api.settings.get); const gw = useQuery(api.smsQueue.gateway); const mfa = useQuery(api.mfa.status);
+  if (!org || !buildings || !s || !gw || !mfa) return <Card><Skeleton lines={6} /></Card>;
+  const live = buildings.filter((b) => !b.archivedAt), units = live.reduce((a, b) => a + b.units, 0);
+  type Item = { done: boolean; title: string; hint: string; tab?: string; href?: string };
+  const items: Item[] = [
+    { done: !!(org.name && org.tin && org.phone && org.bankAccounts), title: t("set.todo.org"), hint: t("set.todo.orgHint"), tab: "org" },
+    { done: live.length > 0, title: t("set.todo.buildings"), hint: live.length ? `${live.length} ${t("set.inService").toLowerCase()}` : t("set.todo.buildingsHint"), tab: "buildings" },
+    { done: units > 0, title: t("set.todo.units"), hint: units ? `${units} ${t("rep.k.units")}` : t("set.todo.unitsHint"), href: "/properties" },
+    { done: (s["tariff.water"] ?? 0) > 0 && (s["tariff.electricity"] ?? 0) > 0, title: t("set.todo.tariffs"), hint: t("set.todo.tariffsHint"), tab: "billing" },
+    { done: gw.configured, title: t("set.todo.sms"), hint: gw.configured ? t("set.todo.smsOn") : t("set.todo.smsHint"), href: "/messages" },
+    { done: mfa.enabled, title: t("set.todo.mfa"), hint: t("set.todo.mfaHint"), tab: "security" },
+  ];
+  const done = items.filter((i) => i.done).length;
   return (
-    <Card title={t("org.title")}>
-      <form className="form" noValidate onSubmit={async (e) => {
-        e.preventDefault();
-        const found = failures({ name: req(f.name, t), tin: f.tin.trim() ? tinCheck(f.tin, t) : null, phone: f.phone.trim() ? phoneCheck(f.phone, t) : null, email: emailCheck(f.email, t), vatNumber: f.vatNumber.trim() && !/^\d{6,15}$/.test(f.vatNumber.replace(/\s/g, "")) ? t("v.vat") : null });
-        setErrs(found); if (Object.keys(found).length) return;
-        await run(() => save(f), t("saved"));
-      }}>
-        <p className="muted wide">{t("org.hint")}</p>
-        <Field label={t("org.name")} error={errs.name}><input value={f.name} disabled={!edit} onChange={set("name")} /></Field>
-        <Field label={t("renter.tin")} error={errs.tin} hint={t("optional")}><input inputMode="numeric" value={f.tin} disabled={!edit} onChange={set("tin")} /></Field>
-        <Field label={t("renter.vat")} error={errs.vatNumber} hint={t("optional")}><input inputMode="numeric" value={f.vatNumber} disabled={!edit} onChange={set("vatNumber")} /></Field>
-        <Field label={t("renter.phone")} error={errs.phone} hint={t("optional")}><input type="tel" value={f.phone} disabled={!edit} onChange={set("phone")} /></Field>
-        <Field label={t("email")} error={errs.email} hint={t("optional")}><input type="email" value={f.email} disabled={!edit} onChange={set("email")} /></Field>
-        <Field label={t("prop.city")} hint={t("optional")}><input value={f.city} disabled={!edit} onChange={set("city")} /></Field>
-        <div className="wide"><Field label={t("renter.address")} hint={t("optional")}><input value={f.address} disabled={!edit} onChange={set("address")} /></Field></div>
-        <div className="wide"><Field label={t("org.bank")} hint={t("org.bankHint")}><textarea rows={3} value={f.bankAccounts} disabled={!edit} onChange={set("bankAccounts")} placeholder={"Commercial Bank of Ethiopia 1000123456789 Dire Mall PLC"} /></Field></div>
-        <div className="wide"><Field label={t("org.note")} hint={t("org.noteHint")}><textarea rows={2} value={f.invoiceNote} disabled={!edit} onChange={set("invoiceNote")} /></Field></div>
-        {edit && <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{t("save")}</button></div>}
-      </form>
-    </Card>
+    <div className="stack">
+      <Card title={t("set.setupTitle")} actions={<span className="muted">{done} / {items.length}</span>}>
+        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={items.length} aria-valuenow={done} aria-label={t("set.setupTitle")}><span style={{ width: `${(done / items.length) * 100}%` }} /></div>
+        <ul className="todo">
+          {items.map((i) => (
+            <li key={i.title} className={i.done ? "is-done" : ""}>
+              <span className="todo-ic" aria-hidden="true">{i.done ? <Icon name="check" size={16} /> : <span />}</span>
+              <span className="todo-t"><b>{i.title}</b><small>{i.hint}</small></span>
+              {i.href ? <Link className="btn sm" href={i.href}>{i.done ? t("set.review") : t("set.doNow")}</Link> : <button className="btn sm" onClick={() => go(i.tab!)}>{i.done ? t("set.review") : t("set.doNow")}</button>}
+            </li>))}
+        </ul>
+      </Card>
+      <div className="cols-2">
+        <Card title={t("org.title")}><dl className="facts"><div><dt>{t("org.name")}</dt><dd>{org.name ?? "—"}</dd></div><div><dt>{t("renter.tin")}</dt><dd>{org.tin ?? "—"}</dd></div><div><dt>{t("renter.phone")}</dt><dd>{org.phone ?? "—"}</dd></div></dl></Card>
+        <Card title={t("set.buildingsTitle")}><dl className="facts"><div><dt>{t("set.inService")}</dt><dd>{live.length}</dd></div><div><dt>{t("rep.k.units")}</dt><dd>{units}</dd></div><div><dt>{t("set.archived")}</dt><dd>{buildings.length - live.length}</dd></div></dl></Card>
+      </div>
+    </div>
   );
 }

@@ -18,7 +18,7 @@ export default function Billing() {
   const { t } = useI18n(); const { can } = useMe(); const router = useRouter();
   const [period, setPeriod] = usePeriod(); const [building, setBuilding] = useState(""); const [opening, setOpening] = useState(false); // the balances carried in from the old records
   const [picked, setPicked] = useState<Set<Id<"invoices">>>(new Set()); const [confirmIssue, setConfirmIssue] = useState<Id<"invoices">[] | null>(null);
-  const buildings = useQuery(api.properties.listBuildings);
+  const buildings = useQuery(api.properties.listBuildings, {});
   const rows = useQuery(api.billing.list, { period: opening ? "opening" : period });
   const generate = useMutation(api.billing.generate); const issue = useMutation(api.billing.issue);
   const { run, error, notice } = useRun(); const toast = useToast();

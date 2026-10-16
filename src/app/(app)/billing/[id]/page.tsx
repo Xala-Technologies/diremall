@@ -24,7 +24,7 @@ export default function InvoicePage() {
   const issue = useMutation(api.billing.issue); const discard = useMutation(api.billing.discardDraft);
   const reqAdj = useMutation(api.billing.requestAdjustment); const appAdj = useMutation(api.billing.approveAdjustment);
   const useCredit = useMutation(api.payments.useCredit); const remind = useMutation(api.billing.sendReminders);
-  const org = useQuery(api.settings.org) as { tin?: string; address?: string; bankAccounts?: string; invoiceNote?: string } | undefined; const buildings = useQuery(api.properties.listBuildings);
+  const org = useQuery(api.settings.org) as { tin?: string; address?: string; bankAccounts?: string; invoiceNote?: string } | undefined; const buildings = useQuery(api.properties.listBuildings, {});
   const { run, error, notice } = useRun(); const toast = useToast(); const [dlg, setDlg] = useState(false); const [confirmDiscard, setConfirmDiscard] = useState(false); const [confirmIssue, setConfirmIssue] = useState(false); const router = useRouter();
   if (!d) return <p className="muted">{t("loading")}</p>;
   const inv = d.invoice; const b = d.balance;

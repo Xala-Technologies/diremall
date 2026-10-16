@@ -29,7 +29,7 @@ const KindIcon = ({ kind }: { kind: "electricity" | "water" }) => (kind === "ele
 function Readings() {
   const { t } = useI18n(); const { can, me } = useMe();
   const [period, setPeriod] = usePeriod(); const [building, setBuilding] = useState("");
-  const buildings = useQuery(api.properties.listBuildings);
+  const buildings = useQuery(api.properties.listBuildings, {});
   const reg = useQuery(api.utilities.register, { period, buildingId: (building || undefined) as Id<"buildings"> | undefined });
   const pending = useQuery(api.utilities.pendingReadings);
   const units = useQuery(api.properties.listUnits, {});
@@ -127,7 +127,7 @@ function MeterHistory({ meterId, title, onClose }: { meterId: Id<"meters">; titl
 
 function Shared() {
   const { t } = useI18n(); const { can, me } = useMe();
-  const buildings = useQuery(api.properties.listBuildings); const [building, setBuilding] = useState(""); const [period, setPeriod] = useState(currentPeriod());
+  const buildings = useQuery(api.properties.listBuildings, {}); const [building, setBuilding] = useState(""); const [period, setPeriod] = useState(currentPeriod());
   const costs = useQuery(api.utilities.sharedCosts, building ? { buildingId: building as Id<"buildings">, period } : "skip");
   const units = useQuery(api.properties.listUnits, building ? { buildingId: building as Id<"buildings"> } : "skip");
   const create = useMutation(api.utilities.createSharedCost); const approve = useMutation(api.utilities.approveSharedCost);

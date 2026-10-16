@@ -95,3 +95,33 @@ describe("renters", () => {
     await expect(pm.mutation(api.renters.update, { renterId: other, patch: { tin: "0012345678" } })).rejects.toThrow(/tin_already_registered/);
   });
 });
+
+describe("archiving a building", () => {
+  it("hides it and its units everywhere, keeps the record, refuses while a lease is live, and can be undone", async () => {
+    const w = await world();
+    const b2 = await w.pm.mutation(w.api.properties.createBuilding, { name: "Block B", floors: ["Ground"] });
+    const f2 = (await w.pm.query(w.api.properties.listFloors, { buildingId: b2 }))[0]!._id;
+    await w.pm.mutation(w.api.properties.createUnit, { buildingId: b2, floorId: f2, number: "B-1", areaM2: 40, category: "retail", ratePerM2: etb(100) });
+    expect((await w.pm.query(w.api.properties.listBuildings, {})).map((b) => b.name).sort()).toEqual(["Block B", "Dire Mall"]);
+
+    await w.pm.mutation(w.api.properties.setBuildingArchived, { buildingId: b2, archived: true });
+    expect((await w.pm.query(w.api.properties.listBuildings, {})).map((b) => b.name)).toEqual(["Dire Mall"]);
+    expect((await w.pm.query(w.api.properties.listBuildings, { includeArchived: true })).length).toBe(2);
+    expect((await w.pm.query(w.api.properties.listUnits, {})).some((u) => u.number === "B-1")).toBe(false);
+    expect((await w.pm.query(w.api.reports.rentRoll, {})).rows.some((r) => r.unitNumber === "B-1")).toBe(false);
+    await expect(w.pm.mutation(w.api.properties.createUnit, { buildingId: b2, floorId: f2, number: "B-2", areaM2: 40, category: "retail", ratePerM2: 1 })).rejects.toThrow(/building_archived/);
+    const ov = (await w.pm.query(w.api.properties.buildingOverview, {})).find((b) => b._id === b2)!;
+    expect(ov).toMatchObject({ units: 1, floors: 1, liveAgreements: 0 }); expect(ov.archivedAt).toBeGreaterThan(0);
+
+    await w.pm.mutation(w.api.properties.updateBuilding, { buildingId: b2, name: "Block B2" }); // an edit must not bring it back
+    expect((await w.pm.query(w.api.properties.buildingOverview, {})).find((b) => b._id === b2)!.archivedAt).toBeGreaterThan(0);
+    await w.pm.mutation(w.api.properties.setBuildingArchived, { buildingId: b2, archived: false });
+    expect((await w.pm.query(w.api.properties.listUnits, {})).some((u) => u.number === "B-1")).toBe(true);
+
+    // a live lease blocks archiving
+    const unitId = await w.unit("A-1", 50); const renterId = await w.renter("Abebe");
+    await w.pm.mutation(w.api.agreements.createDraft, { unitId, renterId, startsAt: Date.now(), endsAt: Date.now() + 365 * 86_400_000, rent: { kind: "fixed", amount: etb(1000) }, dueDay: 5, depositAmount: 0 });
+    await expect(w.pm.mutation(w.api.properties.setBuildingArchived, { buildingId: w.buildingId, archived: true })).rejects.toThrow(/building_has_leases/);
+    await expect(w.fin.mutation(w.api.properties.setBuildingArchived, { buildingId: b2, archived: true })).rejects.toThrow(/forbidden/);
+  });
+});

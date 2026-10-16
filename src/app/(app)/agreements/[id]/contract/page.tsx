@@ -15,7 +15,7 @@ export default function Contract() {
   const { id } = useParams<{ id: string }>();
   const { t, lang } = useI18n(); const router = useRouter();
   const d = useQuery(api.agreements.get, { agreementId: id as Id<"agreements"> });
-  const buildings = useQuery(api.properties.listBuildings); const org = useQuery(api.settings.org) as { name: string; tin?: string; address?: string } | undefined;
+  const buildings = useQuery(api.properties.listBuildings, {}); const org = useQuery(api.settings.org) as { name: string; tin?: string; address?: string } | undefined;
   if (!d || !buildings) return <Card><Skeleton lines={8} /></Card>;
   const { agreement: a, unit, renter } = d;
   const first = d.terms.slice().sort((x, y) => x.effectiveFrom - y.effectiveFrom)[0];

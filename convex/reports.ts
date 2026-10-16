@@ -13,8 +13,9 @@ const DAY = 86_400_000;
 
 async function scopedUnits(ctx: QueryCtx, u: Doc<"users">, buildingId?: Id<"buildings">) {
   if (buildingId) assertBuilding(u, buildingId);
+  const inService = new Set((await ctx.db.query("buildings").collect()).filter((b) => !b.archivedAt).map((b) => b._id));
   const units = await ctx.db.query("units").collect();
-  return units.filter((x) => canSeeBuilding(u, x.buildingId) && (!buildingId || x.buildingId === buildingId));
+  return units.filter((x) => inService.has(x.buildingId) && canSeeBuilding(u, x.buildingId) && (!buildingId || x.buildingId === buildingId));
 }
 
 /** Is this bill in a building the user may see (and the chosen one, if any)? */
