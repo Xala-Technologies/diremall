@@ -173,3 +173,10 @@ Open **Settings**. Five tabs:
 - **Buildings**: the register of buildings. **Add building** and **Manage building** (details, floors, floor plans) live here. Only buildings added here and not archived appear anywhere else in the app. *Archive* takes a building out of service without deleting anything; it is refused while the building has live agreements. *Restore* brings it back.
 - **Billing and leases**: electricity and water tariffs and how many days before a lease ends to warn. Reminder days and quiet hours are on the SMS page.
 - **Security**: your two-step sign-in, the rule that makes it compulsory for staff, and a shortcut to Staff access.
+
+## Deleting records added by mistake
+Records can be deleted for good only while nothing depends on them. Everything else is kept so the books add up. Every deletion is recorded in History.
+- **Building** (Settings, Buildings, *Delete*): only if none of its units ever had a lease, meter reading or shared cost. Its empty units and floors go with it. Otherwise use *Archive*.
+- **Floor** (Manage building): only an empty floor. **Unit** (Edit unit): only a unit with no leases, readings or shared costs.
+- **Renter** (renter page): only a renter with no leases, bills, payments or credit. Their documents and messages go with them.
+- **Agreement**: only a draft or one in review. Once approved, it stays on the record and is ended with *Terminate*.

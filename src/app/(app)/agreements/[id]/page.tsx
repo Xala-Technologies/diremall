@@ -9,6 +9,7 @@ import { Badge, Card, ConfirmDialog, DateField, DateText, Field, Message, Modal,
 import { formatEtb, periodText } from "@/lib/format";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { Icon } from "@/components/icons";
+import { DeleteButton } from "@/components/DeleteButton";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useOpenFile } from "@/lib/useOpenFile";
@@ -23,7 +24,7 @@ export default function AgreementPage() {
   const dep = useQuery(api.deposits.get, d && ["active", "expired", "terminated"].includes(d.agreement.status) ? { agreementId } : "skip");
   const attach = useMutation(api.agreements.attachSignedCopy); const submit = useMutation(api.agreements.submitForReview);
   const approve = useMutation(api.agreements.approve); const back = useMutation(api.agreements.returnForCorrection);
-  const terminate = useMutation(api.agreements.terminate); const handover = useMutation(api.agreements.recordHandover);
+  const removeDraft = useMutation(api.removals.deleteDraftAgreement); const terminate = useMutation(api.agreements.terminate); const handover = useMutation(api.agreements.recordHandover);
   const receive = useMutation(api.deposits.receive); const refund = useMutation(api.deposits.refund);
   const reqDed = useMutation(api.deposits.requestDeduction); const appDed = useMutation(api.deposits.approveDeduction);
   const upload = useUpload(); const openFile = useOpenFile(); const { run, error, notice } = useRun();
@@ -45,6 +46,7 @@ export default function AgreementPage() {
         {can("approver") && a.status === "inReview" && <>
           <button className="btn primary" disabled={mine} title={mine ? t("err.same_person_cannot_approve") : ""} onClick={() => setDlg("approve")}>{t("ag.approve")}</button>
           <button className="btn" onClick={() => setDlg("return")}>{t("ag.return")}</button></>}
+        {can("propertyManager") && (a.status === "draft" || a.status === "inReview") && <DeleteButton small={false} title={t("ag.deleteTitle")} message={t("ag.deleteBody")} onDelete={() => removeDraft({ agreementId })} onDone={() => router.push("/agreements")} />}
         {can("approver") && a.status === "active" && <><button className="btn" onClick={() => setDlg("terms")}>{t("ag.renew")}</button><button className="btn danger" onClick={() => setDlg("terminate")}>{t("ag.terminate")}</button></>}
       
       </PageHeader>

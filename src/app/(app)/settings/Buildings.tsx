@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { BuildingForm, BuildingManage, type BuildingDoc } from "@/components/BuildingForms";
+import { DeleteButton } from "@/components/DeleteButton";
 import { Badge, Card, ConfirmDialog, Empty, Message, Skeleton } from "@/components/ui";
 import { pct } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -13,7 +14,7 @@ import { useRun } from "@/lib/useRun";
 /** The register of buildings. Only buildings added here (and not archived) appear anywhere else in the app. */
 export function Buildings() {
   const { t } = useI18n(); const { can } = useMe(); const list = useQuery(api.properties.buildingOverview);
-  const archive = useMutation(api.properties.setBuildingArchived); const { run, error } = useRun();
+  const archive = useMutation(api.properties.setBuildingArchived); const remove = useMutation(api.removals.deleteBuilding); const { run, error } = useRun();
   const [adding, setAdding] = useState(false); const [managing, setManaging] = useState<Id<"buildings"> | null>(null); const [archiving, setArchiving] = useState<Id<"buildings"> | null>(null);
   const edit = can("propertyManager");
   if (!list) return <Card><Skeleton lines={5} /></Card>;
@@ -36,6 +37,7 @@ export function Buildings() {
         {!b.archivedAt && <button className="btn sm" onClick={() => setManaging(b._id)}>{t("prop.manage")}</button>}
         {b.archivedAt ? <button className="btn sm" onClick={() => void run(() => archive({ buildingId: b._id, archived: false }), t("saved"))}>{t("set.restore")}</button>
           : <button className="btn sm" disabled={b.liveAgreements > 0} title={b.liveAgreements > 0 ? t("set.cannotArchive").replace("{n}", String(b.liveAgreements)) : undefined} onClick={() => setArchiving(b._id)}>{t("set.archive")}</button>}
+        <DeleteButton title={t("set.deleteTitle").replace("{name}", b.name)} message={t("set.deleteBody").replace("{u}", String(b.units)).replace("{f}", String(b.floors))} disabledReason={b.deletable ? undefined : t("set.cannotDelete")} onDelete={() => remove({ buildingId: b._id })} />
       </div>}
     </li>
   );

@@ -40,6 +40,7 @@ import type * as mfa from "../mfa.js";
 import type * as migrations from "../migrations.js";
 import type * as payments from "../payments.js";
 import type * as properties from "../properties.js";
+import type * as removals from "../removals.js";
 import type * as renters from "../renters.js";
 import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   payments: typeof payments;
   properties: typeof properties;
+  removals: typeof removals;
   renters: typeof renters;
   reports: typeof reports;
   seed: typeof seed;

@@ -21,12 +21,13 @@ export const buildingOverview = query({
   args: {},
   handler: async (ctx) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const [buildings, units, floors, agreements] = await Promise.all([ctx.db.query("buildings").collect(), ctx.db.query("units").collect(), ctx.db.query("floors").collect(), ctx.db.query("agreements").collect()]);
+    const [buildings, units, floors, agreements, costs] = await Promise.all([ctx.db.query("buildings").collect(), ctx.db.query("units").collect(), ctx.db.query("floors").collect(), ctx.db.query("agreements").collect(), ctx.db.query("sharedCosts").collect()]);
     const unitBuilding = new Map(units.map((x) => [x._id, x.buildingId]));
+    const withLease = new Set(agreements.map((a) => unitBuilding.get(a.unitId)));
     return buildings.filter((b) => canSeeBuilding(u, b._id)).map((b) => {
       const mine = units.filter((x) => x.buildingId === b._id);
       const live = agreements.filter((a) => unitBuilding.get(a.unitId) === b._id && (a.status === "active" || a.status === "inReview" || a.status === "draft")).length;
-      return { ...b, floors: floors.filter((f) => f.buildingId === b._id).length, units: mine.length, occupied: mine.filter((x) => x.status === "occupied").length, areaM2: mine.reduce((a, x) => a + x.areaM2, 0), liveAgreements: live };
+      return { ...b, floors: floors.filter((f) => f.buildingId === b._id).length, units: mine.length, occupied: mine.filter((x) => x.status === "occupied").length, areaM2: mine.reduce((a, x) => a + x.areaM2, 0), liveAgreements: live, deletable: !withLease.has(b._id) && !costs.some((c) => c.buildingId === b._id) && mine.length <= 400 };
     });
   },
 });

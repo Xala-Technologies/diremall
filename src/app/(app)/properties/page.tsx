@@ -11,6 +11,7 @@ import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
 import { Kpi } from "@/components/ui";
 import { pct } from "@/lib/format";
 import Link from "next/link";
+import { DeleteButton } from "@/components/DeleteButton";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -121,7 +122,7 @@ type UnitRow = { _id: Id<"units">; buildingId: Id<"buildings">; floorId: Id<"flo
 
 /** Add a unit, or edit one. A leased unit's area and rate are locked: those change through an agreement term. */
 function UnitForm({ buildingId, unit, onClose }: { buildingId: Id<"buildings">; unit?: UnitRow; onClose: () => void }) {
-  const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const update = useMutation(api.properties.updateUnit); const { run, error, busy } = useRun();
+  const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const update = useMutation(api.properties.updateUnit); const removeUnit = useMutation(api.removals.deleteUnit); const { run, error, busy } = useRun();
   const floors = useQuery(api.properties.listFloors, { buildingId });
   const [floorId, setFloorId] = useState<string>(unit?.floorId ?? ""); const [number, setNumber] = useState(unit?.number ?? ""); const [area, setArea] = useState(unit ? String(unit.areaM2) : "");
   const [category, setCategory] = useState<UnitRow["category"]>(unit?.category ?? "retail"); const [rate, setRate] = useState<number | null>(unit ? unit.ratePerM2 : null);
@@ -149,7 +150,7 @@ function UnitForm({ buildingId, unit, onClose }: { buildingId: Id<"buildings">; 
         {!unit && <Field label={t("prop.unitStatus")}><select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}><option value="vacant">{t("vacant")}</option><option value="maintenance">{t("maintenance")}</option></select></Field>}
         {locked && <p className="muted wide">{t("prop.rateLocked")}</p>}
         <div className="wide"><Field label={t("prop.unitNotes")} hint={t("optional")}><textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field></div>
-        <div className="wide"><Message error={error} /><button className="btn primary" disabled={busy}>{unit ? t("save") : t("create")}</button></div>
+        <div className="wide row"><Message error={error} /><button className="btn primary" disabled={busy}>{unit ? t("save") : t("create")}</button>{unit && <DeleteButton small={false} title={t("prop.deleteUnitTitle").replace("{n}", unit.number)} message={t("prop.deleteUnitBody")} disabledReason={locked ? t("prop.cannotDeleteUnit") : undefined} onDelete={() => removeUnit({ unitId: unit._id })} onDone={onClose} />}</div>
       </form>
     </Modal>
   );

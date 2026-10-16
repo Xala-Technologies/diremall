@@ -16,6 +16,7 @@ import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
 import { Kpi } from "@/components/ui";
 import { pct } from "@/lib/format";
 import { useToast } from "@/components/toast";
+import { DeleteButton } from "@/components/DeleteButton";
 import { useOpenFile } from "@/lib/useOpenFile";
 import { useUpload } from "@/lib/useUpload";
 
@@ -128,12 +129,12 @@ function RenterDetail({ id, onClose }: { id: Id<"renters">; onClose: () => void 
   const data = useQuery(api.renters.get, { renterId: id });
   const ledger = useQuery(api.reports.tenantLedger, { renterId: id });
   const credit = useQuery(api.payments.credit, { renterId: id });
-  const add = useMutation(api.renters.addDocument); const upload = useUpload(); const { run, error, notice } = useRun();
+  const add = useMutation(api.renters.addDocument); const remove = useMutation(api.removals.deleteRenter); const upload = useUpload(); const { run, error, notice } = useRun();
   const [kind, setKind] = useState("Business licence"); const [editing, setEditing] = useState(false);
   return (
     <Modal title={data?.renter.name ?? t("loading")} onClose={onClose}>
       {data && <div className="stack">
-        <Card title={t("renter.details")} actions={can("propertyManager", "financeOfficer") ? <button className="btn sm" onClick={() => setEditing(true)}>{t("renter.edit")}</button> : undefined}>
+        <Card title={t("renter.details")} actions={can("propertyManager", "financeOfficer") ? <div className="row"><button className="btn sm" onClick={() => setEditing(true)}>{t("renter.edit")}</button><DeleteButton title={t("renter.deleteTitle").replace("{name}", data.renter.name)} message={t("renter.deleteBody")} onDelete={() => remove({ renterId: id })} onDone={onClose} /></div> : undefined}>
           <dl className="dl">
             <div><dt>{t("renter.kind")}</dt><dd>{t(data.renter.kind)}</dd></div>
             <div><dt>{t("renter.phone")}</dt><dd>{data.renter.phone}</dd></div>

@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { DeleteButton } from "@/components/DeleteButton";
 import { Field, Message, Modal, Skeleton } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 import { useRun } from "@/lib/useRun";
@@ -51,7 +52,7 @@ export function BuildingForm({ onClose, onCreated }: { onClose: () => void; onCr
 
 /** Edit a building's details and look after its floors and floor plans in one place. */
 export function BuildingManage({ building, onClose }: { building: BuildingDoc; onClose: () => void }) {
-  const { t } = useI18n(); const update = useMutation(api.properties.updateBuilding); const addFloor = useMutation(api.properties.addFloor); const updateFloor = useMutation(api.properties.updateFloor);
+  const { t } = useI18n(); const update = useMutation(api.properties.updateBuilding); const addFloor = useMutation(api.properties.addFloor); const updateFloor = useMutation(api.properties.updateFloor); const removeFloor = useMutation(api.removals.deleteFloor);
   const floors = useQuery(api.properties.listFloors, { buildingId: building._id }); const upload = useUpload(); const openFile = useOpenFile();
   const { run, error, busy } = useRun(); const floorRun = useRun();
   const [f, setF] = useState(draftOf(building)); const [errs, setErrs] = useState<Record<string, string>>({});
@@ -81,6 +82,7 @@ export function BuildingManage({ building, onClose }: { building: BuildingDoc; o
                   {fl.hasPlan && <button type="button" className="btn sm" onClick={() => void openFile("plan", fl._id)}>{t("prop.viewPlan")}</button>}
                   <label className="btn sm">{fl.hasPlan ? t("prop.replacePlan") : t("prop.attachPlan")}
                     <input type="file" hidden accept={FILE_ACCEPT} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; pick(file, (x) => void floorRun.run(async () => updateFloor({ floorId: fl._id, planFileId: await upload(x) }), t("saved"))); }} /></label>
+                  <DeleteButton title={t("prop.deleteFloorTitle").replace("{name}", fl.label)} message={t("prop.deleteFloorBody")} onDelete={() => removeFloor({ floorId: fl._id })} />
                 </li>))}
             </ul>)}
           <form className="floor-add" onSubmit={async (e) => {
