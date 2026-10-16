@@ -125,6 +125,8 @@ function UnitForm({ buildingId: presetBuilding, unit, onClose }: { buildingId: I
   // from the unit board with no building chosen, the form asks which building the unit belongs to
   const [pickedBuilding, setPickedBuilding] = useState<string>(presetBuilding); const buildings = useQuery(api.properties.listBuildings, {});
   const buildingId = pickedBuilding as Id<"buildings">;
+  const addFloor = useMutation(api.properties.addFloor); const floorRun = useRun(); const [addingFloor, setAddingFloor] = useState(false); const [newFloor, setNewFloor] = useState("");
+  const makeFloor = async () => { const id = await floorRun.run(() => addFloor({ buildingId, label: newFloor.trim() })); if (id) { setFloorId(id); setNewFloor(""); setAddingFloor(false); } };
   const { t } = useI18n(); const create = useMutation(api.properties.createUnit); const update = useMutation(api.properties.updateUnit); const removeUnit = useMutation(api.removals.deleteUnit); const { run, error, busy } = useRun();
   const floors = useQuery(api.properties.listFloors, buildingId ? { buildingId } : "skip");
   const [floorId, setFloorId] = useState<string>(unit?.floorId ?? ""); const [number, setNumber] = useState(unit?.number ?? ""); const [area, setArea] = useState(unit ? String(unit.areaM2) : "");
@@ -146,7 +148,14 @@ function UnitForm({ buildingId: presetBuilding, unit, onClose }: { buildingId: I
         if (ok !== undefined) onClose();
       }}>
         {!unit && !presetBuilding && <SelectField label={t("building")} error={errs.building} value={pickedBuilding} onChange={(v) => { setPickedBuilding(v); setFloorId(""); clear("building"); }} options={(buildings ?? []).map((b) => ({ value: b._id, label: b.name }))} />}
-        <SelectField label={t("prop.floor")} error={errs.floor} value={chosenFloor} onChange={(v) => { setFloorId(v); clear("floor"); }} options={(floors ?? []).map((f) => ({ value: f._id, label: f.label }))} />
+        <div className="stack tight">
+          <SelectField label={t("prop.floor")} error={errs.floor} value={chosenFloor} onChange={(v) => { setFloorId(v); clear("floor"); }} options={(floors ?? []).map((f) => ({ value: f._id, label: f.label }))} />
+          {buildingId && !addingFloor && <button type="button" className="link-btn" onClick={() => setAddingFloor(true)}>+ {t("prop.addFloor")}</button>}
+          {buildingId && addingFloor && <div className="row floor-quick"><input autoFocus aria-label={t("prop.newFloor")} placeholder={t("prop.newFloor")} value={newFloor} onChange={(e) => setNewFloor(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void makeFloor(); } }} />
+            <button type="button" className="btn sm primary" disabled={!newFloor.trim() || floorRun.busy} onClick={() => void makeFloor()}>{t("prop.addFloor")}</button>
+            <button type="button" className="btn sm ghost" onClick={() => { setAddingFloor(false); setNewFloor(""); }}>{t("cancel")}</button></div>}
+          <Message error={floorRun.error} />
+        </div>
         <Field label={t("prop.unitNumber")} error={errs.number}><input autoFocus value={number} onChange={(e) => { setNumber(e.target.value); clear("number"); }} /></Field>
         <Field label={t("prop.area")} error={errs.area}><input inputMode="decimal" value={area} disabled={locked} onChange={(e) => { setArea(e.target.value); clear("area"); }} /></Field>
         <SelectField label={t("prop.category")} value={category} onChange={(v) => setCategory(v as UnitRow["category"])} options={(["office", "retail", "storage", "residential"] as const).map((c) => ({ value: c, label: t(c) }))} />

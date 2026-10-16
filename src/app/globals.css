@@ -474,3 +474,6 @@ textarea { font: inherit; resize: vertical; }
 
 @media (max-width: 640px) { .section-tabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-inline-end: 24px; } }
 .th-sort { min-height: 32px; }
+
+.link-btn { all: unset; cursor: pointer; color: var(--ds-color-accent-text-default, var(--viz)); font-weight: 500; font-size: .875rem; padding: 4px 0; width: fit-content; } .link-btn:hover { text-decoration: underline; } .link-btn:focus-visible { outline: 3px solid var(--ds-color-accent-border-default); outline-offset: 2px; border-radius: 4px; }
+.stack.tight { gap: 6px; } .floor-quick { gap: 8px; flex-wrap: nowrap; } .floor-quick input { flex: 1; min-width: 0; }
