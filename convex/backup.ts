@@ -14,6 +14,7 @@ const TABLES = [
   "invoices", "invoiceLines", "invoiceAdjustments", "payments", "paymentAllocations", "renterCredits", "deposits",
   "meters", "meterReadings", "sharedCosts", "sharedCostAllocations", "handovers", "settings", "bankStatementEntries",
   "smsMessages", "auditLog", "mfaSecrets",
+  "organizations", "memberships", "accessRequests", "invites", "organization", "smsTemplates", "smsConfig", "supportSessions", "platformAudit", "dataExports", "fileOwners",
 ] as const;
 
 // money columns to add up, as "table.field" (payments are also split by status)
