@@ -2,10 +2,11 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { READ_ROLES, assertBuilding, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, requireRole } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
 import { activeAgreementsByUnit, renterMap, unitMap } from "./lib/bulk";
 import { periodRange } from "./lib/period";
 import { allocateSharedCost } from "./lib/billing";
-import { assertUnitVisible } from "./lib/scope";
+import { assertUnitVisible, assertBuildingIn } from "./lib/scope";
 
 const kind = v.union(v.literal("water"), v.literal("electricity"));
 
@@ -14,7 +15,7 @@ export const addMeter = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
     await assertUnitVisible(ctx, u, a.unitId);
-    const id = await ctx.db.insert("meters", a);
+    const id = await ctx.db.insert("meters", { orgId: u.orgId, ...a });
     await audit(ctx, u, "meter.create", "meters", id, a.serial);
     return id;
   },
@@ -37,7 +38,7 @@ export const enterReading = mutation({
   args: { meterId: v.id("meters"), value: v.number(), readAt: v.number(), isReset: v.optional(v.boolean()) },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
-    const meter = (await ctx.db.get(a.meterId)) ?? fail("not_found");
+    const meter = await owned(ctx, u.orgId, a.meterId);
     await assertUnitVisible(ctx, u, meter.unitId);
     if (!Number.isFinite(a.value) || a.value < 0) fail("invalid_value");
     const prior = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", a.meterId)).collect()).filter((r) => r.status !== "flagged" && r.readAt < a.readAt);
@@ -57,7 +58,7 @@ export const enterReading = mutation({
     // A reading dated before one that is already there must not be higher than it, or the later one would look like a step backwards.
     const later = (await ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", a.meterId)).collect()).filter((r) => r.status !== "flagged" && r.readAt > a.readAt && !r.isReset).sort((x, y) => x.readAt - y.readAt)[0];
     if (later && !a.isReset && a.value > later.value) status = "flagged";
-    const id = await ctx.db.insert("meterReadings", { meterId: a.meterId, value: a.value, readAt: a.readAt, status, enteredBy: u._id, isReset: !!a.isReset });
+    const id = await ctx.db.insert("meterReadings", { orgId: u.orgId, meterId: a.meterId, value: a.value, readAt: a.readAt, status, enteredBy: u._id, isReset: !!a.isReset });
     await audit(ctx, u, "reading.enter", "meterReadings", id, status);
     return { id, status };
   },
@@ -67,8 +68,8 @@ export const approveReading = mutation({
   args: { readingId: v.id("meterReadings") },
   handler: async (ctx, { readingId }) => {
     const u = await requireRole(ctx, "financeOfficer", "approver");
-    const r = (await ctx.db.get(readingId)) ?? fail("not_found");
-    const meter = (await ctx.db.get(r.meterId)) ?? fail("not_found");
+    const r = await owned(ctx, u.orgId, readingId);
+    const meter = await owned(ctx, u.orgId, r.meterId);
     await assertUnitVisible(ctx, u, meter.unitId);
     if (r.status !== "draft") fail("not_a_draft_reading");
     assertDifferentPerson(r.enteredBy, u._id);
@@ -82,8 +83,8 @@ export const reviewFlagged = mutation({
   args: { readingId: v.id("meterReadings"), decision: v.union(v.literal("accept"), v.literal("reset")) },
   handler: async (ctx, { readingId, decision }) => {
     const u = await requireRole(ctx, "approver");
-    const r = (await ctx.db.get(readingId)) ?? fail("not_found");
-    const meter = (await ctx.db.get(r.meterId)) ?? fail("not_found");
+    const r = await owned(ctx, u.orgId, readingId);
+    const meter = await owned(ctx, u.orgId, r.meterId);
     await assertUnitVisible(ctx, u, meter.unitId);
     if (r.status !== "flagged") fail("not_flagged");
     assertDifferentPerson(r.enteredBy, u._id);
@@ -100,7 +101,7 @@ export const readings = query({
   args: { meterId: v.id("meters") },
   handler: async (ctx, { meterId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const m = (await ctx.db.get(meterId)) ?? fail("not_found");
+    const m = await owned(ctx, u.orgId, meterId);
     await assertUnitVisible(ctx, u, m.unitId);
     return ctx.db.query("meterReadings").withIndex("by_meter", (q) => q.eq("meterId", meterId)).collect();
   },
@@ -110,7 +111,7 @@ export const pendingReadings = query({
   args: {},
   handler: async (ctx) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const rows = (await ctx.db.query("meterReadings").collect()).filter((r) => r.status !== "approved");
+    const rows = (await inOrg(ctx, "meterReadings", u.orgId).collect()).filter((r) => r.status !== "approved");
     const out = [];
     for (const r of rows) {
       const m = await ctx.db.get(r.meterId);
@@ -126,7 +127,7 @@ export const createSharedCost = mutation({
   args: { buildingId: v.id("buildings"), kind: v.union(v.literal("generator"), v.literal("security"), v.literal("cleaning")), period: v.string(), total: v.number() },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "financeOfficer");
-    assertBuilding(u, a.buildingId);
+    await assertBuildingIn(ctx, u, a.buildingId);
     assertPeriod(a.period);
     assertSantim(a.total);
     const dupe = (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", a.buildingId).eq("period", a.period)).collect()).find((c) => c.kind === a.kind);
@@ -134,8 +135,8 @@ export const createSharedCost = mutation({
     const units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", a.buildingId)).collect();
     if (units.length === 0) fail("no_units");
     const res = allocateSharedCost(a.total, units.map((x) => ({ unitId: x._id, areaM2: x.areaM2, occupied: x.status === "occupied" })));
-    const id = await ctx.db.insert("sharedCosts", { buildingId: a.buildingId, kind: a.kind, period: a.period, total: a.total, basis: "area", ownerShare: res.ownerShare, createdBy: u._id });
-    for (const [unitId, amount] of Object.entries(res.shares)) await ctx.db.insert("sharedCostAllocations", { sharedCostId: id, unitId: unitId as any, amount });
+    const id = await ctx.db.insert("sharedCosts", { orgId: u.orgId, buildingId: a.buildingId, kind: a.kind, period: a.period, total: a.total, basis: "area", ownerShare: res.ownerShare, createdBy: u._id });
+    for (const [unitId, amount] of Object.entries(res.shares)) await ctx.db.insert("sharedCostAllocations", { orgId: u.orgId, sharedCostId: id, unitId: unitId as any, amount });
     await audit(ctx, u, "sharedCost.create", "sharedCosts", id, `${a.kind} ${a.period}`);
     return { id, ownerShare: res.ownerShare };
   },
@@ -145,7 +146,7 @@ export const approveSharedCost = mutation({
   args: { sharedCostId: v.id("sharedCosts") },
   handler: async (ctx, { sharedCostId }) => {
     const u = await requireRole(ctx, "approver");
-    const c = (await ctx.db.get(sharedCostId)) ?? fail("not_found");
+    const c = await owned(ctx, u.orgId, sharedCostId);
     assertBuilding(u, c.buildingId);
     if (c.approvedBy) fail("already_approved");
     assertDifferentPerson(c.createdBy, u._id);
@@ -158,7 +159,7 @@ export const sharedCosts = query({
   args: { buildingId: v.id("buildings"), period: v.optional(v.string()) },
   handler: async (ctx, { buildingId, period }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    assertBuilding(u, buildingId);
+    await assertBuildingIn(ctx, u, buildingId);
     const rows = await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => (period ? q.eq("buildingId", buildingId).eq("period", period) : q.eq("buildingId", buildingId))).collect();
     return Promise.all(rows.map(async (c) => ({ ...c, allocations: await ctx.db.query("sharedCostAllocations").withIndex("by_cost", (q) => q.eq("sharedCostId", c._id)).collect() })));
   },
@@ -173,10 +174,10 @@ export const register = query({
   handler: async (ctx, { period, buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
     assertPeriod(period);
-    if (buildingId) assertBuilding(u, buildingId);
+    if (buildingId) await assertBuildingIn(ctx, u, buildingId);
     const { start, end } = periodRange(period);
-    const [units, renters, leases, meters] = await Promise.all([unitMap(ctx), renterMap(ctx), activeAgreementsByUnit(ctx), ctx.db.query("meters").collect()]);
-    const tariff = { electricity: await getSetting(ctx, "tariff.electricity", 600), water: await getSetting(ctx, "tariff.water", 0) };
+    const [units, renters, leases, meters] = await Promise.all([unitMap(ctx, u.orgId), renterMap(ctx, u.orgId), activeAgreementsByUnit(ctx, u.orgId), inOrg(ctx, "meters", u.orgId).collect()]);
+    const tariff = { electricity: await getSetting(ctx, u.orgId, "tariff.electricity", 600), water: await getSetting(ctx, u.orgId, "tariff.water", 0) };
     const now = Date.now();
     const rows: {
       meterId: Id<"meters">; unitId: Id<"units">; buildingId: Id<"buildings">; unitNumber: string; renterName: string; kind: "water" | "electricity"; serial: string;

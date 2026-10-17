@@ -43,19 +43,19 @@ export const ticket = mutation({
     let storageId: Id<"_storage"> | undefined;
     if (kind === "signed") {
       const ag = ctx.db.normalizeId("agreements", id); const row = ag ? await ctx.db.get(ag) : null;
-      if (!row) return fail("not_found");
+      if (!row || row.orgId !== u.orgId) return fail("not_found");
       await assertUnitVisible(ctx, u, row.unitId); storageId = row.signedFileId;
     } else if (kind === "evidence") {
       const pid = ctx.db.normalizeId("payments", id); const row = pid ? await ctx.db.get(pid) : null;
-      if (!row) return fail("not_found");
+      if (!row || row.orgId !== u.orgId) return fail("not_found");
       await assertRenterVisible(ctx, u, row.renterId); storageId = row.evidenceFileId;
     } else if (kind === "renterDoc") {
       const did = ctx.db.normalizeId("renterDocuments", id); const row = did ? await ctx.db.get(did) : null;
-      if (!row) return fail("not_found");
+      if (!row || row.orgId !== u.orgId) return fail("not_found");
       await assertRenterVisible(ctx, u, row.renterId); storageId = row.fileId;
     } else {
       const fid = ctx.db.normalizeId("floors", id); const row = fid ? await ctx.db.get(fid) : null;
-      if (!row) return fail("not_found");
+      if (!row || row.orgId !== u.orgId) return fail("not_found");
       assertBuilding(u, row.buildingId); storageId = row.planFileId;
     }
     if (!storageId) return fail("not_found");

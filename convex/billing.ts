@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertPeriod, assertSantim, audit, canSeeBuilding, fail, getSetting, nextSeq, requireRole } from "./lib/access";
+import { inOrg, owned, ownedOrNull } from "./lib/tenant";
 import { escalatedRent, monthlyRent } from "./lib/billing";
 import { renterMap, unitMap } from "./lib/bulk";
 import { invoiceBalance, refreshInvoice, termAt } from "./lib/ledger";
@@ -28,10 +29,10 @@ export const generate = mutation({
     let done = true;
     const { start, end, days } = periodRange(period);
     if (start > Date.now() + 31 * 86_400_000) fail("period_in_future");
-    const tariffElectricity = await getSetting(ctx, "tariff.electricity", etb(6));
-    const tariffWater = await getSetting(ctx, "tariff.water", 0);
+    const tariffElectricity = await getSetting(ctx, u.orgId, "tariff.electricity", etb(6));
+    const tariffWater = await getSetting(ctx, u.orgId, "tariff.water", 0);
 
-    const agreements = (await ctx.db.query("agreements").collect()).filter((a) => a.status === "active" || a.status === "expired" || a.status === "terminated");
+    const agreements = (await inOrg(ctx, "agreements", u.orgId).collect()).filter((a) => a.status === "active" || a.status === "expired" || a.status === "terminated");
     const created: string[] = [];
     const skipped: { agreementId: string; reason: string }[] = [];
 
@@ -52,7 +53,7 @@ export const generate = mutation({
         continue;
       }
 
-      const lines: Omit<Doc<"invoiceLines">, "_id" | "_creationTime" | "invoiceId">[] = [];
+      const lines: Omit<Doc<"invoiceLines">, "_id" | "_creationTime" | "invoiceId" | "orgId">[] = [];
       const base = monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: term.rent.ratePerM2 });
       const esc = escalatedRent(base, term.escalation, term.effectiveFrom, start);
       const monthly = esc.amount;
@@ -90,8 +91,8 @@ export const generate = mutation({
 
       const total = lines.reduce((s, l) => s + l.amount, 0);
       const dueAt = start + (term.dueDay - 1) * DAY;
-      const invoiceId = await ctx.db.insert("invoices", { number: "", agreementId: ag._id, unitId: unit._id, buildingId: unit.buildingId, renterId: ag.renterId, period, status: "draft", total, dueAt });
-      for (const l of lines) await ctx.db.insert("invoiceLines", { ...l, invoiceId });
+      const invoiceId = await ctx.db.insert("invoices", { orgId: u.orgId, number: "", agreementId: ag._id, unitId: unit._id, buildingId: unit.buildingId, renterId: ag.renterId, period, status: "draft", total, dueAt });
+      for (const l of lines) await ctx.db.insert("invoiceLines", { orgId: u.orgId, ...l, invoiceId });
       created.push(invoiceId);
     }
     await audit(ctx, u, "billing.generate", "invoices", period, `created=${created.length} skipped=${skipped.length}`);
@@ -108,12 +109,12 @@ export const addDraftLine = mutation({
   args: { invoiceId: v.id("invoices"), kind: lineKind, description: v.string(), amount: v.number(), calcNote: v.string() },
   handler: async (ctx, { invoiceId, ...line }) => {
     const u = await requireRole(ctx, "financeOfficer");
-    const inv = (await ctx.db.get(invoiceId)) ?? fail("not_found");
+    const inv = await owned(ctx, u.orgId, invoiceId);
     await assertUnitVisible(ctx, u, inv.unitId);
     if (inv.status !== "draft") fail("invoice_already_issued");
     // Manual lines can only add charges. Discounts go through an approved correction, so no one can quietly reduce a renter's bill.
     assertSantim(line.amount);
-    await ctx.db.insert("invoiceLines", { invoiceId, ...line });
+    await ctx.db.insert("invoiceLines", { orgId: u.orgId, invoiceId, ...line });
     await ctx.db.patch(invoiceId, { total: await recomputeTotal(ctx as any, invoiceId) });
     await audit(ctx, u, "invoice.addLine", "invoices", invoiceId, line.description);
   },
@@ -123,7 +124,7 @@ export const discardDraft = mutation({
   args: { invoiceId: v.id("invoices") },
   handler: async (ctx, { invoiceId }) => {
     const u = await requireRole(ctx, "financeOfficer");
-    const inv = (await ctx.db.get(invoiceId)) ?? fail("not_found");
+    const inv = await owned(ctx, u.orgId, invoiceId);
     await assertUnitVisible(ctx, u, inv.unitId);
     if (inv.status !== "draft") fail("invoice_already_issued");
     for (const l of await ctx.db.query("invoiceLines").withIndex("by_invoice", (q) => q.eq("invoiceId", invoiceId)).collect()) await ctx.db.delete(l._id);
@@ -140,20 +141,20 @@ export const issue = mutation({
     // each bill takes about a dozen lookups; the screen sends them in groups that stay under the 4,096-lookup cap
     if (invoiceIds.length > 200) fail("issue_in_smaller_groups");
     const numbers: string[] = [];
-    const notify = (await smsRules(ctx)).issued; // optional "your bill is ready" message, off unless switched on in Settings
+    const notify = (await smsRules(ctx, u.orgId)).issued; // optional "your bill is ready" message, off unless switched on in Settings
     for (const id of invoiceIds) {
-      const inv = (await ctx.db.get(id)) ?? fail("not_found");
+      const inv = await owned(ctx, u.orgId, id);
       await assertUnitVisible(ctx, u, inv.unitId);
       if (inv.status !== "draft") continue;
       if (inv.total <= 0) fail("zero_total_needs_review");
-      const n = await nextSeq(ctx, `invoiceSeq:${inv.period}`);
+      const n = await nextSeq(ctx, u.orgId, `invoiceSeq:${inv.period}`);
       const number = `INV-${inv.period}-${String(n).padStart(4, "0")}`;
       await ctx.db.patch(id, { status: "issued", number, issuedBy: u._id, issuedAt: Date.now(), buildingId: (await ctx.db.get(inv.unitId))?.buildingId });
       await refreshInvoice(ctx, id);
       await audit(ctx, u, "invoice.issue", "invoices", id, number);
       if (notify) {
         const renter = await ctx.db.get(inv.renterId); const lang = renter?.smsLanguage ?? "en";
-        await queueTemplated(ctx, { renterId: inv.renterId, template: "billIssued", dedupeKey: `issued:${id}`, invoiceId: id, renter, vars: { bill: number, amount: smsMoney(inv.total), due: smsDate(inv.dueAt, lang), unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
+        await queueTemplated(ctx, { orgId: u.orgId, renterId: inv.renterId, template: "billIssued", dedupeKey: `issued:${id}`, invoiceId: id, renter, vars: { bill: number, amount: smsMoney(inv.total), due: smsDate(inv.dueAt, lang), unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
       }
       numbers.push(number);
     }
@@ -166,7 +167,7 @@ export const requestAdjustment = mutation({
   args: { invoiceId: v.id("invoices"), delta: v.number(), reason: v.string() },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "financeOfficer");
-    const inv = (await ctx.db.get(a.invoiceId)) ?? fail("not_found");
+    const inv = await owned(ctx, u.orgId, a.invoiceId);
     await assertUnitVisible(ctx, u, inv.unitId);
     if (inv.status !== "issued") fail("only_issued_invoices");
     if (!a.reason.trim()) fail("reason_and_amount_required");
@@ -174,7 +175,7 @@ export const requestAdjustment = mutation({
     if (a.delta === 0) fail("reason_and_amount_required");
     // a correction cannot take more off than the bill is worth
     if (inv.total + (await invoiceBalance(ctx, inv)).adjustments + a.delta < 0) fail("adjustment_exceeds_bill");
-    const id = await ctx.db.insert("invoiceAdjustments", { invoiceId: a.invoiceId, delta: a.delta, reason: a.reason, requestedBy: u._id });
+    const id = await ctx.db.insert("invoiceAdjustments", { orgId: u.orgId, invoiceId: a.invoiceId, delta: a.delta, reason: a.reason, requestedBy: u._id });
     await audit(ctx, u, "invoice.adjustRequest", "invoices", a.invoiceId, a.reason);
     return id;
   },
@@ -184,8 +185,8 @@ export const approveAdjustment = mutation({
   args: { adjustmentId: v.id("invoiceAdjustments") },
   handler: async (ctx, { adjustmentId }) => {
     const u = await requireRole(ctx, "approver");
-    const adj = (await ctx.db.get(adjustmentId)) ?? fail("not_found");
-    const inv = (await ctx.db.get(adj.invoiceId)) ?? fail("not_found");
+    const adj = await owned(ctx, u.orgId, adjustmentId);
+    const inv = await owned(ctx, u.orgId, adj.invoiceId);
     await assertUnitVisible(ctx, u, inv.unitId);
     if (adj.approvedBy) fail("already_approved");
     assertDifferentPerson(adj.requestedBy, u._id);
@@ -196,7 +197,7 @@ export const approveAdjustment = mutation({
     // If the bill was already paid, a reduction leaves the renter with money they should not have paid: it becomes their credit.
     const after = (await ctx.db.get(adj.invoiceId))!;
     if ((after.due ?? 0) < 0) {
-      await ctx.db.insert("renterCredits", { renterId: after.renterId, invoiceId: after._id, amount: -(after.due ?? 0) });
+      await ctx.db.insert("renterCredits", { orgId: u.orgId, renterId: after.renterId, invoiceId: after._id, amount: -(after.due ?? 0) });
       await refreshInvoice(ctx, adj.invoiceId);
     }
     await audit(ctx, u, "invoice.adjustApprove", "invoices", adj.invoiceId, String(adj.delta));
@@ -207,7 +208,7 @@ export const pendingAdjustments = query({
   args: {},
   handler: async (ctx) => {
     const u = await requireRole(ctx, "approver", "financeOfficer", "auditor");
-    const rows = (await ctx.db.query("invoiceAdjustments").collect()).filter((a) => !a.approvedBy);
+    const rows = (await inOrg(ctx, "invoiceAdjustments", u.orgId).collect()).filter((a) => !a.approvedBy);
     const out = [];
     for (const a of rows) {
       const inv = await ctx.db.get(a.invoiceId);
@@ -222,13 +223,13 @@ export const list = query({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, ...READ_ROLES);
     const rows = a.period
-      ? await ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("period", a.period!)).collect()
+      ? await ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("orgId", u.orgId).eq("period", a.period!)).collect()
       : a.renterId
         ? await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", a.renterId!)).collect()
-        : await ctx.db.query("invoices").order("desc").take(300); // newest first; ask for a period to see more
+        : await inOrg(ctx, "invoices", u.orgId).order("desc").take(300); // newest first; ask for a period to see more
     const wanted = rows.filter((inv) => (!a.status || inv.status === a.status) && (!a.renterId || inv.renterId === a.renterId));
     // units and renters are read once as a whole, not once per bill (Convex caps lookups per call at 4,096)
-    const [units, renters] = wanted.length > 40 ? await Promise.all([unitMap(ctx), renterMap(ctx)]) : [null, null];
+    const [units, renters] = wanted.length > 40 ? await Promise.all([unitMap(ctx, u.orgId), renterMap(ctx, u.orgId)]) : [null, null];
     const built = await Promise.all(wanted.map(async (inv) => {
       const [unit, bal, renter] = await Promise.all([units ? units.get(inv.unitId) : ctx.db.get(inv.unitId), invoiceBalance(ctx, inv), renters ? renters.get(inv.renterId) : ctx.db.get(inv.renterId)]);
       if (!unit || !canSeeBuilding(u, unit.buildingId)) return null;
@@ -244,7 +245,7 @@ export const get = query({
   args: { invoiceId: v.id("invoices") },
   handler: async (ctx, { invoiceId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const inv = (await ctx.db.get(invoiceId)) ?? fail("not_found");
+    const inv = await owned(ctx, u.orgId, invoiceId);
     const unit = await assertUnitVisible(ctx, u, inv.unitId);
     const lines = await ctx.db.query("invoiceLines").withIndex("by_invoice", (q) => q.eq("invoiceId", invoiceId)).collect();
     const adjustments = await ctx.db.query("invoiceAdjustments").withIndex("by_invoice", (q) => q.eq("invoiceId", invoiceId)).collect();
@@ -262,9 +263,9 @@ export const get = query({
 export const latestPeriod = query({
   args: {},
   handler: async (ctx) => {
-    await requireRole(ctx, ...READ_ROLES);
+    const u = await requireRole(ctx, ...READ_ROLES);
     // newest issued bill wins; months that only hold drafts do not count
-    const recent = await ctx.db.query("invoices").withIndex("by_period").order("desc").take(200);
+    const recent = await ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("orgId", u.orgId)).order("desc").take(200);
     return (recent.find((i) => i.status === "issued") ?? recent[0])?.period ?? null;
   },
 });
@@ -284,20 +285,20 @@ export const sendReminders = mutation({
     const skipped: { invoiceId: string; reason: string }[] = [];
     let sent = 0;
     for (const id of new Set(invoiceIds)) {
-      const inv = await ctx.db.get(id);
+      const inv = await ownedOrNull(ctx, u.orgId, id);
       if (!inv) { skipped.push({ invoiceId: id, reason: "not_found" }); continue; }
       await assertUnitVisible(ctx, u, inv.unitId);
       if (inv.status !== "issued") { skipped.push({ invoiceId: id, reason: "not_issued" }); continue; }
       const bal = await invoiceBalance(ctx, inv);
       if (bal.due <= 0) { skipped.push({ invoiceId: id, reason: "already_paid" }); continue; }
       const key = `manual:${id}:${today}`;
-      if (await ctx.db.query("smsMessages").withIndex("by_dedupe", (q) => q.eq("dedupeKey", key)).first()) { skipped.push({ invoiceId: id, reason: "already_reminded_today" }); continue; }
+      if (await ctx.db.query("smsMessages").withIndex("by_dedupe", (q) => q.eq("orgId", u.orgId).eq("dedupeKey", key)).first()) { skipped.push({ invoiceId: id, reason: "already_reminded_today" }); continue; }
       const overdue = inv.dueAt < Date.now();
       const renter = await ctx.db.get(inv.renterId);
       const lang = renter?.smsLanguage ?? "en";
       const days = overdue ? Math.floor((Date.now() - inv.dueAt) / 86_400_000) : Math.max(0, Math.ceil((inv.dueAt - Date.now()) / 86_400_000));
-      const r = await queueTemplated(ctx, { renterId: inv.renterId, template: overdue ? "overdue" : "dueSoon", dedupeKey: key, invoiceId: id, renter, vars: { bill: inv.number, amount: smsMoney(bal.due), due: smsDate(inv.dueAt, lang), days, unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
-      if (r !== "queued") { skipped.push({ invoiceId: id, reason: r === "opted_out" ? "renter_opted_out" : r === "no_phone" ? "no_valid_phone" : r === "disabled" ? "template_off" : "already_reminded_today" }); continue; }
+      const r = await queueTemplated(ctx, { orgId: u.orgId, renterId: inv.renterId, template: overdue ? "overdue" : "dueSoon", dedupeKey: key, invoiceId: id, renter, vars: { bill: inv.number, amount: smsMoney(bal.due), due: smsDate(inv.dueAt, lang), days, unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
+      if (r !== "queued") { skipped.push({ invoiceId: id, reason: r === "opted_out" ? "renter_opted_out" : r === "no_phone" ? "no_valid_phone" : r === "disabled" ? "template_off" : r === "limit" ? "sms_limit_reached" : "already_reminded_today" }); continue; }
       sent++;
     }
     await audit(ctx, u, "bill.remind", "invoices", invoiceIds.length === 1 ? invoiceIds[0]! : "bulk", `sent=${sent} skipped=${skipped.length}`);

@@ -2,46 +2,47 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { READ_ROLES, assertBuilding, canSeeBuilding, requireRole } from "./lib/access";
+import { READ_ROLES, assertBuilding, canSeeBuilding, requireRole, type Principal } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
 import { ageArrears, escalatedRent, monthlyRent } from "./lib/billing";
 import { invoiceBalance, termAt } from "./lib/ledger";
 import { periodRange } from "./lib/period";
 import { activeAgreementsByUnit, renterMap, termsByAgreement } from "./lib/bulk";
-import { assertRenterVisible } from "./lib/scope";
+import { assertRenterVisible, assertBuildingIn } from "./lib/scope";
 
 const DAY = 86_400_000;
 
-async function scopedUnits(ctx: QueryCtx, u: Doc<"users">, buildingId?: Id<"buildings">) {
-  if (buildingId) assertBuilding(u, buildingId);
-  const inService = new Set((await ctx.db.query("buildings").collect()).filter((b) => !b.archivedAt).map((b) => b._id));
-  const units = await ctx.db.query("units").collect();
+async function scopedUnits(ctx: QueryCtx, u: Principal, buildingId?: Id<"buildings">) {
+  if (buildingId) await assertBuildingIn(ctx, u, buildingId);
+  const inService = new Set((await inOrg(ctx, "buildings", u.orgId).collect()).filter((b) => !b.archivedAt).map((b) => b._id));
+  const units = await inOrg(ctx, "units", u.orgId).collect();
   return units.filter((x) => inService.has(x.buildingId) && canSeeBuilding(u, x.buildingId) && (!buildingId || x.buildingId === buildingId));
 }
 
 /** Is this bill in a building the user may see (and the chosen one, if any)? */
-async function inScope(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined, inv: Doc<"invoices">) {
+async function inScope(ctx: QueryCtx, u: Principal, buildingId: Id<"buildings"> | undefined, inv: Doc<"invoices">) {
   const b = inv.buildingId ?? (await ctx.db.get(inv.unitId))?.buildingId;
   return !!b && canSeeBuilding(u, b) && (!buildingId || b === buildingId);
 }
 
 /** Issued bills for periods from..to, read through the period index (not the whole table). */
-async function rangeInvoices(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined, from: string, to: string) {
-  const rows = await ctx.db.query("invoices").withIndex("by_period", (q) => q.gte("period", from).lte("period", to)).collect();
+async function rangeInvoices(ctx: QueryCtx, u: Principal, buildingId: Id<"buildings"> | undefined, from: string, to: string) {
+  const rows = await ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("orgId", u.orgId).gte("period", from).lte("period", to)).collect();
   const out: Doc<"invoices">[] = [];
   for (const i of rows) if (i.status === "issued" && (await inScope(ctx, u, buildingId, i))) out.push(i);
   return out;
 }
 
 /** Bills that still owe money, read through the open-bills index. Paid-up history is never touched. */
-async function openInvoices(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined) {
-  const rows = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "issued").gt("due", 0)).collect();
+async function openInvoices(ctx: QueryCtx, u: Principal, buildingId: Id<"buildings"> | undefined) {
+  const rows = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("orgId", u.orgId).eq("status", "issued").gt("due", 0)).collect();
   const out: Doc<"invoices">[] = [];
   for (const i of rows) if (await inScope(ctx, u, buildingId, i)) out.push(i);
   return out;
 }
 
-async function draftCount(ctx: QueryCtx, u: Doc<"users">, buildingId: Id<"buildings"> | undefined) {
-  const rows = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("status", "draft")).collect();
+async function draftCount(ctx: QueryCtx, u: Principal, buildingId: Id<"buildings"> | undefined) {
+  const rows = await ctx.db.query("invoices").withIndex("by_status_due", (q) => q.eq("orgId", u.orgId).eq("status", "draft")).collect();
   let n = 0;
   for (const i of rows) if (await inScope(ctx, u, buildingId, i)) n++;
   return n;
@@ -67,7 +68,7 @@ export const dashboard = query({
     for (const i of await openInvoices(ctx, u, buildingId)) if (i.dueAt < Date.now()) overdue += i.due ?? 0;
 
     const renterOk = async (id: Id<"renters">) => { try { await assertRenterVisible(ctx, u, id); return true; } catch { return false; } };
-    const payments = await ctx.db.query("payments").withIndex("by_received", (q) => q.gte("receivedAt", start).lt("receivedAt", end)).collect();
+    const payments = await ctx.db.query("payments").withIndex("by_received", (q) => q.eq("orgId", u.orgId).gte("receivedAt", start).lt("receivedAt", end)).collect();
     let confirmed = 0, waiting = 0;
     for (const p of payments) {
       if (p.status !== "confirmed" && p.status !== "applied") continue;
@@ -77,14 +78,14 @@ export const dashboard = query({
     }
     // work waiting on staff is not limited to the selected month: an unconfirmed payment from last month still needs attention
     let toConfirm = 0, toApply = 0;
-    for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", "recorded")).collect()) if (await renterOk(p.renterId)) toConfirm++;
-    for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", "confirmed")).collect()) if (await renterOk(p.renterId)) toApply++;
+    for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("orgId", u.orgId).eq("status", "recorded")).collect()) if (await renterOk(p.renterId)) toConfirm++;
+    for (const p of await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("orgId", u.orgId).eq("status", "confirmed")).collect()) if (await renterOk(p.renterId)) toApply++;
 
     const horizon = Date.now() + 60 * DAY;
-    const agreements = await ctx.db.query("agreements").collect();
+    const agreements = await inOrg(ctx, "agreements", u.orgId).collect();
     const agreementById = new Map(agreements.map((a) => [a._id, a]));
     let depositsHeld = 0;
-    for (const d of await ctx.db.query("deposits").collect()) {
+    for (const d of await inOrg(ctx, "deposits", u.orgId).collect()) {
       const ag = agreementById.get(d.agreementId);
       if (ag && unitIds.has(ag.unitId)) depositsHeld += d.held - d.deductions.filter((x) => x.approvedBy).reduce((s, x) => s + x.amount, 0) - d.refunded;
     }
@@ -111,7 +112,7 @@ export const rentRoll = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     const units = await scopedUnits(ctx, u, buildingId);
     // four reads in total (units, leases, terms, renters) instead of a few per unit
-    const [leases, terms, renters] = await Promise.all([activeAgreementsByUnit(ctx), termsByAgreement(ctx), renterMap(ctx)]);
+    const [leases, terms, renters] = await Promise.all([activeAgreementsByUnit(ctx, u.orgId), termsByAgreement(ctx, u.orgId), renterMap(ctx, u.orgId)]);
     const rows = units.map((unit) => {
       const ag = leases.get(unit._id)?.[0];
       let renter = null, rent = 0;
@@ -225,12 +226,12 @@ export const leaseExpiry = query({
   args: { withinDays: v.number(), buildingId: v.optional(v.id("buildings")) },
   handler: async (ctx, { withinDays, buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    if (buildingId) assertBuilding(u, buildingId);
+    if (buildingId) await assertBuildingIn(ctx, u, buildingId);
     const units = new Map((await scopedUnits(ctx, u, buildingId)).map((x) => [x._id, x]));
-    const [renters, terms] = await Promise.all([renterMap(ctx), termsByAgreement(ctx)]);
+    const [renters, terms] = await Promise.all([renterMap(ctx, u.orgId), termsByAgreement(ctx, u.orgId)]);
     const horizon = Date.now() + Math.min(Math.max(withinDays, 1), 730) * DAY;
     const rows = [];
-    for (const ag of await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("status", "active")).collect()) {
+    for (const ag of await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("orgId", u.orgId).eq("status", "active")).collect()) {
       const unit = units.get(ag.unitId);
       if (!unit || ag.endsAt > horizon) continue;
       const dep = await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", ag._id)).unique();
@@ -249,11 +250,11 @@ export const deposits = query({
   args: { buildingId: v.optional(v.id("buildings")) },
   handler: async (ctx, { buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    if (buildingId) assertBuilding(u, buildingId);
+    if (buildingId) await assertBuildingIn(ctx, u, buildingId);
     const units = new Map((await scopedUnits(ctx, u, buildingId)).map((x) => [x._id, x]));
-    const renters = await renterMap(ctx);
+    const renters = await renterMap(ctx, u.orgId);
     const rows: { agreementId: Id<"agreements">; unitNumber: string; renterName: string; status: string; required: number; held: number; deducted: number; refunded: number; available: number; refundDue: boolean; shortfall: number }[] = [];
-    for (const dep of await ctx.db.query("deposits").collect()) {
+    for (const dep of await inOrg(ctx, "deposits", u.orgId).collect()) {
       const ag = await ctx.db.get(dep.agreementId);
       const unit = ag ? units.get(ag.unitId) : undefined;
       if (!ag || !unit) continue;

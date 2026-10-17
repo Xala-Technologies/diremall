@@ -177,19 +177,7 @@ export function useBuildingFilter(buildings: { _id: string }[] | undefined) {
   return { id: (id || undefined) as any, setId, ready: !!buildings };
 }
 
-export function PeriodPicker({ value, onChange }: { value: string; onChange: (p: string) => void }) {
-  const { calendar, lang, t } = useI18n();
-  return (
-    <div className="filter-chip" role="group" aria-label={t("period")}>
-      <button type="button" className="btn ghost sm icon-only" aria-label={t("period.prev")} onClick={() => onChange(shiftPeriod(value, -1))}><Icon name="back" size={16} /></button>
-      <input type="month" value={value} aria-label={t("period")} onChange={(e) => e.target.value && onChange(e.target.value)} />
-      <button type="button" className="btn ghost sm icon-only" aria-label={t("period.next")} onClick={() => onChange(shiftPeriod(value, 1))}><Icon name="chevron" size={16} /></button>
-      {calendar === "ethiopian" && <span className="muted chip-note">{formatPeriodLabel(value, lang)}</span>}
-    </div>
-  );
-}
-import { formatPeriod, shiftPeriod } from "@/lib/format";
-const formatPeriodLabel = (p: string, lang: "en" | "am") => formatPeriod(p, "ethiopian", lang);
+export { PeriodPicker } from "./PeriodPicker";
 
 export function BuildingSelect({ buildings, value, onChange }: { buildings: { _id: string; name: string }[] | undefined; value: string; onChange: (v: string) => void }) {
   const { t } = useI18n();

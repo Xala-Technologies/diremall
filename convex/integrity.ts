@@ -1,6 +1,9 @@
+import { v } from "convex/values";
 import { internalQuery, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { requireRole } from "./lib/access";
+import { inOrg } from "./lib/tenant";
 
 /**
  * A health check of the books: does every record point at something that exists, and do the stored figures agree with what
@@ -9,14 +12,14 @@ import { requireRole } from "./lib/access";
 export type Finding = { area: string; code: string; ref: string; detail: string };
 const CAP = 20_000;
 
-export async function scan(ctx: QueryCtx): Promise<{ findings: Finding[]; checked: Record<string, number>; truncated: boolean }> {
+export async function scan(ctx: QueryCtx, orgId: Id<"organizations">): Promise<{ findings: Finding[]; checked: Record<string, number>; truncated: boolean }> {
   const f: Finding[] = [];
   const add = (area: string, code: string, ref: string, detail = "") => { if (f.length < 500) f.push({ area, code, ref, detail }); };
   const [buildings, floors, units, renters, agreements, terms, deposits, invoices, lines, adjustments, payments, allocs, credits, meters, readings, costs, costAllocs, entries, users] = await Promise.all([
-    ctx.db.query("buildings").take(CAP), ctx.db.query("floors").take(CAP), ctx.db.query("units").take(CAP), ctx.db.query("renters").take(CAP), ctx.db.query("agreements").take(CAP),
-    ctx.db.query("agreementTerms").take(CAP), ctx.db.query("deposits").take(CAP), ctx.db.query("invoices").take(CAP), ctx.db.query("invoiceLines").take(CAP), ctx.db.query("invoiceAdjustments").take(CAP),
-    ctx.db.query("payments").take(CAP), ctx.db.query("paymentAllocations").take(CAP), ctx.db.query("renterCredits").take(CAP), ctx.db.query("meters").take(CAP), ctx.db.query("meterReadings").take(CAP),
-    ctx.db.query("sharedCosts").take(CAP), ctx.db.query("sharedCostAllocations").take(CAP), ctx.db.query("bankStatementEntries").take(CAP), ctx.db.query("users").take(CAP),
+    inOrg(ctx, "buildings", orgId).take(CAP), inOrg(ctx, "floors", orgId).take(CAP), inOrg(ctx, "units", orgId).take(CAP), inOrg(ctx, "renters", orgId).take(CAP), inOrg(ctx, "agreements", orgId).take(CAP),
+    inOrg(ctx, "agreementTerms", orgId).take(CAP), inOrg(ctx, "deposits", orgId).take(CAP), inOrg(ctx, "invoices", orgId).take(CAP), inOrg(ctx, "invoiceLines", orgId).take(CAP), inOrg(ctx, "invoiceAdjustments", orgId).take(CAP),
+    inOrg(ctx, "payments", orgId).take(CAP), inOrg(ctx, "paymentAllocations", orgId).take(CAP), inOrg(ctx, "renterCredits", orgId).take(CAP), inOrg(ctx, "meters", orgId).take(CAP), inOrg(ctx, "meterReadings", orgId).take(CAP),
+    inOrg(ctx, "sharedCosts", orgId).take(CAP), inOrg(ctx, "sharedCostAllocations", orgId).take(CAP), inOrg(ctx, "bankStatementEntries", orgId).take(CAP), ctx.db.query("memberships").withIndex("by_org", (q) => q.eq("orgId", orgId)).take(CAP),
   ]);
   const truncated = [buildings, floors, units, renters, agreements, terms, deposits, invoices, lines, adjustments, payments, allocs, credits, meters, readings, costs, costAllocs, entries, users].some((t) => t.length >= CAP);
   const B = new Map(buildings.map((x) => [x._id, x])), Fl = new Map(floors.map((x) => [x._id, x])), U = new Map(units.map((x) => [x._id, x])), R = new Map(renters.map((x) => [x._id, x]));
@@ -126,14 +129,14 @@ export async function scan(ctx: QueryCtx): Promise<{ findings: Finding[]; checke
   for (const c of costs) { if (!B.has(c.buildingId)) add("utilities", "shared_cost_without_building", c.period); if ((cAlloc.get(c._id) ?? 0) + c.ownerShare !== c.total) add("utilities", "shared_cost_shares_do_not_add_up", `${c.kind} ${c.period}`); }
 
   // people
-  for (const u of users) if (Array.isArray(u.buildingScope)) for (const b of u.buildingScope) if (!B.has(b)) add("access", "staff_scope_names_a_missing_building", u.email ?? u._id);
-  for (const u of users) if (u.active && (u.roles ?? []).length === 0) add("access", "active_staff_without_a_role", u.email ?? u._id);
+  for (const m of users) if (Array.isArray(m.buildingScope)) for (const b of m.buildingScope) if (!B.has(b)) add("access", "staff_scope_names_a_missing_building", m.userId);
+  for (const m of users) if (m.status === "active" && m.roles.length === 0) add("access", "active_staff_without_a_role", m.userId);
 
   const checked = { buildings: buildings.length, units: units.length, renters: renters.length, agreements: agreements.length, bills: invoices.length, payments: payments.length, readings: readings.length, bankLines: entries.length };
   return { findings: f, checked, truncated };
 }
 
 /** For the Settings screen: approvers and administrators run the check on demand. */
-export const check = query({ args: {}, handler: async (ctx) => { await requireRole(ctx, "approver"); return scan(ctx); } });
-/** For the command line: npx convex run integrity:run */
-export const run = internalQuery({ args: {}, handler: async (ctx) => scan(ctx) });
+export const check = query({ args: {}, handler: async (ctx) => { const u = await requireRole(ctx, "approver"); return scan(ctx, u.orgId); } });
+/** For the command line: npx convex run integrity:run '{"orgId":"…"}' */
+export const run = internalQuery({ args: { orgId: v.id("organizations") }, handler: async (ctx, { orgId }) => scan(ctx, orgId) });

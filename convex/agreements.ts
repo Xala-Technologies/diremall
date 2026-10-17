@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, fail, getSetting, requireRole } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
 import { refreshUnitStatus } from "./lib/units";
 import { renterMap, termsByAgreement, unitMap } from "./lib/bulk";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
@@ -44,8 +45,8 @@ export const createDraft = mutation({
     assertSantim(a.rent.kind === "fixed" ? a.rent.amount : a.rent.ratePerM2, { allowZero: true });
     if (unit.status === "maintenance") fail("unit_in_maintenance");
     if ((await ctx.db.get(unit.buildingId))?.archivedAt) fail("building_archived");
-    const id = await ctx.db.insert("agreements", { unitId: a.unitId, renterId: a.renterId, status: "draft", startsAt: a.startsAt, endsAt: a.endsAt, createdBy: u._id });
-    await ctx.db.insert("agreementTerms", { agreementId: id, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
+    const id = await ctx.db.insert("agreements", { orgId: u.orgId, unitId: a.unitId, renterId: a.renterId, status: "draft", startsAt: a.startsAt, endsAt: a.endsAt, createdBy: u._id });
+    await ctx.db.insert("agreementTerms", { orgId: u.orgId, agreementId: id, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.create", "agreements", id);
     return id;
   },
@@ -55,7 +56,7 @@ export const attachSignedCopy = mutation({
   args: { agreementId: v.id("agreements"), fileId: v.id("_storage") },
   handler: async (ctx, { agreementId, fileId }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     // Replacing the signed copy on a live agreement would bypass review; only drafts and agreements in review may change it.
     // (a lease brought in from the old records has no scan yet; it may be attached once, without reopening the lease)
@@ -71,7 +72,7 @@ export const submitForReview = mutation({
   args: { agreementId: v.id("agreements") },
   handler: async (ctx, { agreementId }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "draft") fail("not_a_draft");
     await ctx.db.patch(agreementId, { status: "inReview" });
@@ -84,7 +85,7 @@ export const returnForCorrection = mutation({
   args: { agreementId: v.id("agreements"), reason: v.string() },
   handler: async (ctx, { agreementId, reason }) => {
     const u = await requireRole(ctx, "approver");
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "inReview") fail("not_in_review");
     await ctx.db.patch(agreementId, { status: "draft" });
@@ -96,7 +97,7 @@ export const approve = mutation({
   args: { agreementId: v.id("agreements") },
   handler: async (ctx, { agreementId }) => {
     const u = await requireRole(ctx, "approver");
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     const unit = await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "inReview") fail("not_in_review");
     assertDifferentPerson(ag.createdBy, u._id);
@@ -110,7 +111,7 @@ export const approve = mutation({
     // A lease that starts in the future reserves the unit; it turns occupied on its start date.
     await refreshUnitStatus(ctx, ag.unitId);
     const term = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).first();
-    await ctx.db.insert("deposits", { agreementId, required: term?.depositAmount ?? 0, held: 0, deductions: [], refunded: 0 });
+    await ctx.db.insert("deposits", { orgId: u.orgId, agreementId, required: term?.depositAmount ?? 0, held: 0, deductions: [], refunded: 0 });
     await audit(ctx, u, "agreement.approve", "agreements", agreementId);
   },
 });
@@ -121,7 +122,7 @@ export const addTerm = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "approver");
     assertEscalation(a.escalation);
-    const ag = (await ctx.db.get(a.agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, a.agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "active") fail("agreement_not_active");
     if (a.dueDay < 1 || a.dueDay > 28) fail("due_day_1_to_28");
@@ -136,7 +137,7 @@ export const addTerm = mutation({
     // a renewal that changes the deposit changes what is required; what is already held stays, so a shortfall or an excess shows
     const dep = await ctx.db.query("deposits").withIndex("by_agreement", (q) => q.eq("agreementId", a.agreementId)).unique();
     if (dep && dep.required !== a.depositAmount) await ctx.db.patch(dep._id, { required: a.depositAmount });
-    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.effectiveFrom, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
+    await ctx.db.insert("agreementTerms", { orgId: u.orgId, agreementId: a.agreementId, effectiveFrom: a.effectiveFrom, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.term", "agreements", a.agreementId, JSON.stringify({ effectiveFrom: a.effectiveFrom, rent: a.rent }));
   },
 });
@@ -145,7 +146,7 @@ export const terminate = mutation({
   args: { agreementId: v.id("agreements"), reason: v.string(), effectiveAt: v.optional(v.number()) },
   handler: async (ctx, { agreementId, reason, effectiveAt }) => {
     const u = await requireRole(ctx, "approver");
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "active") fail("agreement_not_active");
     if (!reason.trim()) fail("reason_required");
@@ -163,9 +164,9 @@ export const recordHandover = mutation({
   args: { agreementId: v.id("agreements"), kind: v.union(v.literal("moveIn"), v.literal("moveOut")), keys: v.number(), condition: v.string(), readings: v.optional(v.string()) },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
-    const ag = (await ctx.db.get(a.agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, a.agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
-    const id = await ctx.db.insert("handovers", { ...a, recordedBy: u._id, at: Date.now() });
+    const id = await ctx.db.insert("handovers", { orgId: u.orgId, ...a, recordedBy: u._id, at: Date.now() });
     await audit(ctx, u, `agreement.${a.kind}`, "agreements", a.agreementId);
     return id;
   },
@@ -175,9 +176,9 @@ export const list = query({
   args: { status: v.optional(v.union(v.literal("draft"), v.literal("inReview"), v.literal("active"), v.literal("expired"), v.literal("terminated"))) },
   handler: async (ctx, { status }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const all = status ? await ctx.db.query("agreements").collect().then((r) => r.filter((x) => x.status === status)) : await ctx.db.query("agreements").collect();
+    const all = status ? await inOrg(ctx, "agreements", u.orgId).collect().then((r) => r.filter((x) => x.status === status)) : await inOrg(ctx, "agreements", u.orgId).collect();
     // units and renters are read once as a whole (Convex allows 4,096 lookups per call)
-    const [units, renters, terms] = await Promise.all([unitMap(ctx), renterMap(ctx), termsByAgreement(ctx)]);
+    const [units, renters, terms] = await Promise.all([unitMap(ctx, u.orgId), renterMap(ctx, u.orgId), termsByAgreement(ctx, u.orgId)]);
     const out = [];
     const monthStart = (() => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); })();
     for (const ag of all) {
@@ -198,7 +199,7 @@ export const get = query({
   args: { agreementId: v.id("agreements") },
   handler: async (ctx, { agreementId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     const unit = await assertUnitVisible(ctx, u, ag.unitId);
     const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).collect();
     const handovers = await ctx.db.query("handovers").withIndex("by_agreement", (q) => q.eq("agreementId", agreementId)).collect();
@@ -242,10 +243,10 @@ export const expiring = query({
   args: { withinDays: v.optional(v.number()) },
   handler: async (ctx, { withinDays }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const days = withinDays ?? (await getSetting(ctx, "expiryWarnDays", 60));
+    const days = withinDays ?? (await getSetting(ctx, u.orgId, "expiryWarnDays", 60));
     const horizon = Date.now() + days * DAY;
-    const active = await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("status", "active")).collect();
-    const units = await unitMap(ctx);
+    const active = await ctx.db.query("agreements").withIndex("by_status", (q) => q.eq("orgId", u.orgId).eq("status", "active")).collect();
+    const units = await unitMap(ctx, u.orgId);
     const out = [];
     for (const ag of active) {
       if (ag.endsAt > horizon) continue;
@@ -263,7 +264,7 @@ export const updateDraft = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
     assertEscalation(a.escalation);
-    const ag = (await ctx.db.get(a.agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, a.agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "draft") fail("not_a_draft");
     if (a.endsAt <= a.startsAt) fail("end_before_start");
@@ -273,7 +274,7 @@ export const updateDraft = mutation({
     await ctx.db.patch(a.agreementId, { startsAt: a.startsAt, endsAt: a.endsAt });
     const terms = await ctx.db.query("agreementTerms").withIndex("by_agreement", (q) => q.eq("agreementId", a.agreementId)).collect();
     for (const t of terms) await ctx.db.delete(t._id);
-    await ctx.db.insert("agreementTerms", { agreementId: a.agreementId, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
+    await ctx.db.insert("agreementTerms", { orgId: u.orgId, agreementId: a.agreementId, effectiveFrom: a.startsAt, rent: a.rent, dueDay: a.dueDay, depositAmount: a.depositAmount, ...(a.escalation ? { escalation: a.escalation } : {}), createdBy: u._id });
     await audit(ctx, u, "agreement.updateDraft", "agreements", a.agreementId);
   },
 });

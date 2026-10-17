@@ -2,7 +2,9 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { audit, canSeeBuilding, fail, nextSeq, requireRole } from "./lib/access";
+import { audit, canSeeBuilding, fail, nextSeq, requireRole, type Principal } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
+import { assertUnitsFree } from "./lib/plan";
 import { rangesOverlap } from "./lib/billing";
 import { renterMap, unitMap } from "./lib/bulk";
 import { refreshInvoice } from "./lib/ledger";
@@ -24,11 +26,11 @@ type RenterRow = typeof renterRow.type;
 const CATEGORIES = ["office", "retail", "storage", "residential"] as const;
 const key = (s: string) => s.trim().toLowerCase();
 
-async function evalUnits(ctx: QueryCtx, u: Doc<"users">, rows: UnitRow[]) {
+async function evalUnits(ctx: QueryCtx, u: Principal, rows: UnitRow[]) {
   if (rows.length === 0) fail("import_empty");
   if (rows.length > MAX_ROWS) fail("import_too_many_rows");
   const issues: Issue[] = [];
-  const buildings = new Map((await ctx.db.query("buildings").collect()).map((b) => [key(b.name), b]));
+  const buildings = new Map((await inOrg(ctx, "buildings", u.orgId).collect()).map((b) => [key(b.name), b]));
   const floorsOf = new Map<Id<"buildings">, Map<string, Doc<"floors">>>();
   const seen = new Set<string>();
   const newBuildings = new Set<string>(); const newFloors = new Set<string>();
@@ -80,24 +82,25 @@ export const commitUnits = mutation({
     const u = await requireRole(ctx, "propertyManager");
     const { issues, clean } = await evalUnits(ctx, u, rows);
     if (issues.length > 0) fail("import_has_errors");
-    const buildingId = new Map<string, Id<"buildings">>((await ctx.db.query("buildings").collect()).map((b) => [key(b.name), b._id]));
+    await assertUnitsFree(ctx, u.orgId, clean.length);
+    const buildingId = new Map<string, Id<"buildings">>((await inOrg(ctx, "buildings", u.orgId).collect()).map((b) => [key(b.name), b._id]));
     const floorId = new Map<string, Id<"floors">>();
-    for (const f of await ctx.db.query("floors").collect()) { const b = [...buildingId.entries()].find(([, id]) => id === f.buildingId); if (b) floorId.set(`${b[0]}|${key(f.label)}`, f._id); }
+    for (const f of await inOrg(ctx, "floors", u.orgId).collect()) { const b = [...buildingId.entries()].find(([, id]) => id === f.buildingId); if (b) floorId.set(`${b[0]}|${key(f.label)}`, f._id); }
     let createdBuildings = 0, createdFloors = 0;
     for (const r of clean) {
       let b = buildingId.get(key(r.building));
-      if (!b) { b = await ctx.db.insert("buildings", { name: r.building }); buildingId.set(key(r.building), b); createdBuildings++; }
+      if (!b) { b = await ctx.db.insert("buildings", { orgId: u.orgId, name: r.building }); buildingId.set(key(r.building), b); createdBuildings++; }
       const fk = `${key(r.building)}|${key(r.floor)}`;
       let f = floorId.get(fk);
-      if (!f) { f = await ctx.db.insert("floors", { buildingId: b, label: r.floor }); floorId.set(fk, f); createdFloors++; }
-      await ctx.db.insert("units", { buildingId: b, floorId: f, number: r.unit, areaM2: r.areaM2, category: r.category, ratePerM2: r.ratePerM2, status: "vacant" });
+      if (!f) { f = await ctx.db.insert("floors", { orgId: u.orgId, buildingId: b, label: r.floor }); floorId.set(fk, f); createdFloors++; }
+      await ctx.db.insert("units", { orgId: u.orgId, buildingId: b, floorId: f, number: r.unit, areaM2: r.areaM2, category: r.category, ratePerM2: r.ratePerM2, status: "vacant" });
     }
     await audit(ctx, u, "import.units", "units", "bulk", `units=${clean.length} buildings=${createdBuildings} floors=${createdFloors}`);
     return { units: clean.length, buildings: createdBuildings, floors: createdFloors };
   },
 });
 
-async function evalRenters(ctx: QueryCtx, rows: RenterRow[]) {
+async function evalRenters(ctx: QueryCtx, u: Principal, rows: RenterRow[]) {
   if (rows.length === 0) fail("import_empty");
   if (rows.length > MAX_ROWS) fail("import_too_many_rows");
   const issues: Issue[] = [];
@@ -125,8 +128,8 @@ async function evalRenters(ctx: QueryCtx, rows: RenterRow[]) {
     const nameKey = `${key(name)}|${normalizePhone(phone)}`;
     if ((tin && seenTin.has(tin)) || seenName.has(nameKey)) { bad(tin ? "tin" : "name", "duplicate_in_file"); continue; }
     if (tin) seenTin.add(tin); seenName.add(nameKey);
-    if (tin && (await ctx.db.query("renters").withIndex("by_tin", (q) => q.eq("tin", tin)).first())) { bad("tin", "already_exists"); continue; }
-    const sameName = await ctx.db.query("renters").withIndex("by_name", (q) => q.eq("name", name)).collect();
+    if (tin && (await ctx.db.query("renters").withIndex("by_tin", (q) => q.eq("orgId", u.orgId).eq("tin", tin)).first())) { bad("tin", "already_exists"); continue; }
+    const sameName = await ctx.db.query("renters").withIndex("by_name", (q) => q.eq("orgId", u.orgId).eq("name", name)).collect();
     if (sameName.some((x) => normalizePhone(x.phone) === normalizePhone(phone))) { bad("name", "already_exists"); continue; }
     clean.push({ kind: kind!, name, ...(tin ? { tin } : {}), ...(r.license.trim() ? { businessLicenseNo: r.license.trim() } : {}), phone: normalizePhone(phone), ...(r.email.trim() ? { email: r.email.trim() } : {}), ...(r.rep.trim() ? { legalRepresentative: r.rep.trim() } : {}), ...(idNo ? { idNumber: idNo } : {}), ...((r.address ?? "").trim() ? { address: r.address!.trim() } : {}), ...((r.contactPerson ?? "").trim() ? { contactPerson: r.contactPerson!.trim() } : {}), ...(cPhone ? { contactPhone: normalizePhone(cPhone) } : {}), ...(vat ? { vatNumber: vat } : {}), ...((r.notes ?? "").trim() ? { notes: r.notes!.trim() } : {}) });
   }
@@ -136,8 +139,8 @@ async function evalRenters(ctx: QueryCtx, rows: RenterRow[]) {
 export const checkRenters = query({
   args: { rows: v.array(renterRow) },
   handler: async (ctx, { rows }) => {
-    await requireRole(ctx, "propertyManager", "financeOfficer");
-    const { issues, summary } = await evalRenters(ctx, rows);
+    const u = await requireRole(ctx, "propertyManager", "financeOfficer");
+    const { issues, summary } = await evalRenters(ctx, u, rows);
     return { issues, summary };
   },
 });
@@ -146,9 +149,9 @@ export const commitRenters = mutation({
   args: { rows: v.array(renterRow) },
   handler: async (ctx, { rows }) => {
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
-    const { issues, clean } = await evalRenters(ctx, rows);
+    const { issues, clean } = await evalRenters(ctx, u, rows);
     if (issues.length > 0) fail("import_has_errors");
-    for (const r of clean) await ctx.db.insert("renters", r);
+    for (const r of clean) await ctx.db.insert("renters", { orgId: u.orgId, ...r });
     await audit(ctx, u, "import.renters", "renters", "bulk", `renters=${clean.length}`);
     return { renters: clean.length };
   },
@@ -184,11 +187,11 @@ const indexRenters = (renters: Iterable<Doc<"renters">>) => {
   return { byTin, byName };
 };
 
-async function evalAgreements(ctx: QueryCtx, u: Doc<"users">, rows: AgreementRow[]) {
+async function evalAgreements(ctx: QueryCtx, u: Principal, rows: AgreementRow[]) {
   if (rows.length === 0) fail("import_empty");
   if (rows.length > MAX_ROWS) fail("import_too_many_rows");
   const issues: Issue[] = [];
-  const [units, renters, buildingsAll, agreements] = await Promise.all([unitMap(ctx), renterMap(ctx), ctx.db.query("buildings").collect(), ctx.db.query("agreements").collect()]);
+  const [units, renters, buildingsAll, agreements] = await Promise.all([unitMap(ctx, u.orgId), renterMap(ctx, u.orgId), inOrg(ctx, "buildings", u.orgId).collect(), inOrg(ctx, "agreements", u.orgId).collect()]);
   const buildings = new Map(buildingsAll.map((b) => [key(b.name), b]));
   const unitsByKey = new Map<string, Doc<"units">[]>();
   for (const x of units.values()) unitsByKey.set(key(x.number), [...(unitsByKey.get(key(x.number)) ?? []), x]);
@@ -270,9 +273,9 @@ export const commitAgreements = mutation({
     const now = Date.now();
     const units = new Set<Id<"units">>();
     for (const c of clean) {
-      const id = await ctx.db.insert("agreements", { unitId: c.unitId, renterId: c.renterId, status: c.status, startsAt: c.startsAt, endsAt: c.endsAt, createdBy: u._id, importedAt: now });
-      await ctx.db.insert("agreementTerms", { agreementId: id, effectiveFrom: c.startsAt, rent: c.rent, dueDay: c.dueDay, depositAmount: c.deposit, ...(c.escalation ? { escalation: c.escalation } : {}), createdBy: u._id });
-      await ctx.db.insert("deposits", { agreementId: id, required: c.deposit, held: c.held, deductions: [], refunded: 0 });
+      const id = await ctx.db.insert("agreements", { orgId: u.orgId, unitId: c.unitId, renterId: c.renterId, status: c.status, startsAt: c.startsAt, endsAt: c.endsAt, createdBy: u._id, importedAt: now });
+      await ctx.db.insert("agreementTerms", { orgId: u.orgId, agreementId: id, effectiveFrom: c.startsAt, rent: c.rent, dueDay: c.dueDay, depositAmount: c.deposit, ...(c.escalation ? { escalation: c.escalation } : {}), createdBy: u._id });
+      await ctx.db.insert("deposits", { orgId: u.orgId, agreementId: id, required: c.deposit, held: c.held, deductions: [], refunded: 0 });
       units.add(c.unitId);
     }
     for (const unitId of units) await refreshUnitStatus(ctx, unitId);
@@ -284,11 +287,11 @@ export const commitAgreements = mutation({
 const openingRow = v.object({ row: v.number(), building: v.string(), unit: v.string(), renter: v.string(), amount: v.number(), dueAt: v.number(), note: v.string() });
 type OpeningRow = typeof openingRow.type;
 
-async function evalOpening(ctx: QueryCtx, u: Doc<"users">, rows: OpeningRow[]) {
+async function evalOpening(ctx: QueryCtx, u: Principal, rows: OpeningRow[]) {
   if (rows.length === 0) fail("import_empty");
   if (rows.length > MAX_ROWS) fail("import_too_many_rows");
   const issues: Issue[] = [];
-  const [units, renters, agreements, buildingsAll] = await Promise.all([unitMap(ctx), renterMap(ctx), ctx.db.query("agreements").collect(), ctx.db.query("buildings").collect()]);
+  const [units, renters, agreements, buildingsAll] = await Promise.all([unitMap(ctx, u.orgId), renterMap(ctx, u.orgId), inOrg(ctx, "agreements", u.orgId).collect(), inOrg(ctx, "buildings", u.orgId).collect()]);
   const buildings = new Map(buildingsAll.map((b) => [key(b.name), b]));
   const { byTin, byName } = indexRenters(renters.values());
   const seen = new Set<string>();
@@ -350,13 +353,13 @@ export const commitOpening = mutation({
     for (const c of clean) {
       if (c.amount > 0) {
         const unit = await ctx.db.get(c.unitId);
-        const number = `OPEN-${String(await nextSeq(ctx, "openingSeq")).padStart(5, "0")}`;
-        const id = await ctx.db.insert("invoices", { number, agreementId: c.agreementId, unitId: c.unitId, renterId: c.renterId, period: "opening", status: "issued", total: c.amount, dueAt: c.dueAt, issuedBy: u._id, issuedAt: Date.now(), buildingId: unit?.buildingId });
-        await ctx.db.insert("invoiceLines", { invoiceId: id, kind: "other", description: "Opening balance", amount: c.amount, calcNote: c.note || "Carried in from the previous records" });
+        const number = `OPEN-${String(await nextSeq(ctx, u.orgId, "openingSeq")).padStart(5, "0")}`;
+        const id = await ctx.db.insert("invoices", { orgId: u.orgId, number, agreementId: c.agreementId, unitId: c.unitId, renterId: c.renterId, period: "opening", status: "issued", total: c.amount, dueAt: c.dueAt, issuedBy: u._id, issuedAt: Date.now(), buildingId: unit?.buildingId });
+        await ctx.db.insert("invoiceLines", { orgId: u.orgId, invoiceId: id, kind: "other", description: "Opening balance", amount: c.amount, calcNote: c.note || "Carried in from the previous records" });
         await refreshInvoice(ctx, id);
         bills++;
       } else {
-        await ctx.db.insert("renterCredits", { renterId: c.renterId, amount: -c.amount, openingKey: c.key });
+        await ctx.db.insert("renterCredits", { orgId: u.orgId, renterId: c.renterId, amount: -c.amount, openingKey: c.key });
         credits++;
       }
     }
@@ -370,10 +373,10 @@ export const commitOpening = mutation({
 export const status = query({
   args: {},
   handler: async (ctx) => {
-    await requireRole(ctx, "propertyManager", "financeOfficer", "approver");
+    const u = await requireRole(ctx, "propertyManager", "financeOfficer", "approver");
     const [units, renters, agreements, opening] = await Promise.all([
-      ctx.db.query("units").collect(), ctx.db.query("renters").collect(), ctx.db.query("agreements").collect(),
-      ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("period", "opening")).collect(),
+      inOrg(ctx, "units", u.orgId).collect(), inOrg(ctx, "renters", u.orgId).collect(), inOrg(ctx, "agreements", u.orgId).collect(),
+      ctx.db.query("invoices").withIndex("by_period", (q) => q.eq("orgId", u.orgId).eq("period", "opening")).collect(),
     ]);
     return {
       units: units.length, buildings: new Set(units.map((u) => u.buildingId)).size, renters: renters.length,

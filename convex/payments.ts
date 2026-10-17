@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { READ_ROLES, assertDifferentPerson, assertSantim, audit, canSeeBuilding, fail, nextSeq, requireRole } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
 import { applyPayment } from "./lib/billing";
 import { formatEtb } from "./lib/money";
 import { creditBalance, invoiceBalance, refreshInvoice } from "./lib/ledger";
@@ -24,14 +25,14 @@ export const record = mutation({
     if (a.evidenceFileId) await assertUploadOk(ctx, a.evidenceFileId);
     if (!a.reference.trim()) fail("reference_required");
     // A bank or Telebirr reference identifies one transfer in the whole mall, whichever renter it is booked to.
-    const dupe = (await ctx.db.query("payments").withIndex("by_reference", (q) => q.eq("method", a.method).eq("reference", a.reference)).collect())
+    const dupe = (await ctx.db.query("payments").withIndex("by_reference", (q) => q.eq("orgId", u.orgId).eq("method", a.method).eq("reference", a.reference)).collect())
       .find((p) => p.status !== "voided");
     if (dupe) fail("duplicate_payment_reference");
     // The same renter paying the same amount within two weeks is more often the same money recorded twice (cash, then its
     // bank deposit) than a second payment. The person has to say it is a different payment.
     if (!notDuplicate && (await similarPayments(ctx, a.renterId, a.amount, a.receivedAt)).length > 0) fail("possible_duplicate");
     const clean = (x?: string) => (x && x.trim() ? x.trim() : undefined);
-    const id = await ctx.db.insert("payments", { ...a, reference: a.reference.trim(), payerName: clean(a.payerName), notes: clean(a.notes), status: "recorded", recordedBy: u._id });
+    const id = await ctx.db.insert("payments", { orgId: u.orgId, ...a, reference: a.reference.trim(), payerName: clean(a.payerName), notes: clean(a.notes), status: "recorded", recordedBy: u._id });
     await audit(ctx, u, "payment.record", "payments", id, `${a.amount}`);
     return id;
   },
@@ -42,7 +43,7 @@ export const confirm = mutation({
   args: { paymentId: v.id("payments") },
   handler: async (ctx, { paymentId }) => {
     const u = await requireRole(ctx, "approver");
-    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    const p = await owned(ctx, u.orgId, paymentId);
     await assertRenterVisible(ctx, u, p.renterId);
     if (p.status !== "recorded") fail("not_recorded");
     assertDifferentPerson(p.recordedBy, u._id);
@@ -55,7 +56,7 @@ export const voidPayment = mutation({
   args: { paymentId: v.id("payments"), reason: v.string() },
   handler: async (ctx, { paymentId, reason }) => {
     const u = await requireRole(ctx, "approver");
-    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    const p = await owned(ctx, u.orgId, paymentId);
     await assertRenterVisible(ctx, u, p.renterId);
     if (p.status === "applied") fail("applied_payment_needs_reversal"); // use reverse(), which keeps the trail
     if (p.status === "voided") fail("already_voided");
@@ -75,7 +76,7 @@ export const reverse = mutation({
   args: { paymentId: v.id("payments"), reason: v.string() },
   handler: async (ctx, { paymentId, reason }) => {
     const u = await requireRole(ctx, "approver");
-    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    const p = await owned(ctx, u.orgId, paymentId);
     await assertRenterVisible(ctx, u, p.renterId);
     if (p.status !== "applied") fail("not_applied");
     if (!reason.trim()) fail("reason_required");
@@ -83,8 +84,8 @@ export const reverse = mutation({
     const credits = (await ctx.db.query("renterCredits").withIndex("by_renter", (q) => q.eq("renterId", p.renterId)).collect()).filter((c) => c.paymentId === paymentId);
     const fromThisPayment = credits.reduce((s, c) => s + c.amount, 0);
     if (fromThisPayment > 0 && (await creditBalance(ctx, p.renterId)) < fromThisPayment) fail("credit_already_used");
-    for (const a of allocs) { await ctx.db.insert("paymentAllocations", { paymentId, invoiceId: a.invoiceId, amount: -a.amount }); await refreshInvoice(ctx, a.invoiceId); }
-    if (fromThisPayment !== 0) await ctx.db.insert("renterCredits", { renterId: p.renterId, paymentId, amount: -fromThisPayment });
+    for (const a of allocs) { await ctx.db.insert("paymentAllocations", { orgId: u.orgId, paymentId, invoiceId: a.invoiceId, amount: -a.amount }); await refreshInvoice(ctx, a.invoiceId); }
+    if (fromThisPayment !== 0) await ctx.db.insert("renterCredits", { orgId: u.orgId, renterId: p.renterId, paymentId, amount: -fromThisPayment });
     await ctx.db.patch(paymentId, { status: "voided", voidedBy: u._id, voidedAt: Date.now(), voidReason: `Reversed: ${reason.trim()}` });
     for (const line of await ctx.db.query("bankStatementEntries").withIndex("by_payment", (q) => q.eq("matchedPaymentId", paymentId)).collect()) await ctx.db.patch(line._id, { matchedPaymentId: undefined, matchedBy: undefined, matchedAt: undefined });
     await audit(ctx, u, "payment.reverse", "payments", paymentId, reason.trim());
@@ -99,7 +100,7 @@ export const apply = mutation({
   args: { paymentId: v.id("payments"), allocations: v.optional(v.array(v.object({ invoiceId: v.id("invoices"), amount: v.number() }))) },
   handler: async (ctx, { paymentId, allocations }) => {
     const u = await requireRole(ctx, "financeOfficer");
-    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    const p = await owned(ctx, u.orgId, paymentId);
     await assertRenterVisible(ctx, u, p.renterId);
     if (p.status !== "confirmed") fail("payment_not_confirmed");
 
@@ -110,7 +111,7 @@ export const apply = mutation({
       for (const al of allocations) perInvoice.set(al.invoiceId, (perInvoice.get(al.invoiceId) ?? 0) + al.amount);
       for (const al of allocations) {
         assertSantim(al.amount);
-        const inv = (await ctx.db.get(al.invoiceId)) ?? fail("not_found");
+        const inv = await owned(ctx, u.orgId, al.invoiceId);
         if (inv.renterId !== p.renterId || inv.status !== "issued") fail("invoice_not_payable");
         await assertUnitVisible(ctx, u, inv.unitId);
         const bal = await invoiceBalance(ctx, inv);
@@ -136,20 +137,20 @@ export const apply = mutation({
       }
     }
     for (const al of plan) {
-      await ctx.db.insert("paymentAllocations", { paymentId, invoiceId: al.invoiceId, amount: al.amount });
+      await ctx.db.insert("paymentAllocations", { orgId: u.orgId, paymentId, invoiceId: al.invoiceId, amount: al.amount });
       await refreshInvoice(ctx, al.invoiceId);
     }
     const credit = p.amount - plan.reduce((s, x) => s + x.amount, 0);
-    if (credit > 0) await ctx.db.insert("renterCredits", { renterId: p.renterId, paymentId, amount: credit });
+    if (credit > 0) await ctx.db.insert("renterCredits", { orgId: u.orgId, renterId: p.renterId, paymentId, amount: credit });
     const year = new Date(p.receivedAt).getUTCFullYear();
-    const receiptNumber = p.receiptNumber ?? `RCT-${year}-${String(await nextSeq(ctx, `receiptSeq:${year}`)).padStart(4, "0")}`;
+    const receiptNumber = p.receiptNumber ?? `RCT-${year}-${String(await nextSeq(ctx, u.orgId, `receiptSeq:${year}`)).padStart(4, "0")}`;
     await ctx.db.patch(paymentId, { status: "applied", receiptNumber, appliedBy: u._id, appliedAt: Date.now() });
     await audit(ctx, u, "payment.apply", "payments", paymentId, `applied=${p.amount - credit} credit=${credit}`);
 
     // Receipt acknowledgment by SMS (once per payment), in the renter's language, unless receipts are switched off in Settings.
-    if ((await smsRules(ctx)).receipts) {
+    if ((await smsRules(ctx, u.orgId)).receipts) {
       const renter = await ctx.db.get(p.renterId);
-      await queueTemplated(ctx, { renterId: p.renterId, template: "paymentReceived", dedupeKey: `ack:${paymentId}`, renter, vars: { amount: smsMoney(p.amount), receipt: receiptNumber } });
+      await queueTemplated(ctx, { orgId: u.orgId, renterId: p.renterId, template: "paymentReceived", dedupeKey: `ack:${paymentId}`, renter, vars: { amount: smsMoney(p.amount), receipt: receiptNumber } });
     }
     return { applied: p.amount - credit, credit };
   },
@@ -160,14 +161,14 @@ export const useCredit = mutation({
   args: { invoiceId: v.id("invoices") },
   handler: async (ctx, { invoiceId }) => {
     const u = await requireRole(ctx, "financeOfficer");
-    const inv = (await ctx.db.get(invoiceId)) ?? fail("not_found");
+    const inv = await owned(ctx, u.orgId, invoiceId);
     await assertUnitVisible(ctx, u, inv.unitId);
     if (inv.status !== "issued") fail("invoice_not_payable");
     const bal = await invoiceBalance(ctx, inv);
     const credit = await creditBalance(ctx, inv.renterId);
     const use = Math.min(bal.due, credit);
     if (use <= 0) fail("nothing_to_apply");
-    await ctx.db.insert("renterCredits", { renterId: inv.renterId, invoiceId, amount: -use });
+    await ctx.db.insert("renterCredits", { orgId: u.orgId, renterId: inv.renterId, invoiceId, amount: -use });
     await refreshInvoice(ctx, invoiceId);
     await audit(ctx, u, "credit.use", "invoices", invoiceId, String(use));
     return use;
@@ -182,8 +183,8 @@ export const list = query({
     const rows = a.renterId
       ? await ctx.db.query("payments").withIndex("by_renter", (q) => q.eq("renterId", a.renterId!)).collect()
       : a.status
-        ? await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("status", a.status!)).order("desc").take(300)
-        : await ctx.db.query("payments").order("desc").take(300);
+        ? await ctx.db.query("payments").withIndex("by_status", (q) => q.eq("orgId", u.orgId).eq("status", a.status!)).order("desc").take(300)
+        : await inOrg(ctx, "payments", u.orgId).order("desc").take(300);
     const out = [];
     for (const p of rows) {
       if (a.status && p.status !== a.status) continue;
@@ -209,7 +210,7 @@ export const get = query({
   args: { paymentId: v.id("payments") },
   handler: async (ctx, { paymentId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    const p = await owned(ctx, u.orgId, paymentId);
     await assertRenterVisible(ctx, u, p.renterId);
     const allocs = await ctx.db.query("paymentAllocations").withIndex("by_payment", (q) => q.eq("paymentId", paymentId)).collect();
     const lines = [];
@@ -236,8 +237,8 @@ export const inPeriod = query({
   handler: async (ctx, { period }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
     const { start, end } = periodRange(period);
-    const rows = await ctx.db.query("payments").withIndex("by_received", (q) => q.gte("receivedAt", start).lt("receivedAt", end)).collect();
-    const renters = await renterMap(ctx);
+    const rows = await ctx.db.query("payments").withIndex("by_received", (q) => q.eq("orgId", u.orgId).gte("receivedAt", start).lt("receivedAt", end)).collect();
+    const renters = await renterMap(ctx, u.orgId);
     const out = await Promise.all(rows.map(async (p) => {
       try { await assertRenterVisible(ctx, u, p.renterId); } catch { return null; }
       return { ...p, renterName: renters.get(p.renterId)?.name ?? "" };
@@ -269,7 +270,7 @@ export const summary = query({
   args: { from: v.optional(v.number()), to: v.optional(v.number()) },
   handler: async (ctx, { from, to }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const rows = await ctx.db.query("payments").withIndex("by_received", (q) => (from !== undefined && to !== undefined ? q.gte("receivedAt", from).lt("receivedAt", to) : from !== undefined ? q.gte("receivedAt", from) : to !== undefined ? q.lt("receivedAt", to) : q)).order("desc").take(5000);
+    const rows = await ctx.db.query("payments").withIndex("by_received", (q) => { const o = q.eq("orgId", u.orgId); return from !== undefined && to !== undefined ? o.gte("receivedAt", from).lt("receivedAt", to) : from !== undefined ? o.gte("receivedAt", from) : to !== undefined ? o.lt("receivedAt", to) : o; }).order("desc").take(5000);
     const seen = new Map<string, boolean>();
     const out = { recorded: { n: 0, amount: 0 }, confirmed: { n: 0, amount: 0 }, applied: { n: 0, amount: 0 }, voided: { n: 0, amount: 0 } };
     for (const p of rows) {

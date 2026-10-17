@@ -3,6 +3,9 @@ import { assertUploadOk } from "./files";
 import { isPhone, normalizePhone } from "./lib/validate";
 import { mutation, query } from "./_generated/server";
 import { READ_ROLES, assertBuilding, audit, canSeeBuilding, fail, requireRole } from "./lib/access";
+import { assertBuildingIn } from "./lib/scope";
+import { inOrg, owned, ownedOrNull } from "./lib/tenant";
+import { assertUnitsFree } from "./lib/plan";
 import { activeAgreementsByUnit, renterMap } from "./lib/bulk";
 
 const category = v.union(v.literal("office"), v.literal("retail"), v.literal("storage"), v.literal("residential"));
@@ -12,7 +15,7 @@ export const listBuildings = query({
   args: { includeArchived: v.optional(v.boolean()) },
   handler: async (ctx, { includeArchived }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    return (await ctx.db.query("buildings").collect()).filter((b) => canSeeBuilding(u, b._id) && (includeArchived || !b.archivedAt));
+    return (await inOrg(ctx, "buildings", u.orgId).collect()).filter((b) => canSeeBuilding(u, b._id) && (includeArchived || !b.archivedAt));
   },
 });
 
@@ -21,7 +24,7 @@ export const buildingOverview = query({
   args: {},
   handler: async (ctx) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const [buildings, units, floors, agreements, costs] = await Promise.all([ctx.db.query("buildings").collect(), ctx.db.query("units").collect(), ctx.db.query("floors").collect(), ctx.db.query("agreements").collect(), ctx.db.query("sharedCosts").collect()]);
+    const [buildings, units, floors, agreements, costs] = await Promise.all([inOrg(ctx, "buildings", u.orgId).collect(), inOrg(ctx, "units", u.orgId).collect(), inOrg(ctx, "floors", u.orgId).collect(), inOrg(ctx, "agreements", u.orgId).collect(), inOrg(ctx, "sharedCosts", u.orgId).collect()]);
     const unitBuilding = new Map(units.map((x) => [x._id, x.buildingId]));
     const withLease = new Set(agreements.map((a) => unitBuilding.get(a.unitId)));
     return buildings.filter((b) => canSeeBuilding(u, b._id)).map((b) => {
@@ -38,11 +41,11 @@ export const setBuildingArchived = mutation({
   handler: async (ctx, { buildingId, archived }) => {
     const u = await requireRole(ctx, "propertyManager");
     if (u.buildingScope !== "all") fail("forbidden_building");
-    const b = (await ctx.db.get(buildingId)) ?? fail("not_found");
+    const b = await owned(ctx, u.orgId, buildingId);
     if (archived) {
       const units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", buildingId)).collect();
       const ids = new Set(units.map((x) => x._id));
-      const live = (await ctx.db.query("agreements").collect()).some((a) => ids.has(a.unitId) && (a.status === "active" || a.status === "inReview" || a.status === "draft"));
+      const live = (await inOrg(ctx, "agreements", u.orgId).collect()).some((a) => ids.has(a.unitId) && (a.status === "active" || a.status === "inReview" || a.status === "draft"));
       if (live) fail("building_has_leases");
     }
     await ctx.db.patch(buildingId, { archivedAt: archived ? Date.now() : undefined });
@@ -71,11 +74,11 @@ export const createBuilding = mutation({
     if (u.buildingScope !== "all") fail("forbidden_building");
     const name = a.name.trim();
     if (!name) fail("name_required");
-    if ((await ctx.db.query("buildings").collect()).some((b) => sameName(b.name, name))) fail("building_name_exists");
+    if ((await inOrg(ctx, "buildings", u.orgId).collect()).some((b) => sameName(b.name, name))) fail("building_name_exists");
     const labels = [...new Set((a.floors ?? []).map((l) => l.trim()).filter(Boolean))];
     if (labels.length > 60) fail("too_many_floors");
-    const id = await ctx.db.insert("buildings", { name, ...cleanBuilding(a) });
-    for (const label of labels) await ctx.db.insert("floors", { buildingId: id, label });
+    const id = await ctx.db.insert("buildings", { orgId: u.orgId, name, ...cleanBuilding(a) });
+    for (const label of labels) await ctx.db.insert("floors", { orgId: u.orgId, buildingId: id, label });
     await audit(ctx, u, "building.create", "buildings", id, name);
     return id;
   },
@@ -86,10 +89,10 @@ export const updateBuilding = mutation({
   args: { buildingId: v.id("buildings"), name: v.string(), ...buildingText },
   handler: async (ctx, { buildingId, name, ...rest }) => {
     const u = await requireRole(ctx, "propertyManager");
-    assertBuilding(u, buildingId);
+    await assertBuildingIn(ctx, u, buildingId);
     const n = name.trim();
     if (!n) fail("name_required");
-    if ((await ctx.db.query("buildings").collect()).some((b) => b._id !== buildingId && sameName(b.name, n))) fail("building_name_exists");
+    if ((await inOrg(ctx, "buildings", u.orgId).collect()).some((b) => b._id !== buildingId && sameName(b.name, n))) fail("building_name_exists");
     await ctx.db.patch(buildingId, { name: n, ...cleanBuilding(rest) });
     await audit(ctx, u, "building.update", "buildings", buildingId, n);
   },
@@ -100,7 +103,7 @@ export const updateFloor = mutation({
   args: { floorId: v.id("floors"), label: v.optional(v.string()), planFileId: v.optional(v.id("_storage")) },
   handler: async (ctx, { floorId, label, planFileId }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const floor = (await ctx.db.get(floorId)) ?? fail("not_found");
+    const floor = await owned(ctx, u.orgId, floorId);
     assertBuilding(u, floor.buildingId);
     const patch: { label?: string; planFileId?: typeof planFileId } = {};
     if (label !== undefined) {
@@ -120,13 +123,13 @@ export const addFloor = mutation({
   args: { buildingId: v.id("buildings"), label: v.string(), planFileId: v.optional(v.id("_storage")) },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
-    assertBuilding(u, a.buildingId);
+    await assertBuildingIn(ctx, u, a.buildingId);
     const label = a.label.trim();
     if (!label) fail("name_required");
     const siblings = await ctx.db.query("floors").withIndex("by_building", (q) => q.eq("buildingId", a.buildingId)).collect();
     if (siblings.some((f) => sameName(f.label, label))) fail("floor_label_exists");
     if (a.planFileId) await assertUploadOk(ctx, a.planFileId);
-    const id = await ctx.db.insert("floors", { ...a, label });
+    const id = await ctx.db.insert("floors", { orgId: u.orgId, ...a, label });
     await audit(ctx, u, "floor.create", "floors", id, a.label);
     return id;
   },
@@ -136,7 +139,7 @@ export const listFloors = query({
   args: { buildingId: v.id("buildings") },
   handler: async (ctx, { buildingId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    assertBuilding(u, buildingId);
+    await assertBuildingIn(ctx, u, buildingId);
     const floors = await ctx.db.query("floors").withIndex("by_building", (q) => q.eq("buildingId", buildingId)).collect();
     return floors.map((f) => ({ ...f, hasPlan: !!f.planFileId }));
   },
@@ -146,16 +149,17 @@ export const createUnit = mutation({
   args: { buildingId: v.id("buildings"), floorId: v.id("floors"), number: v.string(), areaM2: v.number(), category, ratePerM2: v.number(), notes: v.optional(v.string()), status: v.optional(v.union(v.literal("vacant"), v.literal("maintenance"))) },
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager");
-    assertBuilding(u, a.buildingId);
+    await assertBuildingIn(ctx, u, a.buildingId);
+    await assertUnitsFree(ctx, u.orgId);
     if ((await ctx.db.get(a.buildingId))?.archivedAt) fail("building_archived");
     if (!(Number.isFinite(a.areaM2) && a.areaM2 > 0) || !Number.isSafeInteger(a.ratePerM2) || a.ratePerM2 < 0) fail("invalid_amount");
-    const floor = await ctx.db.get(a.floorId);
+    const floor = await ownedOrNull(ctx, u.orgId, a.floorId);
     if (!floor || floor.buildingId !== a.buildingId) fail("floor_not_in_building");
     const dupe = await ctx.db.query("units").withIndex("by_building_number", (q) => q.eq("buildingId", a.buildingId).eq("number", a.number.trim())).first();
     if (dupe) fail("unit_number_exists");
     const number = a.number.trim();
     if (!number) fail("name_required");
-    const id = await ctx.db.insert("units", { buildingId: a.buildingId, floorId: a.floorId, number, areaM2: a.areaM2, category: a.category, ratePerM2: a.ratePerM2, notes: text(a.notes), status: a.status ?? "vacant" });
+    const id = await ctx.db.insert("units", { orgId: u.orgId, buildingId: a.buildingId, floorId: a.floorId, number, areaM2: a.areaM2, category: a.category, ratePerM2: a.ratePerM2, notes: text(a.notes), status: a.status ?? "vacant" });
     await audit(ctx, u, "unit.create", "units", id, a.number);
     return id;
   },
@@ -165,7 +169,7 @@ export const updateUnit = mutation({
   args: { unitId: v.id("units"), number: v.optional(v.string()), floorId: v.optional(v.id("floors")), notes: v.optional(v.string()), areaM2: v.optional(v.number()), ratePerM2: v.optional(v.number()), category: v.optional(category) },
   handler: async (ctx, { unitId, ...patch }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const unit = (await ctx.db.get(unitId)) ?? fail("not_found");
+    const unit = await owned(ctx, u.orgId, unitId);
     assertBuilding(u, unit.buildingId);
     // A rate change on a leased unit must go through an agreement term, so issued bills never move.
     if (unit.status === "occupied" && (patch.ratePerM2 !== undefined || patch.areaM2 !== undefined)) fail("use_agreement_term_for_rate_change");
@@ -184,7 +188,7 @@ export const updateUnit = mutation({
       patch.number = n;
     }
     if (patch.floorId !== undefined) {
-      const f = await ctx.db.get(patch.floorId);
+      const f = await ownedOrNull(ctx, u.orgId, patch.floorId);
       if (!f || f.buildingId !== unit.buildingId) fail("floor_not_in_building");
     }
     if (patch.notes !== undefined) patch.notes = text(patch.notes) ?? "";
@@ -198,7 +202,7 @@ export const setUnitAvailability = mutation({
   args: { unitId: v.id("units"), status: v.union(v.literal("vacant"), v.literal("maintenance")) },
   handler: async (ctx, { unitId, status }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const unit = (await ctx.db.get(unitId)) ?? fail("not_found");
+    const unit = await owned(ctx, u.orgId, unitId);
     assertBuilding(u, unit.buildingId);
     if (unit.status === "occupied") fail("unit_occupied");
     // a unit with an approved lease still to run cannot be taken out of service: the tenant would arrive at a unit shown as under repair
@@ -217,15 +221,15 @@ export const listUnits = query({
     const u = await requireRole(ctx, ...READ_ROLES);
     let units;
     if (a.buildingId) {
-      assertBuilding(u, a.buildingId);
+      await assertBuildingIn(ctx, u, a.buildingId);
       units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", a.buildingId!)).collect();
     } else {
-      const inService = new Set((await ctx.db.query("buildings").collect()).filter((b) => !b.archivedAt).map((b) => b._id));
-      units = (await ctx.db.query("units").collect()).filter((x) => canSeeBuilding(u, x.buildingId) && inService.has(x.buildingId));
+      const inService = new Set((await inOrg(ctx, "buildings", u.orgId).collect()).filter((b) => !b.archivedAt).map((b) => b._id));
+      units = (await inOrg(ctx, "units", u.orgId).collect()).filter((x) => canSeeBuilding(u, x.buildingId) && inService.has(x.buildingId));
     }
     const shown = a.status ? units.filter((x) => x.status === a.status) : units;
     // the current renter, so the unit board can show who is in each space
-    const [leases, renters] = await Promise.all([activeAgreementsByUnit(ctx), renterMap(ctx)]);
+    const [leases, renters] = await Promise.all([activeAgreementsByUnit(ctx, u.orgId), renterMap(ctx, u.orgId)]);
     return shown.map((x) => {
       const actives = leases.get(x._id) ?? [];
       const now = Date.now();
@@ -243,7 +247,7 @@ export const getUnit = query({
   args: { unitId: v.id("units") },
   handler: async (ctx, { unitId }) => {
     const u = await requireRole(ctx, ...READ_ROLES);
-    const unit = (await ctx.db.get(unitId)) ?? fail("not_found");
+    const unit = await owned(ctx, u.orgId, unitId);
     assertBuilding(u, unit.buildingId);
     const agreements = await ctx.db.query("agreements").withIndex("by_unit", (q) => q.eq("unitId", unitId)).collect();
     const active = agreements.find((x) => x.status === "active") ?? null;

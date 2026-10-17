@@ -243,6 +243,22 @@ fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; } legend {
 .filter-select-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .filter-select-option:hover, .filter-select-option:focus-visible { background: var(--ds-color-neutral-surface-hover); outline: none; }
 .filter-select-option[aria-selected="true"], .filter-select-option[aria-selected="true"] .filter-select-icon { background: var(--ds-color-accent-background-tinted); color: var(--ds-color-accent-text-subtle); }
+.period-picker { position: relative; flex: 0 0 auto; } .period-picker.is-open { z-index: 5; }
+.period-bar { display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 4px; border: 1px solid var(--ds-color-neutral-border-default); border-radius: var(--r-lg); background: var(--ds-color-neutral-background-default); }
+.period-bar:hover { border-color: var(--ds-color-neutral-border-strong); } .filter-bar .period-bar { min-height: 40px; }
+.period-step { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: var(--r-md); background: transparent; color: var(--muted); cursor: pointer; }
+.period-step:hover { background: var(--ds-color-neutral-surface-hover); color: var(--ink); }
+.period-trigger { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--ink); white-space: nowrap; cursor: pointer; }
+.period-trigger:hover, .period-picker.is-open .period-trigger { background: var(--ds-color-neutral-surface-hover); } .period-trigger > svg { flex-shrink: 0; color: var(--muted); }
+.period-step:focus-visible, .period-trigger:focus-visible, .period-month:focus-visible { outline: 3px solid var(--ds-color-accent-border-default); outline-offset: 1px; }
+.period-value { min-width: 8.5rem; text-align: left; }
+.period-menu { position: absolute; z-index: 20; left: 0; top: calc(100% + 6px); width: 17rem; padding: 10px; border: 1px solid var(--ds-color-neutral-border-default); border-radius: var(--r-lg); background: var(--ds-color-neutral-background-default); box-shadow: var(--ds-shadow-md); }
+.period-menu-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; } .period-menu-head strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.period-month { min-height: 40px; padding: 0 6px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--ink); font-size: .9375rem; cursor: pointer; }
+.period-month:hover { background: var(--ds-color-neutral-surface-hover); } .period-month[aria-current="date"] { box-shadow: inset 0 0 0 1px var(--ds-color-neutral-border-strong); font-weight: 600; }
+.period-month[aria-pressed="true"] { background: var(--ds-color-accent-base-default); color: var(--ds-color-accent-base-contrast-default); font-weight: 600; box-shadow: none; }
+.period-menu-foot { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ds-color-neutral-border-subtle); }
 
 /* ── modal (<dialog>), empty, toast ────────────────────── */
 .modal { width: min(720px, calc(100% - 28px)); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 28px; border: 1px solid var(--ds-color-neutral-border-subtle); border-radius: 16px; background: var(--ds-color-neutral-background-default); color: var(--ink); box-shadow: var(--ds-shadow-lg); }

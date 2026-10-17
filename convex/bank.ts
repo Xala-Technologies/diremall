@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { assertSantim, audit, fail, requireRole } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
 import { assertRenterVisible } from "./lib/scope";
 
 /** Statement lines are evidence only. Importing or matching never creates a payment. */
@@ -31,13 +32,13 @@ export const importStatement = mutation({
     for (const e of entries) { assertSantim(e.amount); if (!Number.isFinite(e.postedAt)) fail("invalid_date"); }
     const name = batch.trim();
     if (!name) fail("name_required");
-    if (await ctx.db.query("bankStatementEntries").withIndex("by_batch", (q) => q.eq("importBatch", name)).first()) fail("batch_already_imported");
+    if (await ctx.db.query("bankStatementEntries").withIndex("by_batch", (q) => q.eq("orgId", u.orgId).eq("importBatch", name)).first()) fail("batch_already_imported");
     let imported = 0, duplicates = 0;
     for (const e of entries) {
       const ref = e.reference.trim();
-      const same = await ctx.db.query("bankStatementEntries").withIndex("by_line", (q) => q.eq("postedAt", e.postedAt).eq("amount", e.amount)).collect();
+      const same = await ctx.db.query("bankStatementEntries").withIndex("by_line", (q) => q.eq("orgId", u.orgId).eq("postedAt", e.postedAt).eq("amount", e.amount)).collect();
       if (same.some((x) => x.reference === ref)) { duplicates++; continue; }
-      await ctx.db.insert("bankStatementEntries", { importBatch: name, postedAt: e.postedAt, amount: e.amount, reference: ref, description: e.description?.trim() || undefined, bank: bank?.trim() || undefined });
+      await ctx.db.insert("bankStatementEntries", { orgId: u.orgId, importBatch: name, postedAt: e.postedAt, amount: e.amount, reference: ref, description: e.description?.trim() || undefined, bank: bank?.trim() || undefined });
       imported++;
     }
     await audit(ctx, u, "bank.import", "bankStatementEntries", name, `${imported} lines, ${duplicates} already imported`);
@@ -56,8 +57,8 @@ async function paymentBrief(ctx: QueryCtx, id: Id<"payments">) {
 export const batches = query({
   args: {},
   handler: async (ctx) => {
-    await bankUser(ctx);
-    const all = await ctx.db.query("bankStatementEntries").order("desc").take(5000);
+    const u = await bankUser(ctx);
+    const all = await inOrg(ctx, "bankStatementEntries", u.orgId).order("desc").take(5000);
     const map = new Map<string, { batch: string; bank?: string; lines: number; toMatch: number; importedAt: number }>();
     for (const e of all) {
       const b = map.get(e.importBatch) ?? { batch: e.importBatch, bank: e.bank, lines: 0, toMatch: 0, importedAt: e._creationTime };
@@ -74,8 +75,8 @@ export const statement = query({
   handler: async (ctx, { batch }) => {
     const u = await bankUser(ctx);
     const rows = batch
-      ? await ctx.db.query("bankStatementEntries").withIndex("by_batch", (q) => q.eq("importBatch", batch)).collect()
-      : await ctx.db.query("bankStatementEntries").order("desc").take(1500);
+      ? await ctx.db.query("bankStatementEntries").withIndex("by_batch", (q) => q.eq("orgId", u.orgId).eq("importBatch", batch)).collect()
+      : await inOrg(ctx, "bankStatementEntries", u.orgId).order("desc").take(1500);
     const totals = { toMatch: { n: 0, amount: 0 }, matched: { n: 0, amount: 0 }, ignored: { n: 0, amount: 0 } };
     const lines = [];
     for (const e of rows.sort((a, b) => b.postedAt - a.postedAt || b._creationTime - a._creationTime)) {
@@ -98,7 +99,7 @@ export const candidates = query({
   args: { entryId: v.id("bankStatementEntries"), q: v.optional(v.string()) },
   handler: async (ctx, { entryId, q }) => {
     const u = await bankUser(ctx);
-    const e = (await ctx.db.get(entryId)) ?? fail("not_found");
+    const e = await owned(ctx, u.orgId, entryId);
     const seen = new Set<string>();
     const out: { paymentId: Id<"payments">; renterName: string; reference: string; status: string; amount: number; receivedAt: number; difference: number; referenceMatches: boolean; taken: boolean }[] = [];
     const add = async (p: Doc<"payments">) => {
@@ -109,10 +110,10 @@ export const candidates = query({
       const taken = !!(await ctx.db.query("bankStatementEntries").withIndex("by_payment", (x) => x.eq("matchedPaymentId", p._id)).first());
       out.push({ paymentId: p._id, renterName: renter?.name ?? "", reference: p.reference, status: p.status, amount: p.amount, receivedAt: p.receivedAt, difference: e.amount - p.amount, referenceMatches: !!e.reference && (e.reference.includes(p.reference) || p.reference.includes(e.reference)), taken });
     };
-    for (const p of await ctx.db.query("payments").withIndex("by_amount", (x) => x.eq("amount", e.amount)).take(50)) await add(p);
+    for (const p of await ctx.db.query("payments").withIndex("by_amount", (x) => x.eq("orgId", u.orgId).eq("amount", e.amount)).take(50)) await add(p);
     const needle = (q ?? "").trim().toLowerCase();
     if (needle) {
-      for (const p of await ctx.db.query("payments").withIndex("by_received").order("desc").take(400)) {
+      for (const p of await ctx.db.query("payments").withIndex("by_received", (q) => q.eq("orgId", u.orgId)).order("desc").take(400)) {
         const renter = await ctx.db.get(p.renterId);
         if (`${p.reference} ${renter?.name ?? ""}`.toLowerCase().includes(needle)) await add(p);
         if (out.length >= 30) break;
@@ -127,8 +128,8 @@ export const confirmMatch = mutation({
   args: { entryId: v.id("bankStatementEntries"), paymentId: v.id("payments") },
   handler: async (ctx, { entryId, paymentId }) => {
     const u = await bankUser(ctx);
-    const e = (await ctx.db.get(entryId)) ?? fail("not_found");
-    const p = (await ctx.db.get(paymentId)) ?? fail("not_found");
+    const e = await owned(ctx, u.orgId, entryId);
+    const p = await owned(ctx, u.orgId, paymentId);
     if (p.status === "voided") fail("payment_voided");
     await assertRenterVisible(ctx, u, p.renterId);
     if (e.matchedPaymentId) fail("entry_already_matched");
@@ -145,7 +146,7 @@ export const ignore = mutation({
   args: { entryId: v.id("bankStatementEntries"), reason: v.string() },
   handler: async (ctx, { entryId, reason }) => {
     const u = await bankUser(ctx);
-    const e = (await ctx.db.get(entryId)) ?? fail("not_found");
+    const e = await owned(ctx, u.orgId, entryId);
     if (e.matchedPaymentId) fail("entry_already_matched");
     if (!reason.trim()) fail("reason_required");
     await ctx.db.patch(entryId, { ignoredAt: Date.now(), ignoredBy: u._id, ignoreReason: reason.trim() });
@@ -158,7 +159,7 @@ export const reopen = mutation({
   args: { entryId: v.id("bankStatementEntries") },
   handler: async (ctx, { entryId }) => {
     const u = await bankUser(ctx);
-    const e = (await ctx.db.get(entryId)) ?? fail("not_found");
+    const e = await owned(ctx, u.orgId, entryId);
     if (e.matchedPaymentId) {
       if (!(u.roles ?? []).some((r) => r === "approver" || r === "superAdmin")) fail("forbidden");
       await ctx.db.patch(entryId, { matchedPaymentId: undefined, matchedBy: undefined, matchedAt: undefined });

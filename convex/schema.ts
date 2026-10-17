@@ -6,6 +6,9 @@ import { authTables } from "@convex-dev/auth/server";
 const money = v.number();
 const ts = v.number();
 
+/** Every business record belongs to exactly one company (organisation). One company can never read or change another's records. */
+const org = v.id("organizations");
+
 export const role = v.union(
   v.literal("superAdmin"),
   v.literal("propertyManager"),
@@ -33,7 +36,11 @@ export default defineSchema({
     buildingScope: v.optional(v.union(v.literal("all"), v.array(v.id("buildings")))),
     active: v.optional(v.boolean()),
     lang: v.optional(v.union(v.literal("en"), v.literal("am"))),
+    // Which company the person is working in right now, and whether they belong to the platform team (runs all companies).
+    activeOrgId: v.optional(v.id("organizations")),
+    platformRole: v.optional(v.literal("platformAdmin")),
     inviteCode: v.optional(v.string()), // only present for a moment during sign-up; removed as soon as it is checked
+    companyCode: v.optional(v.string()), // the same, for a company join code typed at sign-up
     // Someone who signs up without an invitation asks for access. An access admin approves (and picks the roles) or declines.
     accessStatus: v.optional(v.union(v.literal("pending"), v.literal("rejected"))),
     accessNote: v.optional(v.string()), // what the person wrote to the administrator
@@ -42,15 +49,15 @@ export default defineSchema({
     decidedAt: v.optional(v.number()),
   }).index("email", ["email"]),
 
-  buildings: defineTable({
+  buildings: defineTable({ orgId: org,
     name: v.string(), address: v.optional(v.string()), city: v.optional(v.string()), subCity: v.optional(v.string()),
     contactName: v.optional(v.string()), contactPhone: v.optional(v.string()), notes: v.optional(v.string()),
     archivedAt: v.optional(v.number()), // taken out of service: hidden from every list and picker, its history stays
-  }),
-  floors: defineTable({ buildingId: v.id("buildings"), label: v.string(), planFileId: v.optional(v.id("_storage")) })
-    .index("by_building", ["buildingId"]),
+  }).index("by_org", ["orgId"]),
+  floors: defineTable({ orgId: org, buildingId: v.id("buildings"), label: v.string(), planFileId: v.optional(v.id("_storage")) })
+    .index("by_building", ["buildingId"]).index("by_org", ["orgId"]),
 
-  units: defineTable({
+  units: defineTable({ orgId: org,
     buildingId: v.id("buildings"),
     floorId: v.id("floors"),
     number: v.string(),
@@ -59,9 +66,9 @@ export default defineSchema({
     ratePerM2: money,
     status: v.union(v.literal("vacant"), v.literal("occupied"), v.literal("maintenance")),
     notes: v.optional(v.string()),
-  }).index("by_building", ["buildingId"]).index("by_building_number", ["buildingId", "number"]),
+  }).index("by_building", ["buildingId"]).index("by_building_number", ["buildingId", "number"]).index("by_org", ["orgId"]),
 
-  renters: defineTable({
+  renters: defineTable({ orgId: org,
     kind: v.union(v.literal("individual"), v.literal("company")),
     name: v.string(),
     tin: v.optional(v.string()),
@@ -78,15 +85,15 @@ export default defineSchema({
     notes: v.optional(v.string()),
     smsLanguage: v.optional(v.union(v.literal("en"), v.literal("am"))), // the language their messages are sent in
     smsOptOut: v.optional(v.boolean()), // never send them automatic messages
-  }).index("by_name", ["name"]).index("by_tin", ["tin"]),
-  renterDocuments: defineTable({
+  }).index("by_name", ["orgId", "name"]).index("by_tin", ["orgId", "tin"]).index("by_org", ["orgId"]),
+  renterDocuments: defineTable({ orgId: org,
     renterId: v.id("renters"),
     kind: v.string(),
     fileId: v.id("_storage"),
     uploadedBy: v.id("users"),
-  }).index("by_renter", ["renterId"]),
+  }).index("by_renter", ["renterId"]).index("by_org", ["orgId"]),
 
-  agreements: defineTable({
+  agreements: defineTable({ orgId: org,
     unitId: v.id("units"),
     renterId: v.id("renters"),
     status: v.union(v.literal("draft"), v.literal("inReview"), v.literal("active"), v.literal("expired"), v.literal("terminated")),
@@ -97,10 +104,10 @@ export default defineSchema({
     approvedBy: v.optional(v.id("users")), // must differ from createdBy
     terminationReason: v.optional(v.string()),
     importedAt: v.optional(ts), // brought in from the old records at go-live: active without going through review
-  }).index("by_unit", ["unitId", "status"]).index("by_renter", ["renterId"]).index("by_status", ["status"]),
+  }).index("by_unit", ["unitId", "status"]).index("by_renter", ["renterId"]).index("by_status", ["orgId", "status"]).index("by_org", ["orgId"]),
 
   // Effective-dated terms: a later rent change never alters already-issued bills.
-  agreementTerms: defineTable({
+  agreementTerms: defineTable({ orgId: org,
     agreementId: v.id("agreements"),
     effectiveFrom: ts,
     rent: v.union(
@@ -112,9 +119,9 @@ export default defineSchema({
     // e.g. { percent: 10, everyMonths: 12 } raises the rent 10% every 12 months from effectiveFrom
     escalation: v.optional(v.object({ percent: v.number(), everyMonths: v.number() })),
     createdBy: v.id("users"),
-  }).index("by_agreement", ["agreementId", "effectiveFrom"]),
+  }).index("by_agreement", ["agreementId", "effectiveFrom"]).index("by_org", ["orgId"]),
 
-  invoices: defineTable({
+  invoices: defineTable({ orgId: org,
     number: v.string(),
     agreementId: v.id("agreements"),
     unitId: v.id("units"),
@@ -135,25 +142,26 @@ export default defineSchema({
   })
     .index("by_agreement_period", ["agreementId", "period"]) // idempotency: one original bill per agreement+period
     .index("by_renter", ["renterId"])
-    .index("by_period", ["period"])
-    .index("by_status_due", ["status", "due"]), // open bills: status = issued and due > 0
-  invoiceLines: defineTable({
+    .index("by_period", ["orgId", "period"])
+    .index("by_status_due", ["orgId", "status", "due"]) // open bills: status = issued and due > 0
+    .index("by_org", ["orgId"]),
+  invoiceLines: defineTable({ orgId: org,
     invoiceId: v.id("invoices"),
     kind: v.union(v.literal("rent"), v.literal("water"), v.literal("electricity"), v.literal("generator"), v.literal("security"), v.literal("cleaning"), v.literal("other")),
     description: v.string(),
     amount: money,
     calcNote: v.string(), // the calculation as it was done at the time
-  }).index("by_invoice", ["invoiceId"]),
-  invoiceAdjustments: defineTable({
+  }).index("by_invoice", ["invoiceId"]).index("by_org", ["orgId"]),
+  invoiceAdjustments: defineTable({ orgId: org,
     invoiceId: v.id("invoices"),
     delta: v.number(),
     reason: v.string(),
     requestedBy: v.id("users"),
     approvedBy: v.optional(v.id("users")),
-  }).index("by_invoice", ["invoiceId"]),
+  }).index("by_invoice", ["invoiceId"]).index("by_org", ["orgId"]),
 
   // recorded → confirmed → applied. Only applied money reduces a bill.
-  payments: defineTable({
+  payments: defineTable({ orgId: org,
     renterId: v.id("renters"),
     amount: money,
     method: v.union(v.literal("bankDeposit"), v.literal("transfer"), v.literal("telebirr"), v.literal("cbeBirr"), v.literal("cash")),
@@ -172,14 +180,14 @@ export default defineSchema({
     voidedBy: v.optional(v.id("users")),
     voidedAt: v.optional(ts),
     voidReason: v.optional(v.string()),
-  }).index("by_renter", ["renterId"]).index("by_status", ["status"]).index("by_reference", ["method", "reference"]).index("by_amount", ["amount"]).index("by_received", ["receivedAt"]),
-  paymentAllocations: defineTable({ paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
-    .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]),
+  }).index("by_renter", ["renterId"]).index("by_status", ["orgId", "status"]).index("by_reference", ["orgId", "method", "reference"]).index("by_amount", ["orgId", "amount"]).index("by_received", ["orgId", "receivedAt"]).index("by_org", ["orgId"]),
+  paymentAllocations: defineTable({ orgId: org, paymentId: v.id("payments"), invoiceId: v.id("invoices"), amount: money })
+    .index("by_invoice", ["invoiceId"]).index("by_payment", ["paymentId"]).index("by_org", ["orgId"]),
   // positive = credit created from an overpayment, negative = credit consumed by a bill
-  renterCredits: defineTable({ renterId: v.id("renters"), paymentId: v.optional(v.id("payments")), invoiceId: v.optional(v.id("invoices")), amount: money, openingKey: v.optional(v.string()) })
-    .index("by_renter", ["renterId"]).index("by_invoice", ["invoiceId"]),
+  renterCredits: defineTable({ orgId: org, renterId: v.id("renters"), paymentId: v.optional(v.id("payments")), invoiceId: v.optional(v.id("invoices")), amount: money, openingKey: v.optional(v.string()) })
+    .index("by_renter", ["renterId"]).index("by_invoice", ["invoiceId"]).index("by_org", ["orgId"]),
 
-  deposits: defineTable({
+  deposits: defineTable({ orgId: org,
     agreementId: v.id("agreements"),
     required: money,
     held: money,
@@ -188,10 +196,10 @@ export default defineSchema({
     refunded: money,
     // how each part of the deposit arrived, so it can be traced to a bank line or a cash receipt
     receipts: v.optional(v.array(v.object({ amount: money, method: v.string(), reference: v.string(), receivedAt: ts, recordedBy: v.id("users") }))),
-  }).index("by_agreement", ["agreementId"]),
+  }).index("by_agreement", ["agreementId"]).index("by_org", ["orgId"]),
 
-  meters: defineTable({ unitId: v.id("units"), kind: v.union(v.literal("water"), v.literal("electricity")), serial: v.string() }).index("by_unit", ["unitId"]),
-  meterReadings: defineTable({
+  meters: defineTable({ orgId: org, unitId: v.id("units"), kind: v.union(v.literal("water"), v.literal("electricity")), serial: v.string() }).index("by_unit", ["unitId"]).index("by_org", ["orgId"]),
+  meterReadings: defineTable({ orgId: org,
     meterId: v.id("meters"),
     value: v.number(),
     readAt: ts,
@@ -199,8 +207,8 @@ export default defineSchema({
     enteredBy: v.id("users"),
     approvedBy: v.optional(v.id("users")),
     isReset: v.boolean(),
-  }).index("by_meter", ["meterId", "readAt"]),
-  sharedCosts: defineTable({
+  }).index("by_meter", ["meterId", "readAt"]).index("by_org", ["orgId"]),
+  sharedCosts: defineTable({ orgId: org,
     buildingId: v.id("buildings"),
     kind: v.union(v.literal("generator"), v.literal("security"), v.literal("cleaning")),
     period: v.string(),
@@ -209,12 +217,12 @@ export default defineSchema({
     ownerShare: money,
     createdBy: v.id("users"),
     approvedBy: v.optional(v.id("users")),
-  }).index("by_building_period", ["buildingId", "period"]),
+  }).index("by_building_period", ["buildingId", "period"]).index("by_org", ["orgId"]),
 
-  sharedCostAllocations: defineTable({ sharedCostId: v.id("sharedCosts"), unitId: v.id("units"), amount: money })
-    .index("by_cost", ["sharedCostId"]).index("by_unit", ["unitId"]).index("by_cost_unit", ["sharedCostId", "unitId"]),
+  sharedCostAllocations: defineTable({ orgId: org, sharedCostId: v.id("sharedCosts"), unitId: v.id("units"), amount: money })
+    .index("by_cost", ["sharedCostId"]).index("by_unit", ["unitId"]).index("by_cost_unit", ["sharedCostId", "unitId"]).index("by_org", ["orgId"]),
 
-  handovers: defineTable({
+  handovers: defineTable({ orgId: org,
     agreementId: v.id("agreements"),
     kind: v.union(v.literal("moveIn"), v.literal("moveOut")),
     keys: v.number(),
@@ -222,11 +230,11 @@ export default defineSchema({
     readings: v.optional(v.string()),
     recordedBy: v.id("users"),
     at: ts,
-  }).index("by_agreement", ["agreementId"]),
+  }).index("by_agreement", ["agreementId"]).index("by_org", ["orgId"]),
 
   // key/value configuration: tariffs (santim per unit), sms lead days, counters
   // Sign-up is by invitation: an access admin invites an email address and hands the person a one-time code.
-  invites: defineTable({
+  invites: defineTable({ orgId: org,
     email: v.string(),
     codeHash: v.string(),
     roles: v.array(role),
@@ -234,21 +242,21 @@ export default defineSchema({
     createdBy: v.id("users"),
     expiresAt: v.number(),
     usedAt: v.optional(v.number()),
-  }).index("by_email", ["email"]),
+  }).index("by_email", ["email"]).index("by_org", ["orgId"]),
 
   // A document link is created only after a role and building check, and works for two minutes.
   fileTickets: defineTable({ tokenHash: v.string(), storageId: v.id("_storage"), contentType: v.string(), userId: v.id("users"), expiresAt: v.number() })
     .index("by_hash", ["tokenHash"]).index("by_expiry", ["expiresAt"]),
 
   // Who the bills and receipts come from: printed on every invoice, receipt and contract. One row.
-  organization: defineTable({
+  organization: defineTable({ orgId: org,
     name: v.string(), tin: v.optional(v.string()), vatNumber: v.optional(v.string()), address: v.optional(v.string()), city: v.optional(v.string()),
     phone: v.optional(v.string()), email: v.optional(v.string()),
     bankAccounts: v.optional(v.string()), // where renters pay, one per line: "CBE 1000123456789 Dire Mall PLC"
     invoiceNote: v.optional(v.string()), // printed at the foot of every bill (payment terms, late-payment note)
-  }),
+  }).index("by_org", ["orgId"]),
 
-  settings: defineTable({ key: v.string(), value: v.number() }).index("by_key", ["key"]),
+  settings: defineTable({ orgId: org, key: v.string(), value: v.number() }).index("by_key", ["orgId", "key"]).index("by_org", ["orgId"]),
 
   // Two-step sign-in. A secret only counts once `enabled`; sessions are marked verified per sign-in.
   mfaSecrets: defineTable({
@@ -263,7 +271,7 @@ export default defineSchema({
   }).index("by_user", ["userId"]),
   mfaSessions: defineTable({ sessionId: v.string(), userId: v.id("users") }).index("by_session", ["sessionId"]).index("by_user", ["userId"]),
 
-  bankStatementEntries: defineTable({
+  bankStatementEntries: defineTable({ orgId: org,
     importBatch: v.string(),
     postedAt: ts,
     amount: money,
@@ -276,9 +284,9 @@ export default defineSchema({
     ignoredAt: v.optional(ts), // a line that is not rent (bank charge, transfer between own accounts, …)
     ignoredBy: v.optional(v.id("users")),
     ignoreReason: v.optional(v.string()),
-  }).index("by_batch", ["importBatch"]).index("by_payment", ["matchedPaymentId"]).index("by_line", ["postedAt", "amount"]),
+  }).index("by_batch", ["orgId", "importBatch"]).index("by_payment", ["matchedPaymentId"]).index("by_line", ["orgId", "postedAt", "amount"]).index("by_org", ["orgId"]),
 
-  smsMessages: defineTable({
+  smsMessages: defineTable({ orgId: org,
     renterId: v.optional(v.id("renters")), // empty only for a test message to a number typed in
     to: v.optional(v.string()),
     kind: v.union(v.literal("dueReminder"), v.literal("paymentAck"), v.literal("expiryWarning"), v.literal("billIssued"), v.literal("custom")),
@@ -296,11 +304,86 @@ export default defineSchema({
     invoiceId: v.optional(v.id("invoices")),
     agreementId: v.optional(v.id("agreements")),
     dedupeKey: v.optional(v.string()),
-  }).index("by_renter", ["renterId"]).index("by_dedupe", ["dedupeKey"]).index("by_status", ["status"]).index("by_batch", ["batch"]),
+  }).index("by_renter", ["renterId"]).index("by_dedupe", ["orgId", "dedupeKey"]).index("by_status", ["orgId", "status"]).index("by_batch", ["orgId", "batch"]).index("by_org", ["orgId"]),
 
   // Edited wording of the automatic messages. A kind and language with no row here uses the built-in text.
-  smsTemplates: defineTable({ kind: v.string(), lang: v.union(v.literal("en"), v.literal("am")), body: v.string(), enabled: v.boolean(), updatedBy: v.id("users") }).index("by_kind_lang", ["kind", "lang"]),
+  smsTemplates: defineTable({ orgId: org, kind: v.string(), lang: v.union(v.literal("en"), v.literal("am")), body: v.string(), enabled: v.boolean(), updatedBy: v.id("users") }).index("by_kind_lang", ["orgId", "kind", "lang"]).index("by_org", ["orgId"]),
 
-  auditLog: defineTable({ actorId: v.id("users"), action: v.string(), entity: v.string(), entityId: v.string(), detail: v.string() })
-    .index("by_entity", ["entity", "entityId"]),
+  auditLog: defineTable({ orgId: org, actorId: v.id("users"), action: v.string(), entity: v.string(), entityId: v.string(), detail: v.string() })
+    .index("by_entity", ["entity", "entityId"]).index("by_org", ["orgId", "entity"]),
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // The platform: companies (tenants), who belongs to them, and how the platform team looks after them.
+  // ---------------------------------------------------------------------------------------------------------------------
+  organizations: defineTable({
+    name: v.string(),
+    slug: v.string(), // short, unique, lower case: used in links and by the SMS gateway to say which company a receipt is for
+    status: v.union(v.literal("trial"), v.literal("active"), v.literal("past_due"), v.literal("suspended"), v.literal("cancelled")),
+    statusReason: v.optional(v.string()),
+    plan: v.string(), // trial | starter | standard | enterprise, or a custom name
+    limits: v.object({ units: v.number(), seats: v.number(), smsPerMonth: v.number() }), // 0 means no limit
+    trialEndsAt: v.optional(v.number()),
+    joinCode: v.optional(v.string()), // people with this code can ask to join (an administrator still decides)
+    currency: v.string(), // ISO code shown on money: ETB, USD, …
+    tzOffsetHours: v.number(), // hours ahead of UTC (Ethiopia: 3): "today", quiet hours and daily jobs follow it
+    defaultLang: v.union(v.literal("en"), v.literal("am")),
+    defaultCalendar: v.union(v.literal("gregorian"), v.literal("ethiopian")),
+    country: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    cancelledAt: v.optional(v.number()),
+  }).index("by_slug", ["slug"]).index("by_join_code", ["joinCode"]).index("by_status", ["status"]),
+
+  // A person's place in a company: their roles and the buildings they may see there. One person can belong to several companies.
+  memberships: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    roles: v.array(role),
+    buildingScope: v.union(v.literal("all"), v.array(v.id("buildings"))),
+    status: v.union(v.literal("active"), v.literal("suspended")),
+    invitedBy: v.optional(v.id("users")),
+  }).index("by_user", ["userId"]).index("by_org", ["orgId"]).index("by_org_user", ["orgId", "userId"]),
+
+  // Someone asked to join a company. The company's access managers approve (choosing roles and buildings) or decline.
+  accessRequests: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("rejected")),
+    note: v.optional(v.string()),
+    requestedAt: v.number(),
+    decisionReason: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
+  }).index("by_org_status", ["orgId", "status"]).index("by_user", ["userId"]),
+
+  // The platform team looks into a company's data only through one of these: with a reason, read only, for a limited time, and visible to the company.
+  supportSessions: defineTable({
+    platformUserId: v.id("users"),
+    orgId: v.id("organizations"),
+    reason: v.string(),
+    startedAt: v.number(),
+    expiresAt: v.number(),
+    endedAt: v.optional(v.number()),
+  }).index("by_user", ["platformUserId"]).index("by_org", ["orgId"]),
+
+  platformAudit: defineTable({ actorId: v.id("users"), action: v.string(), orgId: v.optional(v.id("organizations")), detail: v.string() })
+    .index("by_org", ["orgId"]),
+
+  // A complete copy of one company's records, made on request (data portability, and the way out when a company leaves).
+  dataExports: defineTable({
+    orgId: v.id("organizations"),
+    requestedBy: v.id("users"),
+    status: v.union(v.literal("building"), v.literal("ready"), v.literal("failed")),
+    storageId: v.optional(v.id("_storage")),
+    rows: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }).index("by_org", ["orgId"]),
+
+  // A company's own SMS gateway. The key is stored encrypted and is never shown again once saved.
+  smsConfig: defineTable({
+    orgId: v.id("organizations"),
+    apiUrl: v.string(),
+    apiKeyEnc: v.string(),
+    sender: v.string(),
+    webhookSecretHash: v.optional(v.string()),
+    updatedBy: v.id("users"),
+  }).index("by_org", ["orgId"]),
 });

@@ -3,6 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { assertBuilding, audit, fail, requireRole } from "./lib/access";
+import { inOrg, owned } from "./lib/tenant";
 import { assertRenterVisible, assertUnitVisible } from "./lib/scope";
 
 /**
@@ -33,7 +34,7 @@ export const deleteUnit = mutation({
   handler: async (ctx, { unitId }) => {
     const u = await requireRole(ctx, "propertyManager");
     await assertUnitVisible(ctx, u, unitId);
-    const unit = (await ctx.db.get(unitId)) ?? fail("not_found");
+    const unit = await owned(ctx, u.orgId, unitId);
     if (await unitHasHistory(ctx, unitId)) fail("unit_has_history");
     await removeUnit(ctx, unitId);
     await audit(ctx, u, "unit.delete", "units", unitId, unit.number);
@@ -44,7 +45,7 @@ export const deleteFloor = mutation({
   args: { floorId: v.id("floors") },
   handler: async (ctx, { floorId }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const floor = (await ctx.db.get(floorId)) ?? fail("not_found");
+    const floor = await owned(ctx, u.orgId, floorId);
     assertBuilding(u, floor.buildingId);
     const units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", floor.buildingId)).collect();
     if (units.some((x) => x.floorId === floorId)) fail("floor_has_units");
@@ -59,7 +60,7 @@ export const deleteBuilding = mutation({
   handler: async (ctx, { buildingId }) => {
     const u = await requireRole(ctx, "propertyManager");
     if (u.buildingScope !== "all") fail("forbidden_building");
-    const b = (await ctx.db.get(buildingId)) ?? fail("not_found");
+    const b = await owned(ctx, u.orgId, buildingId);
     const units = await ctx.db.query("units").withIndex("by_building", (q) => q.eq("buildingId", buildingId)).collect();
     if (units.length > MAX_UNITS) fail("too_big_to_delete");
     if (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", buildingId)).first()) fail("building_has_history");
@@ -70,10 +71,10 @@ export const deleteBuilding = mutation({
       await ctx.db.delete(f._id);
     }
     // staff and open invitations that named this building lose it from their list
-    for (const s of await ctx.db.query("users").collect()) {
-      if (Array.isArray(s.buildingScope) && s.buildingScope.includes(buildingId)) await ctx.db.patch(s._id, { buildingScope: s.buildingScope.filter((id) => id !== buildingId) });
+    for (const m of await ctx.db.query("memberships").withIndex("by_org", (q) => q.eq("orgId", u.orgId)).collect()) {
+      if (Array.isArray(m.buildingScope) && m.buildingScope.includes(buildingId)) await ctx.db.patch(m._id, { buildingScope: m.buildingScope.filter((id) => id !== buildingId) });
     }
-    for (const i of await ctx.db.query("invites").collect()) {
+    for (const i of await inOrg(ctx, "invites", u.orgId).collect()) {
       if (Array.isArray(i.buildingScope) && i.buildingScope.includes(buildingId)) await ctx.db.patch(i._id, { buildingScope: i.buildingScope.filter((id) => id !== buildingId) });
     }
     await ctx.db.delete(buildingId);
@@ -87,14 +88,14 @@ export const deleteRenter = mutation({
   handler: async (ctx, { renterId }) => {
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
     await assertRenterVisible(ctx, u, renterId);
-    const r = (await ctx.db.get(renterId)) ?? fail("not_found");
+    const r = await owned(ctx, u.orgId, renterId);
     const has = (await ctx.db.query("agreements").withIndex("by_renter", (q) => q.eq("renterId", renterId)).first())
       || (await ctx.db.query("payments").withIndex("by_renter", (q) => q.eq("renterId", renterId)).first())
       || (await ctx.db.query("renterCredits").withIndex("by_renter", (q) => q.eq("renterId", renterId)).first())
       || (await ctx.db.query("invoices").withIndex("by_renter", (q) => q.eq("renterId", renterId)).first());
     if (has) fail("renter_has_history");
     for (const d of await ctx.db.query("renterDocuments").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect()) { await ctx.storage.delete(d.fileId); await ctx.db.delete(d._id); }
-    for (const m of await ctx.db.query("smsMessages").filter((q) => q.eq(q.field("renterId"), renterId)).collect()) await ctx.db.delete(m._id);
+    for (const m of await ctx.db.query("smsMessages").withIndex("by_renter", (q) => q.eq("renterId", renterId)).collect()) await ctx.db.delete(m._id);
     await ctx.db.delete(renterId);
     await audit(ctx, u, "renter.delete", "renters", renterId, r.name);
   },
@@ -105,7 +106,7 @@ export const deleteDraftAgreement = mutation({
   args: { agreementId: v.id("agreements") },
   handler: async (ctx, { agreementId }) => {
     const u = await requireRole(ctx, "propertyManager");
-    const ag = (await ctx.db.get(agreementId)) ?? fail("not_found");
+    const ag = await owned(ctx, u.orgId, agreementId);
     await assertUnitVisible(ctx, u, ag.unitId);
     if (ag.status !== "draft" && ag.status !== "inReview") fail("agreement_not_draft");
     if (await ctx.db.query("invoices").withIndex("by_agreement_period", (q) => q.eq("agreementId", agreementId)).first()) fail("agreement_has_bills");
