@@ -34,7 +34,7 @@ export function RulesTab() {
   return (
     <div className="stack">
       {edit && <GatewayCard />}
-      <Card title={t("sms.gateway")}>
+      <Card title={t("sms.gatewayTest")}>
         <div className="stack">
           <p className={`msg ${gw?.configured ? "good" : "info"}`} role="status"><Icon name={gw?.configured ? "check" : "alert"} size={16} />{gw?.configured ? t("sms.gatewayOn").replace("{s}", gw.sender) : t("sms.noGateway")}</p>
           <form className="row test-send" onSubmit={async (e) => {

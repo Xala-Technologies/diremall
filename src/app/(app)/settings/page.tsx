@@ -28,7 +28,7 @@ export default function Settings() {
   return (
     <div className="stack">
       <PageHeader title={t("nav.settings")} tabs={<SectionTabs label={t("nav.settings")} value={tab} onChange={pick} tabs={TABS.map((k) => [k, t(`set.tab.${k}`)] as [string, string])} />} />
-      {tab === "overview" ? <Overview go={pick} /> : tab === "org" ? <><Organisation /><Formats /></> : tab === "data" ? <DataPrivacy /> : tab === "buildings" ? <Buildings /> : tab === "billing" ? <Billing /> : tab === "history" ? <History /> : <Security />}
+      {tab === "overview" ? <Overview go={pick} /> : tab === "org" ? <div className="stack"><Organisation /><Formats /></div> : tab === "data" ? <DataPrivacy /> : tab === "buildings" ? <Buildings /> : tab === "billing" ? <Billing /> : tab === "history" ? <History /> : <Security />}
     </div>
   );
 }

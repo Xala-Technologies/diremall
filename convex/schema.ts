@@ -255,7 +255,7 @@ export default defineSchema({
   organization: defineTable({ orgId: org,
     name: v.string(), tin: v.optional(v.string()), vatNumber: v.optional(v.string()), address: v.optional(v.string()), city: v.optional(v.string()),
     phone: v.optional(v.string()), email: v.optional(v.string()),
-    bankAccounts: v.optional(v.string()), // where renters pay, one per line: "CBE 1000123456789 Dire Mall PLC"
+    bankAccounts: v.optional(v.string()), // where renters pay, one per line: "CBE 1000123456789 Your Company PLC"
     invoiceNote: v.optional(v.string()), // printed at the foot of every bill (payment terms, late-payment note)
   }).index("by_org", ["orgId"]),
 

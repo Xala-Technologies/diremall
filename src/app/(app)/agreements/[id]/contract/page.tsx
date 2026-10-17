@@ -45,7 +45,7 @@ export default function Contract() {
           <li><h2>Ending the lease</h2>Either party may end the lease only as the law and this agreement allow. The Lessor stops billing from the date the lease ends.</li>
           <li><h2>Governing law</h2>This lease is governed by the Property Rental Operations and Control Proclamation No. 1320/2024.</li>
         </ol>
-        <footer className="paper-f"><div><span className="muted">Lessor</span><div className="sign" /><b>Dire Mall</b></div><div><span className="muted">Lessee</span><div className="sign" /><b>{renter?.name}</b></div></footer>
+        <footer className="paper-f"><div><span className="muted">Lessor</span><div className="sign" /><b>{org?.name}</b></div><div><span className="muted">Lessee</span><div className="sign" /><b>{renter?.name}</b></div></footer>
       </article>
     </div>
   );

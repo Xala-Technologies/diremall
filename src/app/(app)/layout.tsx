@@ -54,6 +54,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   useEffect(() => { if (!isLoading && !isAuthenticated) router.replace("/login"); }, [isLoading, isAuthenticated, router]);
   useEffect(() => setOpen(false), [path]);
+  // someone who only runs the platform has no company to show, so they go straight to the console
+  const platformOnly = !!me && !me.ready && me.platformAdmin && me.companies.length === 0;
+  useEffect(() => { if (platformOnly) router.replace("/platform"); }, [platformOnly, router]);
   // a person who has never chosen a language or calendar gets the company's defaults
   const dl = me?.org?.defaultLang, dc = me?.org?.defaultCalendar;
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   setClientCurrency(me.org?.currency);
   if (me.mfa === "verify") return <MfaVerify />;
   if (me.mfa === "setup") return <MfaRequired />;
+  if (platformOnly) return <div className="center"><div style={{ width: 240 }}><Skeleton lines={3} /></div></div>;
   if (!me.ready) return <CompanyAccess me={me} />;
   const allowed = (i: Item) => !i.roles || me.roles.includes("superAdmin") || i.roles.some((r) => me.roles.includes(r as never));
   const initials = (me.name || me.email || "?").split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("");

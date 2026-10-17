@@ -8,13 +8,16 @@ import { Icon } from "@/components/icons";
 import { BarChart, BuildingSelect, Card, DateText, Donut, Kpi, Money, PageHeader, PeriodPicker, Skeleton } from "@/components/ui";
 import { formatPeriod, pct, shiftPeriod, lastDay, currencyCode } from "@/lib/format";
 import { usePeriod } from "@/lib/usePeriod";
+import { useMe } from "@/lib/useMe";
 import { useI18n } from "@/lib/i18n";
 
 // Demo-only figure added on top of real collections, in santim. Unset NEXT_PUBLIC_DEMO_EXTRA_COLLECTED_ETB before go-live.
-const DEMO_EXTRA_COLLECTED = Math.round((Number(process.env.NEXT_PUBLIC_DEMO_EXTRA_COLLECTED_ETB) || 0) * 100);
+const DEMO_EXTRA_SANTIM = Math.round((Number(process.env.NEXT_PUBLIC_DEMO_EXTRA_COLLECTED_ETB) || 0) * 100);
 
 export default function Dashboard() {
-  const { t, calendar, lang } = useI18n();
+  const { t, calendar, lang } = useI18n(); const { me } = useMe();
+  // the demo figure belongs to the original company only, never to other companies on the platform
+  const DEMO_EXTRA_COLLECTED = me?.org?.slug === "dire-mall" ? DEMO_EXTRA_SANTIM : 0;
   const router = useRouter();
   const [period, setPeriod] = usePeriod();
   const [building, setBuilding] = useState("");
@@ -45,7 +48,7 @@ export default function Dashboard() {
       {!d ? <div className="kpis kpis-4">{[0, 1, 2, 3].map((i) => <div key={i} className="kpi"><Skeleton lines={3} /></div>)}</div> : (
         <>
           {d.units === 0 && (
-            <Card title={t("first.title")}>
+            <Card title={t("first.title").replace("{c}", me?.org?.name ?? "")}>
               <ol className="steps"><li><Link href="/properties">{t("first.1")}</Link></li><li><Link href="/renters">{t("first.2")}</Link></li><li><Link href="/agreements">{t("first.3")}</Link></li></ol>
             </Card>
           )}

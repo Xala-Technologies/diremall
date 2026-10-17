@@ -49,7 +49,7 @@ export async function verifyTotp(secret: string, code: string, now = Date.now())
   return hit;
 }
 
-export const otpauthUri = (secret: string, account: string, issuer = "Dire Mall") =>
+export const otpauthUri = (secret: string, account: string, issuer = "Rentals") =>
   `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=${STEP}`;
 
 export async function sha256Hex(s: string): Promise<string> {

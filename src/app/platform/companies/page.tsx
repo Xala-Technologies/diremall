@@ -26,7 +26,7 @@ export default function Companies() {
       <Card flush><Table rows={rows} empty={t("plat.noCompanies")} onRow={(c) => router.push(`/platform/companies/${c._id}`)} cols={[
         { head: t("name"), cell: (c) => <div className="two-line"><strong>{c.name}</strong><span className="muted">{c.slug}</span></div>, sort: (c) => c.name },
         { head: t("status"), cell: (c) => <CompanyStatus status={c.status} />, sort: (c) => c.status },
-        { head: t("plat.plan"), cell: (c) => c.plan, sort: (c) => c.plan },
+        { head: t("plat.plan"), cell: (c) => t(`plat.plan.${c.plan}`), sort: (c) => c.plan },
         { head: t("plat.units"), cell: (c) => `${c.units}${c.limits.units ? ` / ${c.limits.units}` : ""}`, right: true, sort: (c) => c.units },
         { head: t("plat.seats"), cell: (c) => `${c.seats}${c.limits.seats ? ` / ${c.limits.seats}` : ""}`, right: true },
         { head: "SMS", cell: (c) => `${c.smsThisMonth}${c.limits.smsPerMonth ? ` / ${c.limits.smsPerMonth}` : ""}`, right: true },

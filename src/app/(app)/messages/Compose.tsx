@@ -8,6 +8,7 @@ import { FilterSelect } from "@/components/FilterSelect";
 import { Card, ConfirmDialog, Message } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useI18n } from "@/lib/i18n";
+import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 import { Bubble, Chips, insertAt } from "./Templates";
 
@@ -17,7 +18,7 @@ type Kind = "activeLeases" | "overdue" | "building" | "renters";
 export function ComposeTab() {
   const { t } = useI18n(); const toast = useToast();
   const buildings = useQuery(api.properties.listBuildings, {}); const renters = useQuery(api.renters.list, {});
-  const send = useMutation(api.smsQueue.sendBroadcast); const { run, error, busy } = useRun(); const gw = useQuery(api.smsQueue.gateway);
+  const { me } = useMe(); const send = useMutation(api.smsQueue.sendBroadcast); const { run, error, busy } = useRun(); const gw = useQuery(api.smsQueue.gateway);
   const [kind, setKind] = useState<Kind>("activeLeases"); const [buildingId, setBuildingId] = useState(""); const [picked, setPicked] = useState<Set<string>>(new Set()); const [q, setQ] = useState("");
   const [en, setEn] = useState(""); const [am, setAm] = useState(""); const [confirm, setConfirm] = useState(false);
   const enRef = useRef<HTMLTextAreaElement>(null); const amRef = useRef<HTMLTextAreaElement>(null);
@@ -26,7 +27,7 @@ export function ComposeTab() {
   const pre = useQuery(api.smsQueue.audiencePreview, ready ? { audience } : "skip");
   const checkEn = checkTemplate(BROADCAST_PLACEHOLDERS, en); const checkAm = am.trim() ? checkTemplate(BROADCAST_PLACEHOLDERS, am) : { ok: true, problems: [] as { code: string; detail?: string }[] };
   const first = pre?.recipients[0];
-  const sample = (text: string) => renderTemplate(text, { renter: first?.name ?? "Abebe Trading PLC", unit: first?.unit ?? "G-01", org: "Dire Mall" });
+  const sample = (text: string) => renderTemplate(text, { renter: first?.name ?? "Abebe Trading PLC", unit: first?.unit ?? "G-01", org: me?.org?.name ?? "" });
   // an estimate of what the operator will bill: English text for English readers, the Amharic text (or English) for Amharic readers
   const nEn = pre ? pre.count - pre.amharic : 0, nAm = pre?.amharic ?? 0;
   const segs = en.trim() ? nEn * smsSegments(sample(en)).segments + nAm * smsSegments(sample(am.trim() ? am : en)).segments : 0;

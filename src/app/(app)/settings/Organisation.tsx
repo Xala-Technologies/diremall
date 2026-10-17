@@ -52,7 +52,7 @@ export function Organisation() {
           </Card>
           <Card title={t("set.printed")}>
             <div className="form">
-              <div className="wide"><Field label={t("org.bank")} hint={t("org.bankHint")}><textarea rows={3} value={f.bankAccounts} disabled={!edit} onChange={set("bankAccounts")} placeholder="Commercial Bank of Ethiopia 1000123456789 Dire Mall PLC" /></Field></div>
+              <div className="wide"><Field label={t("org.bank")} hint={t("org.bankHint")}><textarea rows={3} value={f.bankAccounts} disabled={!edit} onChange={set("bankAccounts")} placeholder="Commercial Bank of Ethiopia 1000123456789 Your Company PLC" /></Field></div>
               <div className="wide"><Field label={t("org.note")} hint={t("org.noteHint")}><textarea rows={2} value={f.invoiceNote} disabled={!edit} onChange={set("invoiceNote")} /></Field></div>
             </div>
           </Card>

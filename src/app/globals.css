@@ -355,7 +355,7 @@ textarea { font: inherit; resize: vertical; }
 .filter-select.is-icon.is-open .filter-select-badge { color: inherit; }
 .filter-select.is-icon .filter-select-menu { left: auto; right: 0; min-width: 11rem; }
 
-@media (max-width: 440px) { .app-header .brand-mark-name { display: none; } }
+@media (max-width: 440px) { .app-header .brand { min-width: 0; flex: 1; } .app-header .brand-mark-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; } .app-header .brand-mark-name small { display: none; } }
 .app-header .mark > rect { fill: none; } .app-header .mark > path { fill: var(--ds-color-accent-text-subtle); }
 
 /* Bank matching */

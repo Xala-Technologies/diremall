@@ -25,7 +25,7 @@ export default function PlatformOverview() {
             <Card title={t("plat.c.status")}><Ring caption={t("plat.k.companies")} center={o.companies} parts={[
               { label: t("plat.status.active"), value: o.active, color: SERIES[1] }, { label: t("plat.status.trial"), value: o.trial, color: SERIES[0] }, { label: t("plat.status.past_due"), value: o.pastDue, color: SERIES[2] },
               { label: t("plat.status.suspended"), value: o.suspended, color: SERIES[3] }, { label: t("plat.status.cancelled"), value: o.cancelled, color: SERIES[4] }]} /></Card>
-            <Card title={t("plat.c.units")}><HBars format={(n) => n.toLocaleString()} items={(list ?? []).map((c) => ({ label: c.name, sub: t(`plat.plan.${c.plan}`) === `plat.plan.${c.plan}` ? c.plan : t(`plat.plan.${c.plan}`), value: c.units * 100 }))} /></Card>
+            <Card title={t("plat.c.units")}><HBars format={(n) => n.toLocaleString()} items={(list ?? []).map((c) => ({ label: c.name, sub: t(`plat.plan.${c.plan}`) === `plat.plan.${c.plan}` ? c.plan : t(`plat.plan.${c.plan}`), value: c.units }))} /></Card>
           </div>
         </>)}
       <Card title={`${t("plat.needsAttention")} (${attention.length})`} flush>
