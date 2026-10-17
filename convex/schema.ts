@@ -355,7 +355,7 @@ export default defineSchema({
     requestedAt: v.number(),
     decisionReason: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
-  }).index("by_org_status", ["orgId", "status"]).index("by_user", ["userId"]),
+  }).index("by_org_status", ["orgId", "status"]).index("by_user", ["userId"]).index("by_org", ["orgId"]),
 
   // The platform team looks into a company's data only through one of these: with a reason, read only, for a limited time, and visible to the company.
   supportSessions: defineTable({
