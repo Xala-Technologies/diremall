@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
 import { isPhone } from "../../../../convex/lib/validate";
+import { GatewayCard } from "../settings/Company";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -32,6 +33,7 @@ export function RulesTab() {
   const quiet = f.qs === f.qe ? t("sms.quietNone") : t("sms.quietSummary").replace("{a}", hourLabel(f.qs)).replace("{b}", hourLabel(f.qe));
   return (
     <div className="stack">
+      {edit && <GatewayCard />}
       <Card title={t("sms.gateway")}>
         <div className="stack">
           <p className={`msg ${gw?.configured ? "good" : "info"}`} role="status"><Icon name={gw?.configured ? "check" : "alert"} size={16} />{gw?.configured ? t("sms.gatewayOn").replace("{s}", gw.sender) : t("sms.noGateway")}</p>

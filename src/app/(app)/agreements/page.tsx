@@ -7,7 +7,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Badge, Card, Skeleton, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, SearchInput, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
 import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
 import { Kpi } from "@/components/ui";
-import { pct } from "@/lib/format";
+import { pct, currencyCode } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -95,7 +95,7 @@ function AgreementInsights({ all }: { all?: Lease[] }) {
   return <>
     <div className="kpis kpis-4">
       <Kpi tone="good" icon="agreements" label={t("active")} value={active.length} sub={`${all.length} ${t("ag.k.total")}`} />
-      <Kpi tone="info" icon="payments" label={t("ag.k.contracted")} unit="ETB" value={Math.round(rent / 100).toLocaleString()} sub={`${compact(rent * 12)} ${t("rep.k.yearly")}`} />
+      <Kpi tone="info" icon="payments" label={t("ag.k.contracted")} unit={currencyCode()} value={Math.round(rent / 100).toLocaleString()} sub={`${compact(rent * 12)} ${t("rep.k.yearly")}`} />
       <Kpi tone={soon.length ? "warn" : "good"} icon="alert" label={t("ag.k.endingSoon")} value={soon.length} sub={t("ag.k.within60")} />
       <Kpi icon="reports" label={t("ag.k.avgLeft")} value={`${left.toFixed(1)}`} sub={t("ag.k.months")} />
     </div>

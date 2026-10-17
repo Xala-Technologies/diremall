@@ -5,7 +5,7 @@ import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import { Icon } from "@/components/icons";
 import { Card, DateText, Kpi, Money, PageHeader, PeriodPicker, Skeleton, StatusBadge, Table } from "@/components/ui";
-import { pct } from "@/lib/format";
+import { pct, currencyCode } from "@/lib/format";
 import { usePeriod } from "@/lib/usePeriod";
 import { useI18n } from "@/lib/i18n";
 import { downloadXlsx } from "@/lib/xlsx";
@@ -51,9 +51,9 @@ export default function MonthEnd() {
       {!ready ? <Card><Skeleton lines={8} /></Card> : (
         <>
           <div className="kpis kpis-4">
-            <Kpi tone="info" icon="reports" label={t("dash.billed")} unit="ETB" value={<Money bare v={dash.billed} />} />
-            <Kpi tone="good" icon="payments" label={t("dash.applied")} unit="ETB" value={<Money bare v={dash.appliedToBills} />} sub={`${pct(dash.collectionRate)} ${t("dash.collected")}`} />
-            <Kpi tone="bad" icon="bills" label={t("dash.outstanding")} unit="ETB" value={<Money bare v={dash.outstanding} />} />
+            <Kpi tone="info" icon="reports" label={t("dash.billed")} unit={currencyCode()} value={<Money bare v={dash.billed} />} />
+            <Kpi tone="good" icon="payments" label={t("dash.applied")} unit={currencyCode()} value={<Money bare v={dash.appliedToBills} />} sub={`${pct(dash.collectionRate)} ${t("dash.collected")}`} />
+            <Kpi tone="bad" icon="bills" label={t("dash.outstanding")} unit={currencyCode()} value={<Money bare v={dash.outstanding} />} />
             <Kpi icon="buildings" label={t("dash.occupancy")} value={pct(dash.occupancyRate)} sub={`${dash.occupied} / ${dash.units}`} />
           </div>
           <Card flush title={t("me.bills")}>

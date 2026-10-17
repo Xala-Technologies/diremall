@@ -6,7 +6,7 @@ import { inOrg, owned, ownedOrNull } from "./lib/tenant";
 import { escalatedRent, monthlyRent } from "./lib/billing";
 import { renterMap, unitMap } from "./lib/bulk";
 import { invoiceBalance, refreshInvoice, termAt } from "./lib/ledger";
-import { etb, formatEtb } from "./lib/money";
+import { etb, formatMoney } from "./lib/money";
 import { coveredDays, periodRange } from "./lib/period";
 import { assertUnitVisible } from "./lib/scope";
 import { queueTemplated, smsRules } from "./lib/sms";
@@ -23,6 +23,7 @@ export const generate = mutation({
   args: { period: v.string(), buildingId: v.optional(v.id("buildings")), batch: v.optional(v.number()) },
   handler: async (ctx, { period, buildingId, batch }) => {
     const u = await requireRole(ctx, "financeOfficer");
+    const fm = (n: number) => formatMoney(n, u.org.currency);
     assertPeriod(period);
     // A large mall is billed in batches of this many bills per call (the screen keeps calling until done=true).
     const limit = Math.max(1, Math.min(batch ?? 150, 300));
@@ -57,10 +58,10 @@ export const generate = mutation({
       const base = monthlyRent(term.rent.kind === "fixed" ? { kind: "fixed", amount: term.rent.amount } : { kind: "perM2", areaM2: unit.areaM2, ratePerM2: term.rent.ratePerM2 });
       const esc = escalatedRent(base, term.escalation, term.effectiveFrom, start);
       const monthly = esc.amount;
-      const basis0 = term.rent.kind === "fixed" ? `fixed ${formatEtb(base)}` : `${unit.areaM2} m² × ${formatEtb(term.rent.ratePerM2)} = ${formatEtb(base)}`;
-      const basis = esc.steps > 0 && term.escalation ? `${basis0}; +${term.escalation.percent}% × ${esc.steps} = ${formatEtb(monthly)}` : basis0;
+      const basis0 = term.rent.kind === "fixed" ? `fixed ${fm(base)}` : `${unit.areaM2} m² × ${fm(term.rent.ratePerM2)} = ${fm(base)}`;
+      const basis = esc.steps > 0 && term.escalation ? `${basis0}; +${term.escalation.percent}% × ${esc.steps} = ${fm(monthly)}` : basis0;
       const rentAmount = covered === days ? monthly : Math.round((monthly * covered) / days);
-      lines.push({ kind: "rent", description: `Rent ${period}`, amount: rentAmount, calcNote: covered === days ? basis : `${basis}; ${covered}/${days} days = ${formatEtb(rentAmount)}` });
+      lines.push({ kind: "rent", description: `Rent ${period}`, amount: rentAmount, calcNote: covered === days ? basis : `${basis}; ${covered}/${days} days = ${fm(rentAmount)}` });
 
       // Utilities and shared costs belong to the unit, not the lease. When two leases share a period only the later one carries them,
       // so the same electricity or generator share is never billed twice.
@@ -78,7 +79,7 @@ export const generate = mutation({
         const tariff = m.kind === "electricity" ? tariffElectricity : tariffWater;
         if (usage > 0 && tariff > 0) {
           const amount = Math.round(usage * tariff);
-          lines.push({ kind: m.kind, description: `${m.kind === "electricity" ? "Electricity" : "Water"} ${period}`, amount, calcNote: `${usage} × ${formatEtb(tariff)} = ${formatEtb(amount)}` });
+          lines.push({ kind: m.kind, description: `${m.kind === "electricity" ? "Electricity" : "Water"} ${period}`, amount, calcNote: `${usage} × ${fm(tariff)} = ${fm(amount)}` });
         }
       }
 
@@ -86,7 +87,7 @@ export const generate = mutation({
       const costs = supersededByLater ? [] : (await ctx.db.query("sharedCosts").withIndex("by_building_period", (q) => q.eq("buildingId", unit.buildingId).eq("period", period)).collect()).filter((c) => c.approvedBy);
       for (const c of costs) {
         const alloc = await ctx.db.query("sharedCostAllocations").withIndex("by_cost_unit", (q) => q.eq("sharedCostId", c._id).eq("unitId", unit._id)).first();
-        if (alloc && alloc.amount > 0) lines.push({ kind: c.kind, description: `${c.kind} ${period}`, amount: alloc.amount, calcNote: `share of ${formatEtb(c.total)} by ${c.basis}` });
+        if (alloc && alloc.amount > 0) lines.push({ kind: c.kind, description: `${c.kind} ${period}`, amount: alloc.amount, calcNote: `share of ${fm(c.total)} by ${c.basis}` });
       }
 
       const total = lines.reduce((s, l) => s + l.amount, 0);
@@ -154,7 +155,7 @@ export const issue = mutation({
       await audit(ctx, u, "invoice.issue", "invoices", id, number);
       if (notify) {
         const renter = await ctx.db.get(inv.renterId); const lang = renter?.smsLanguage ?? "en";
-        await queueTemplated(ctx, { orgId: u.orgId, renterId: inv.renterId, template: "billIssued", dedupeKey: `issued:${id}`, invoiceId: id, renter, vars: { bill: number, amount: smsMoney(inv.total), due: smsDate(inv.dueAt, lang), unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
+        await queueTemplated(ctx, { orgId: u.orgId, renterId: inv.renterId, template: "billIssued", dedupeKey: `issued:${id}`, invoiceId: id, renter, vars: { bill: number, amount: smsMoney(inv.total, u.org.currency), due: smsDate(inv.dueAt, lang), unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
       }
       numbers.push(number);
     }
@@ -297,7 +298,7 @@ export const sendReminders = mutation({
       const renter = await ctx.db.get(inv.renterId);
       const lang = renter?.smsLanguage ?? "en";
       const days = overdue ? Math.floor((Date.now() - inv.dueAt) / 86_400_000) : Math.max(0, Math.ceil((inv.dueAt - Date.now()) / 86_400_000));
-      const r = await queueTemplated(ctx, { orgId: u.orgId, renterId: inv.renterId, template: overdue ? "overdue" : "dueSoon", dedupeKey: key, invoiceId: id, renter, vars: { bill: inv.number, amount: smsMoney(bal.due), due: smsDate(inv.dueAt, lang), days, unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
+      const r = await queueTemplated(ctx, { orgId: u.orgId, renterId: inv.renterId, template: overdue ? "overdue" : "dueSoon", dedupeKey: key, invoiceId: id, renter, vars: { bill: inv.number, amount: smsMoney(bal.due, u.org.currency), due: smsDate(inv.dueAt, lang), days, unit: (await ctx.db.get(inv.unitId))?.number ?? "" } });
       if (r !== "queued") { skipped.push({ invoiceId: id, reason: r === "opted_out" ? "renter_opted_out" : r === "no_phone" ? "no_valid_phone" : r === "disabled" ? "template_off" : r === "limit" ? "sms_limit_reached" : "already_reminded_today" }); continue; }
       sent++;
     }

@@ -9,7 +9,7 @@ import { Card, ConfirmDialog, DateText, Field, Message, Modal, Money, MoneyInput
 import { Icon } from "@/components/icons";
 import { OrgHeader } from "@/components/OrgHeader";
 import { etbInWords } from "@/lib/words";
-import { formatEtb, periodText } from "@/lib/format";
+import { formatEtb, periodText, currencyCode } from "@/lib/format";
 import { useToast } from "@/components/toast";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
@@ -104,7 +104,7 @@ export default function InvoicePage() {
             <div><span className="muted">{t("bill.issuedOn")}</span><b>{inv.issuedAt ? <DateText ms={inv.issuedAt} /> : "—"}</b><span className="muted">{t("bill.dueDate")}</span><b><DateText ms={inv.dueAt} /></b></div>
           </div>
           <table className="paper-table">
-            <thead><tr><th>{t("bill.item")}</th><th>{t("bill.calc")}</th><th className="r">{t("amount")} (ETB)</th></tr></thead>
+            <thead><tr><th>{t("bill.item")}</th><th>{t("bill.calc")}</th><th className="r">{t("amount")} ({currencyCode()})</th></tr></thead>
             <tbody>{d.lines.map((l) => <tr key={l._id}><td>{l.description}</td><td>{l.calcNote}</td><td className="r num">{(l.amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td></tr>)}</tbody>
           </table>
           <dl className="invoice-totals">
@@ -112,7 +112,7 @@ export default function InvoicePage() {
             {b.adjustments !== 0 && <div><dt>{t("bill.adjustments")}</dt><dd className="num">{(b.adjustments / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
             <div><dt>{t("total")}</dt><dd className="num">{(b.total + b.adjustments) / 100 === 0 ? "0.00" : ((b.total + b.adjustments) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>
             {inv.status === "issued" && <div><dt>{t("bill.paid")}</dt><dd className="num">{((b.paid + b.creditUsed) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
-            {inv.status === "issued" && <div className="grand"><dt>{t("bill.due")}</dt><dd className="num">ETB {(b.due / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
+            {inv.status === "issued" && <div className="grand"><dt>{t("bill.due")}</dt><dd className="num">{currencyCode()} {(b.due / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>}
           </dl>
           {inv.status === "issued" && <p className="paper-note"><span className="muted">{t("bill.inWords")}:</span> <b>{etbInWords(Math.max(b.due, 0))}</b></p>}
           {org?.bankAccounts && <div className="paper-pay"><b>{t("bill.howToPay")}</b>{org.bankAccounts.split("\n").filter(Boolean).map((l, i) => <div key={i}>{l}</div>)}<span className="muted">{t("bill.quoteNumber")} {inv.number}</span></div>}
@@ -135,7 +135,7 @@ function AdjustDialog({ error, onClose, onSave }: { error?: string | null; onClo
     if ((await onSave(sign * amount!, reason.trim())) !== undefined) onClose();
   }}>
     <SelectField label={t("bill.adjustKind")} value={String(sign)} onChange={(v) => setSign(Number(v) as 1 | -1)} options={[{ value: "-1", label: t("bill.reduce") }, { value: "1", label: t("bill.increase") }]} />
-    <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
+    <Field label={`${t("amount")} (${currencyCode()})`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
     <Field label={t("reason")} error={errs.reason}><input value={reason} onChange={(e) => { setReason(e.target.value); setErrs({ ...errs, reason: "" }); }} /></Field>
     <div className="wide"><Message error={error} /><button className="btn primary">{t("save")}</button></div></form></Modal>;
 }

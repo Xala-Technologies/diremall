@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Building2, User, Users } from "lucide-react";
 import { downloadCsv } from "@/lib/csv";
-import { lastDay } from "@/lib/format";
+import { lastDay, currencyCode } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -191,8 +191,8 @@ function RenterInsights({ renters }: { renters?: { _id: string; name: string; ki
     <div className="kpis kpis-4">
       <Kpi tone="info" icon="renters" label={t("nav.renters")} value={renters.length} sub={`${companies} ${t("company").toLowerCase()} · ${renters.length - companies} ${t("individual").toLowerCase()}`} />
       <Kpi tone="good" icon="agreements" label={t("ren.k.withLease")} value={withLease} sub={`${renters.length - withLease} ${t("ren.k.noLease")}`} />
-      <Kpi tone="info" icon="payments" label={t("rep.k.monthlyRent")} unit="ETB" value={Math.round(total / 100).toLocaleString()} sub={t("ren.k.fromActive")} />
-      <Kpi icon="reports" label={t("ren.k.largest")} unit="ETB" value={top ? Math.round(top[1] / 100).toLocaleString() : "0"} sub={top ? renters.find((r) => r._id === top[0])?.name : undefined} />
+      <Kpi tone="info" icon="payments" label={t("rep.k.monthlyRent")} unit={currencyCode()} value={Math.round(total / 100).toLocaleString()} sub={t("ren.k.fromActive")} />
+      <Kpi icon="reports" label={t("ren.k.largest")} unit={currencyCode()} value={top ? Math.round(top[1] / 100).toLocaleString() : "0"} sub={top ? renters.find((r) => r._id === top[0])?.name : undefined} />
     </div>
     {total > 0 && <div className="cols-2">
       <Card title={t("ren.c.type")}><Ring caption={t("nav.renters")} center={renters.length} parts={[{ label: t("company"), value: companies, color: SERIES[0] }, { label: t("individual"), value: renters.length - companies, color: SERIES[1] }]} /></Card>

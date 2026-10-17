@@ -14,7 +14,7 @@ export function OrgHeader({ size = 44 }: { size?: number }) {
     <div className="org-head">
       <Mark size={size} />
       <div>
-        <div className="org-name">{org?.name ?? "Dire Mall"}</div>
+        <div className="org-name">{org?.name ?? ""}</div>
         {ids && <div className="org-line">{ids}</div>}
         {line && <div className="org-line">{line}</div>}
         {contact && <div className="org-line">{contact}</div>}

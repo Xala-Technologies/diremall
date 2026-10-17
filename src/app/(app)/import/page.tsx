@@ -7,7 +7,7 @@ import { downloadCsv } from "@/lib/csv";
 import { Badge, Card, ConfirmDialog, DateField, DateText, ExportMenu, Kpi, Message, Money, PageHeader, Skeleton, Table, Tabs } from "@/components/ui";
 import { RENTER_COLUMNS, RENTER_OPTIONAL, RENTER_TEMPLATE, UNIT_COLUMNS, UNIT_TEMPLATE, mapRows, readTable } from "@/lib/importFile";
 import { AGREEMENT_COLUMNS, AGREEMENT_OPTIONAL, AGREEMENT_TEMPLATE, OPENING_COLUMNS, OPENING_OPTIONAL, OPENING_TEMPLATE, readAgreementRows, readOpeningRows, type ClientProblem } from "@/lib/migrate";
-import { formatEtb } from "@/lib/format";
+import { formatEtb, currencyCode } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useRun } from "@/lib/useRun";
@@ -22,7 +22,7 @@ export default function ImportPage() {
     { k: "units", done: !!st && st.units > 0, line: st ? (st.units > 0 ? `${st.units} ${t("rep.k.units")} · ${st.buildings} ${t("building").toLowerCase()}` : t("imp.step.empty")) : "…" },
     { k: "renters", done: !!st && st.renters > 0, line: st ? (st.renters > 0 ? `${st.renters} ${t("nav.renters").toLowerCase()}` : t("imp.step.empty")) : "…" },
     { k: "agreements", done: !!st && st.agreements > 0, line: st ? (st.agreements > 0 ? `${st.agreements} ${t("nav.agreements").toLowerCase()} · ${st.activeAgreements} ${t("active").toLowerCase()}` : t("imp.step.empty")) : "…" },
-    { k: "opening", done: !!st && st.openingBills > 0, line: st ? (st.openingBills > 0 ? `${st.openingBills} ${t("imp.step.bills")} · ETB ${formatEtb(st.openingTotal)}` : t("imp.step.empty")) : "…" },
+    { k: "opening", done: !!st && st.openingBills > 0, line: st ? (st.openingBills > 0 ? `${st.openingBills} ${t("imp.step.bills")} · ${currencyCode()} ${formatEtb(st.openingTotal)}` : t("imp.step.empty")) : "…" },
   ];
   return (
     <div className="stack">

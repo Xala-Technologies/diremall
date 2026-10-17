@@ -29,7 +29,7 @@ function RolePicker({ roles, setRoles }: { roles: Set<string>; setRoles: (s: Set
 }
 
 /** Someone asked for access. The administrator picks their roles and buildings, or declines with a reason. */
-function Approve({ person, onClose }: { person: { _id: Id<"users">; name: string; email: string; note: string }; onClose: () => void }) {
+function Approve({ person, onClose }: { person: { _id: Id<"accessRequests">; name: string; email: string; note: string }; onClose: () => void }) {
   const { t } = useI18n(); const approve = useMutation(api.users.approveRequest); const buildings = useQuery(api.properties.listBuildings, {}); const { run, error, busy } = useRun();
   const [roles, setRoles] = useState<Set<string>>(new Set(["propertyManager"])); const [all, setAll] = useState(true); const [scope, setScope] = useState<Set<string>>(new Set());
   const flip = <T,>(s: Set<T>, v: T) => { const n = new Set(s); if (n.has(v)) n.delete(v); else n.add(v); return n; };
@@ -37,7 +37,7 @@ function Approve({ person, onClose }: { person: { _id: Id<"users">; name: string
     <Modal title={`${t("access.approveTitle")}: ${person.name || person.email}`} onClose={onClose}>
       <form className="stack" onSubmit={async (e) => {
         e.preventDefault();
-        if (await run(() => approve({ userId: person._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]) }), t("access.approved"))) onClose();
+        if (await run(() => approve({ requestId: person._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]) }), t("access.approved"))) onClose();
       }}>
         <p className="muted">{person.email}{person.note ? ` · “${person.note}”` : ""}</p>
         <RolePicker roles={roles} setRoles={setRoles} />
@@ -73,12 +73,12 @@ function Requests() {
           {declined.map((p) => (
             <li key={p._id}>
               <div className="req-main"><b>{p.name || p.email}</b><span className="muted">{p.email}</span><span className="muted">{t("access.reason")}: {p.reason}</span></div>
-              <div className="row"><button className="btn sm" onClick={() => void run(() => reopen({ userId: p._id }), t("saved"))}>{t("access.reopen")}</button><button className="btn sm danger" onClick={() => setRemoving(p)}>{t("delete")}</button></div>
+              <div className="row"><button className="btn sm" onClick={() => void run(() => reopen({ requestId: p._id }), t("saved"))}>{t("access.reopen")}</button><button className="btn sm danger" onClick={() => setRemoving(p)}>{t("delete")}</button></div>
             </li>))}
         </ul></Card>}
       {approving && <Approve person={approving} onClose={() => setApproving(null)} />}
-      {declining && <ReasonDialog title={`${t("access.decline")}: ${declining.name || declining.email}`} onClose={() => setDeclining(null)} onSave={async (reason) => { await run(() => reject({ userId: declining._id, reason }), t("saved")); setDeclining(null); }} />}
-      {removing && <ConfirmDialog danger title={t("access.removeTitle")} message={t("access.removeBody")} confirmLabel={t("delete")} onClose={() => setRemoving(null)} onConfirm={async () => { await run(() => del({ userId: removing._id }), t("deleted")); }} />}
+      {declining && <ReasonDialog title={`${t("access.decline")}: ${declining.name || declining.email}`} onClose={() => setDeclining(null)} onSave={async (reason) => { await run(() => reject({ requestId: declining._id, reason }), t("saved")); setDeclining(null); }} />}
+      {removing && <ConfirmDialog danger title={t("access.removeTitle")} message={t("access.removeBody")} confirmLabel={t("delete")} onClose={() => setRemoving(null)} onConfirm={async () => { await run(() => del({ requestId: removing._id }), t("deleted")); }} />}
     </>
   );
 }
@@ -92,6 +92,7 @@ export default function Users() {
   return (
     <div className="stack">
       <PageHeader title={t("nav.users")} actions={<button className="btn primary" onClick={() => setInviting(true)}>{t("invite.person")}</button>} filters={<><SearchInput value={q} onChange={setQ} placeholder={t("filter.searchUsers")} /><FilterSelect label={t("users.roles")} placeholder={t("users.roles")} value={role} onChange={setRole} options={[{ value: "", label: t("filter.allRoles"), icon: <ShieldCheck size={16} /> }, ...ROLES.map((r) => ({ value: r as string, label: t(r), icon: <ShieldCheck size={16} /> }))]} /></>} />
+      <JoinCode />
       <Requests />
       <Card flush><Table rows={users} onRow={setEdit} cols={[
         { head: t("name"), cell: (u) => <strong>{u.name || "—"}</strong> }, { head: t("email"), cell: (u) => u.email }, { head: t("users.roles"), cell: (u) => (u.roles as string[]).map((r) => t(r)).join(", ") || "—" },
@@ -139,11 +140,11 @@ function Invite({ onClose }: { onClose: () => void }) {
     </Modal>);
 }
 
-function Edit({ user, onClose }: { user: { _id: Id<"users">; name: string; roles: string[]; buildingScope: "all" | Id<"buildings">[]; active: boolean }; onClose: () => void }) {
+function Edit({ user, onClose }: { user: { _id: Id<"memberships">; userId: Id<"users">; name: string; roles: string[]; buildingScope: "all" | Id<"buildings">[]; active: boolean }; onClose: () => void }) {
   const { t } = useI18n(); const resetMfa = useMutation(api.mfa.reset); const buildings = useQuery(api.properties.listBuildings, {}); const set = useMutation(api.users.setAccess); const { run, error, busy } = useRun();
   const [roles, setRoles] = useState<Set<string>>(new Set(user.roles)); const [active, setActive] = useState(user.active); const [confirm, setConfirm] = useState(false);
   const [all, setAll] = useState(user.buildingScope === "all"); const [scope, setScope] = useState<Set<string>>(new Set(Array.isArray(user.buildingScope) ? user.buildingScope : []));
-  const save = async () => { if (await run(() => set({ userId: user._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]), active }), t("saved"))) onClose(); };
+  const save = async () => { if (await run(() => set({ membershipId: user._id, roles: [...roles] as Role[], buildingScope: all ? "all" : ([...scope] as Id<"buildings">[]), active }), t("saved"))) onClose(); };
   const flip = <T,>(s: Set<T>, v: T) => { const n = new Set(s); n.has(v) ? n.delete(v) : n.add(v); return n; };
   return (
     <Modal title={user.name || t("users.roles")} onClose={onClose}>
@@ -154,10 +155,25 @@ function Edit({ user, onClose }: { user: { _id: Id<"users">; name: string; roles
           {!all && buildings?.map((b) => <label key={b._id} className="row"><input type="checkbox" checked={scope.has(b._id)} onChange={() => setScope(flip(scope, b._id))} />{b.name}</label>)}</fieldset>
         <label className="row"><input type="checkbox" checked={active} onChange={() => setActive(!active)} />{t("users.active")}</label>
         <Message error={error} />
-        <button className="btn ghost" disabled={busy} onClick={() => void run(() => resetMfa({ userId: user._id }), t("mfa.resetDone"))}>{t("mfa.reset")}</button>
+        <button className="btn ghost" disabled={busy} onClick={() => void run(() => resetMfa({ userId: user.userId }), t("mfa.resetDone"))}>{t("mfa.reset")}</button>
         <button className="btn primary" disabled={busy} onClick={() => { if (user.active && !active) setConfirm(true); else void save(); }}>{t("save")}</button>
         {confirm && <ConfirmDialog title={t("confirm.deactivateTitle")} message={t("confirm.deactivateBody")} confirmLabel={t("save")} danger onClose={() => setConfirm(false)} onConfirm={save} />}
       </div>
     </Modal>
+  );
+}
+
+/** The code people use to ask to join this company. Anyone with it can ask; an access manager still decides. */
+function JoinCode() {
+  const { t } = useI18n(); const j = useQuery(api.users.joinCode); const rotate = useMutation(api.users.rotateJoinCode); const off = useMutation(api.users.disableJoinCode); const { run, error } = useRun();
+  const [shown, setShown] = useState(false);
+  if (!j) return null;
+  return (
+    <Card title={t("co.joinCardTitle")} actions={<div className="row">
+      <button className="btn sm" onClick={() => void run(() => rotate({}), t("saved"))}>{j.code ? t("co.newCode") : t("co.makeCode")}</button>
+      {j.code && <button className="btn sm danger" onClick={() => void run(() => off({}), t("saved"))}>{t("co.turnOff")}</button>}</div>}>
+      <p className="muted">{t("co.joinCardHint")}</p><Message error={error} />
+      {j.code ? <div className="row"><code className="join-code" aria-label={t("co.code")}>{shown ? j.code : "••••••••"}</code><button className="btn sm" onClick={() => setShown(!shown)} aria-pressed={shown}>{shown ? t("pw.hide") : t("pw.show")}</button><button className="btn sm" onClick={() => void navigator.clipboard?.writeText(j.code!)}>{t("mfa.copy")}</button></div> : <p className="muted">{t("co.codeOff")}</p>}
+    </Card>
   );
 }

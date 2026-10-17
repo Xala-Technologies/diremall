@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { EN, AM } from "./dictionary";
+import { currencyCode } from "./format";
 
 export type Lang = "en" | "am";
 export type Calendar = "gregorian" | "ethiopian";
@@ -21,7 +22,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
   const setLang = (l: Lang) => { setLangState(l); write("lang", l); document.documentElement.lang = l; };
   const setCalendar = (c: Calendar) => { setCalendarState(c); write("calendar", c); };
-  const t = (key: string) => (lang === "am" ? AM[key] : undefined) ?? EN[key] ?? key;
+  const t = (key: string) => ((lang === "am" ? AM[key] : undefined) ?? EN[key] ?? key).replace(/\bETB\b/g, currencyCode());
   return <I18n.Provider value={{ lang, setLang, calendar, setCalendar, t }}>{children}</I18n.Provider>;
 }
 

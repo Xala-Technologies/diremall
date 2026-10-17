@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { Building2 } from "lucide-react";
 import { FilterSelect } from "./FilterSelect";
 import { useI18n } from "@/lib/i18n";
-import { formatDate, formatEtb, parseEtb } from "@/lib/format";
+import { formatDate, formatEtb, parseEtb, currencyCode } from "@/lib/format";
 import { Icon } from "./icons";
 import { downloadCsv } from "@/lib/csv";
 import { downloadXlsx } from "@/lib/xlsx";
@@ -13,7 +13,7 @@ const InTable = createContext(false);
 /** Inside a table the column header says ETB, so cells show only the figure. */
 export const Money = ({ v, strong, bare: forceBare }: { v: number; strong?: boolean; bare?: boolean }) => {
   const bare = useContext(InTable) || !!forceBare;
-  return <span className={`num ${strong ? "strong" : ""}`}>{bare ? formatEtb(v).replace("ETB ", "") : formatEtb(v)}</span>;
+  return <span className={`num ${strong ? "strong" : ""}`}>{bare ? formatEtb(v).replace(/^[A-Z]{3} /, "") : formatEtb(v)}</span>;
 };
 
 export function DateText({ ms }: { ms: number | null | undefined }) {
@@ -40,7 +40,7 @@ export function StatusBadge({ status }: { status: string }) {
  */
 export function PageHeader({ title, sub, actions, filters, tabs, children }: { title: string; sub?: string; actions?: ReactNode; filters?: ReactNode; tabs?: ReactNode; children?: ReactNode }) {
   // each screen names its browser tab, so several open tabs stay distinguishable
-  useEffect(() => { document.title = `${title} · Dire Mall Rentals`; }, [title]);
+  useEffect(() => { document.title = `${title} · ${process.env.NEXT_PUBLIC_PLATFORM_NAME || "Rentals"}`; }, [title]);
   const buttons = actions ?? children;
   return (
     <div className="page-head-wrap">
@@ -81,9 +81,9 @@ export function Table<T extends { _id?: string }>({ cols, rows, onRow, empty }: 
           <th key={i} className={`${c.right ? "r" : ""} ${c.head === "" ? "act" : ""} ${c.hide ? "hide-xl" : ""}`} aria-sort={sortCol === i ? (dir === 1 ? "ascending" : "descending") : c.sort ? "none" : undefined}>
             {c.head === "" ? <span className="sr-only">{t("actions")}</span> : c.sort ? (
               <button type="button" className="th-sort" onClick={() => { if (sortCol === i) setDir(dir === 1 ? -1 : 1); else { setSortCol(i); setDir(1); } }}>
-                {c.head}{c.money ? " (ETB)" : ""}<Icon name={sortCol === i ? (dir === 1 ? "sortUp" : "sortDown") : "sort"} size={14} />
+                {c.head}{c.money ? ` (${currencyCode()})` : ""}<Icon name={sortCol === i ? (dir === 1 ? "sortUp" : "sortDown") : "sort"} size={14} />
               </button>
-            ) : <>{c.head}{c.money ? " (ETB)" : ""}</>}
+            ) : <>{c.head}{c.money ? ` (${currencyCode()})` : ""}</>}
           </th>))}</tr></thead>
         <tbody>{sorted(rows).map((r, i) => (
           <tr key={r._id ?? i} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined}

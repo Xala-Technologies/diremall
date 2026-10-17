@@ -33,7 +33,7 @@ export default function Contract() {
       <div className="draft-mark no-print">{t("contract.draft")}</div>
       <article className="paper">
         <header className="paper-h"><OrgHeader size={40} /><div className="paper-title">{t("contract.title")}</div></header>
-        <p>This lease is made on {dual(Date.now())} between <b>{org?.name ?? "Dire Mall"}</b>{org?.tin ? `, TIN ${org.tin}` : ""}{org?.address ? `, ${org.address}` : ""} (the Lessor) and <b>{renter?.name}</b>{renter?.tin ? `, TIN ${renter.tin}` : ""}{renter?.address ? `, ${renter.address}` : ""}{renter?.businessLicenseNo ? `, business licence ${renter.businessLicenseNo}` : ""}{renter?.legalRepresentative ? `, represented by ${renter.legalRepresentative}` : ""} (the Lessee).</p>
+        <p>This lease is made on {dual(Date.now())} between <b>{org?.name ?? ""}</b>{org?.tin ? `, TIN ${org.tin}` : ""}{org?.address ? `, ${org.address}` : ""} (the Lessor) and <b>{renter?.name}</b>{renter?.tin ? `, TIN ${renter.tin}` : ""}{renter?.address ? `, ${renter.address}` : ""}{renter?.businessLicenseNo ? `, business licence ${renter.businessLicenseNo}` : ""}{renter?.legalRepresentative ? `, represented by ${renter.legalRepresentative}` : ""} (the Lessee).</p>
         <ol>
           <li><h2>Premises</h2>Unit <b>{unit.number}</b> in {building}, {unit.areaM2} m², used as {unit.category} space.</li>
           <li><h2>Term</h2>From <b>{dual(a.startsAt)}</b> to <b>{dual(lastDay(a.endsAt))}</b>.</li>

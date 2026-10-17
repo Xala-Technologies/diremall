@@ -44,6 +44,7 @@ export const queueDueReminders = internalMutation({
   handler: async (ctx, { orgId, cursor }): Promise<number> => {
     const rules = await smsRules(ctx, orgId);
     const org = await orgName(ctx, orgId);
+    const currency = (await ctx.db.get(orgId))?.currency ?? "ETB";
     const now = Date.now();
     let queued = 0;
     // only bills that still owe money
@@ -53,7 +54,7 @@ export const queueDueReminders = internalMutation({
       if (bal.due <= 0) continue;
       const unit = (await ctx.db.get(inv.unitId))?.number ?? "";
       const base = { orgId, renterId: inv.renterId, invoiceId: inv._id, org };
-      const vars = (lang: Lang, days: number) => ({ bill: inv.number, amount: smsMoney(bal.due), due: smsDate(inv.dueAt, lang), days, unit });
+      const vars = (lang: Lang, days: number) => ({ bill: inv.number, amount: smsMoney(bal.due, currency), due: smsDate(inv.dueAt, lang), days, unit });
       const lateDays = Math.floor((now - inv.dueAt) / DAY);
       if (inv.dueAt >= now && rules.before > 0 && inv.dueAt - now <= rules.before * DAY) {
         const days = Math.ceil((inv.dueAt - now) / DAY);

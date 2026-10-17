@@ -6,7 +6,7 @@ import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Badge, Card, ConfirmDialog, DateField, DateText, Field, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, StatusBadge, Table , SelectField } from "@/components/ui";
-import { formatEtb, periodText } from "@/lib/format";
+import { formatEtb, periodText, currencyCode } from "@/lib/format";
 import { monthlyRent } from "../../../../../convex/lib/billing";
 import { Icon } from "@/components/icons";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -134,7 +134,7 @@ function AmountDialog({ title, reason, receipt, renterId, error, onClose, onSave
     const found = failures({ amount: positive(amount, t), reason: reason ? req(r, t) : null, ref: receipt ? req(ref, t) : null }); setErrs(found); if (Object.keys(found).length) return;
     if ((await onSave(amount!, r.trim(), invoiceId || undefined, receipt ? { method, reference: ref.trim(), at } : undefined)) !== undefined) onClose();
   }}>
-    <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
+    <Field label={`${t("amount")} (${currencyCode()})`} error={errs.amount}><MoneyInput value={amount} onChange={(v) => { setAmount(v); setErrs({ ...errs, amount: "" }); }} /></Field>
     {receipt && <>
       <SelectField label={t("pay.method")} value={method} onChange={(v) => setMethod(v as Method)} options={(["cash", "bankDeposit", "transfer", "telebirr", "cbeBirr"] as const).map((m) => ({ value: m, label: t(m) }))} />
       <Field label={t("pay.reference")} error={errs.ref} hint={t("dep.refHint")}><input value={ref} onChange={(e) => { setRef(e.target.value); setErrs({ ...errs, ref: "" }); }} /></Field>

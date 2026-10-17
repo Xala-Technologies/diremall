@@ -7,6 +7,8 @@ import { Icon, Mark } from "@/components/icons";
 import { Field, Message } from "@/components/ui";
 import { useI18n } from "@/lib/i18n";
 
+const PLATFORM_NAME = process.env.NEXT_PUBLIC_PLATFORM_NAME || "Rentals";
+
 export default function Login() {
   const { signIn } = useAuthActions();
   const { isAuthenticated } = useConvexAuth();
@@ -20,7 +22,7 @@ export default function Login() {
   return (
     <div className="auth-page">
       <section className="auth-art" aria-hidden="true">
-        <div className="brand"><Mark size={38} /><span className="brand-mark-name">Dire Mall<small>Dire Dawa</small></span></div>
+        <div className="brand"><Mark size={38} /><span className="brand-mark-name">{PLATFORM_NAME}<small>{lang === "am" ? "ለኪራይ ድርጅቶች" : "for rental companies"}</small></span></div>
         <div>
           <h2>{lang === "am" ? "ኪራይ፣ ደረሰኝና ክፍያ በአንድ ቦታ።" : "Rent, bills and payments, in one place."}</h2>
           <p>{lang === "am" ? "እያንዳንዱ ቁጥር ወደ ውሉና ወደ ክፍያው ይመራል።" : "Every figure opens the agreement and the payments behind it."}</p>
@@ -38,6 +40,7 @@ export default function Login() {
               : /invalid_email/.test(msg) ? "Enter a valid email address."
               : /Invalid password/i.test(msg) ? "Use a password of at least 8 characters."
               : /too_many_requests/.test(msg) ? t("access.tooMany")
+              : /company_code_invalid/.test(msg) ? t("err.company_code_invalid")
               : t("invite.signupFailed"));
             console.error("auth error:", msg);
           } finally { setBusy(false); }
@@ -47,6 +50,7 @@ export default function Login() {
           <Field label={t("email")}><input name="email" type="email" required autoComplete="email" autoFocus /></Field>
           {flow === "signUp" && <p className="msg info" role="note"><Icon name="alert" size={16} />{t("access.signupNote")}</p>}
           {flow === "signUp" && <Field label={t("invite.code")} hint={t("invite.codeHint")}><input name="inviteCode" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="XXXXX-XXXXX" /></Field>}
+          {flow === "signUp" && <Field label={t("co.code")} hint={t("co.signupHint")}><input name="companyCode" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="XXXXXXXX" /></Field>}
           {flow === "signUp" && <Field label={t("access.note")} hint={t("optional")}><textarea name="accessNote" rows={2} maxLength={500} placeholder={t("access.notePlaceholder")} /></Field>}
           <Field label={t("password")} hint={flow === "signUp" ? t("pw.hint") : undefined}>
             <div className="pw-wrap"><input name="password" type={show ? "text" : "password"} required minLength={8} autoComplete={flow === "signIn" ? "current-password" : "new-password"} />

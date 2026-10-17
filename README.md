@@ -23,7 +23,7 @@ Convex Auth needs a signing key and the site URL on the deployment:
 npx @convex-dev/auth    # sets JWT_PRIVATE_KEY, JWKS and SITE_URL
 ```
 
-The first account to sign up becomes super admin (on production, only the address in `BOOTSTRAP_ADMIN_EMAIL`).
+The first account to sign up becomes super admin (on production, only the address in `BOOTSTRAP_PLATFORM_EMAIL`).
 Later sign-ups become requests for access: an administrator approves them, with the roles and buildings to give,
 or declines them, under Staff access.
 
@@ -32,6 +32,8 @@ or declines them, under Staff access.
 Set these on the Convex deployment to send messages (otherwise they stay queued):
 `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER`, and `SMS_WEBHOOK_SECRET` for delivery receipts posted to
 `<convex-site-url>/sms/delivery`.
+
+See [docs/PLATFORM.md](docs/PLATFORM.md) for running many companies on one deployment (platform console, plans, support access, migration).
 
 ## Layout
 
@@ -66,7 +68,7 @@ Two pieces: the Convex production deployment (data and functions) and the websit
    node scripts/setup-prod-auth.mjs https://your-site-address first-admin@your-company.com
    ```
 
-   It sets the signing keys, `SITE_URL`, and `BOOTSTRAP_ADMIN_EMAIL` so only that address can become
+   It sets the signing keys, `SITE_URL`, and `BOOTSTRAP_PLATFORM_EMAIL` so only that address can become
    the first super admin. Use `--print` first to see what it would set.
 4. **SMS** (when a provider is chosen): set `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` and
    `SMS_WEBHOOK_SECRET` on production with `npx convex env set --prod`.
@@ -107,7 +109,7 @@ Authenticator-app codes (TOTP, RFC 6238) plus eight one-time recovery codes. Any
 
 ## Adding staff (invitation-only)
 
-Staff access → **Invite person**: enter their email, choose roles and buildings, and give them the one-time code yourself (in person or by phone). They then use **Create account** on the sign-in page with the same email and the code. The first administrator needs no code (restrict who with `BOOTSTRAP_ADMIN_EMAIL` on production).
+Staff access → **Invite person**: enter their email, choose roles and buildings, and give them the one-time code yourself (in person or by phone). They then use **Create account** on the sign-in page with the same email and the code. The first administrator needs no code (restrict who with `BOOTSTRAP_PLATFORM_EMAIL` on production).
 
 ## Training
 

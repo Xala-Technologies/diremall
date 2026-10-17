@@ -8,7 +8,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Icon } from "@/components/icons";
 import { Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, ReasonDialog, SearchInput, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
-import { formatEtb, periodText } from "@/lib/format";
+import { formatEtb, periodText, currencyCode } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { useOpenFile } from "@/lib/useOpenFile";
@@ -132,7 +132,7 @@ function RecordForm({ prefill, onClose }: { prefill: Prefill | null; onClose: ()
         {prefill?.lineId && <p className="muted wide">{t("pay.fromBank")}: {prefill.narration}</p>}
         {prefill?.renterId && !prefill.lineId && prefill.narration && <p className="muted wide">{t("bill.number")}: {prefill.narration}</p>}
         <SelectField label={t("ag.renter")} error={errs.renter} value={chosen} onChange={(v) => { setRenterId(v); clear("renter"); }} options={(renters ?? []).map((r) => ({ value: r._id, label: r.name }))} />
-        <Field label={`${t("amount")} (ETB)`} error={errs.amount}><MoneyInput key={String(amount)} value={amount} onChange={(v) => { setAmount(v); clear("amount"); }} /></Field>
+        <Field label={`${t("amount")} (${currencyCode()})`} error={errs.amount}><MoneyInput key={String(amount)} value={amount} onChange={(v) => { setAmount(v); clear("amount"); }} /></Field>
         {chosen && bills && (
           <div className="wide open-bills">
             <div className="open-bills-h"><b>{t("pay.openBills")}</b>{bills.length > 0 && <><span className="muted">{t("pay.totalDue")}: {formatEtb(totalDue)}</span><button type="button" className="btn ghost sm" onClick={() => setAmount(totalDue)}>{t("pay.useTotal")}</button></>}</div>

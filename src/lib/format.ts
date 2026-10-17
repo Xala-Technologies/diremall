@@ -1,8 +1,16 @@
-import { formatEtb } from "../../convex/lib/money";
+import { formatMoney } from "../../convex/lib/money";
 import { ETH_MONTHS_AM, ETH_MONTHS_EN, gregorianToEthiopian } from "../../convex/lib/ethiopianCalendar";
 import type { Calendar, Lang } from "./i18n";
 
-export { formatEtb };
+/**
+ * The company's currency, set once by the app shell when the person's company is known. Everything that shows money reads it,
+ * so a company working in dollars sees dollars everywhere without each screen having to ask.
+ */
+let currentCurrency = "ETB";
+export const setClientCurrency = (code: string | undefined) => { currentCurrency = code && /^[A-Z]{3}$/.test(code) ? code : "ETB"; };
+export const currencyCode = () => currentCurrency;
+/** An amount in santim (or the currency's minor unit) as "ETB 1,234.50" in the company's currency. */
+export const formatEtb = (s: number) => formatMoney(s, currentCurrency);
 
 /** ETB text → santim. "12,500.50" → 1250050. Returns null when not a valid amount. */
 export function parseEtb(text: string): number | null {

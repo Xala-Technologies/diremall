@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users } from "lucide-react";
 import { FilterSelect } from "@/components/FilterSelect";
-import { currentPeriod } from "@/lib/format";
+import { currentPeriod, currencyCode } from "@/lib/format";
 import { lastDay, pct, periodText } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
@@ -43,9 +43,9 @@ function RentRoll({ b, buildings }: { b?: Id<"buildings">; buildings?: { _id: st
   const areaLet = sum(occ, (r) => r.areaM2), areaAll = sum(rows, (r) => r.areaM2);
   return <>
     {!d ? <Loading /> : <Strip>
-      <Kpi tone="info" icon="payments" label={t("rep.k.monthlyRent")} unit="ETB" value={etb(d.totalMonthlyRent)} sub={`${t("rep.k.yearly")}: ${compact(d.totalMonthlyRent * 12)}`} />
+      <Kpi tone="info" icon="payments" label={t("rep.k.monthlyRent")} unit={currencyCode()} value={etb(d.totalMonthlyRent)} sub={`${t("rep.k.yearly")}: ${compact(d.totalMonthlyRent * 12)}`} />
       <Kpi tone="good" icon="buildings" label={t("dash.occupancy")} value={pct(rows.length ? occ.length / rows.length : 0)} sub={`${occ.length} / ${rows.length} ${t("rep.k.units")}`} />
-      <Kpi icon="reports" label={t("rep.k.rentPerM2")} unit="ETB" value={areaLet ? Math.round(d.totalMonthlyRent / 100 / areaLet).toLocaleString() : "0"} sub={`${areaLet.toLocaleString()} m² ${t("rep.k.let")}`} />
+      <Kpi icon="reports" label={t("rep.k.rentPerM2")} unit={currencyCode()} value={areaLet ? Math.round(d.totalMonthlyRent / 100 / areaLet).toLocaleString() : "0"} sub={`${areaLet.toLocaleString()} m² ${t("rep.k.let")}`} />
       <Kpi tone={vac.length ? "warn" : "good"} icon="buildings" label={t("rep.k.vacantUnits")} value={vac.length} sub={`${(areaAll - areaLet).toLocaleString()} m² ${t("rep.k.notLet")}`} />
     </Strip>}
     {d && <Charts>
@@ -70,7 +70,7 @@ function Vacancy({ b }: { b?: Id<"buildings"> }) {
   return <>
     {!d ? <Loading /> : <Strip>
       <Kpi tone={vac.length ? "warn" : "good"} icon="buildings" label={t("rep.k.vacantUnits")} value={vac.length} sub={all ? `${pct(all.rows.length ? vac.length / all.rows.length : 0)} ${t("rep.k.ofUnits")}` : undefined} />
-      <Kpi tone="warn" icon="payments" label={t("rep.k.potential")} unit="ETB" value={etb(d.totalPotentialRent)} sub={`${t("rep.k.yearly")}: ${compact(d.totalPotentialRent * 12)}`} />
+      <Kpi tone="warn" icon="payments" label={t("rep.k.potential")} unit={currencyCode()} value={etb(d.totalPotentialRent)} sub={`${t("rep.k.yearly")}: ${compact(d.totalPotentialRent * 12)}`} />
       <Kpi icon="reports" label={t("rep.k.vacantArea")} value={sum(vac, (r) => r.areaM2).toLocaleString()} sub="m²" />
       <Kpi icon="buildings" label={t("rep.k.other")} value={rows.length - vac.length} sub={t("rep.k.otherNote")} />
     </Strip>}
@@ -93,10 +93,10 @@ function Aging({ b }: { b?: Id<"buildings"> }) {
   const colors = [SERIES[1], SERIES[0], SERIES[2], "var(--ds-color-warning-text-default)", SERIES[3]];
   return <>
     {!d ? <Loading /> : <Strip>
-      <Kpi tone="bad" icon="bills" label={t("outstanding")} unit="ETB" value={etb(total)} sub={`${d.rows.length} ${t("rep.k.renters")}`} />
-      <Kpi tone={overdue ? "warn" : "good"} icon="alert" label={t("rep.k.overdue")} unit="ETB" value={etb(overdue)} sub={`${pct(total ? overdue / total : 0)} ${t("rep.k.ofOutstanding")}`} />
-      <Kpi tone={d.totals.d90plus ? "bad" : "good"} icon="alert" label={t("rep.k.over90")} unit="ETB" value={etb(d.totals.d90plus)} sub={`${pct(total ? d.totals.d90plus / total : 0)} ${t("rep.k.ofOutstanding")}`} />
-      <Kpi icon="renters" label={t("rep.k.largest")} unit="ETB" value={etb(Math.max(0, ...d.rows.map((r) => cols.reduce((a, c) => a + r[c], 0))))} sub={[...d.rows].sort((x, y) => cols.reduce((a, c) => a + y[c], 0) - cols.reduce((a, c) => a + x[c], 0))[0]?.renterName} />
+      <Kpi tone="bad" icon="bills" label={t("outstanding")} unit={currencyCode()} value={etb(total)} sub={`${d.rows.length} ${t("rep.k.renters")}`} />
+      <Kpi tone={overdue ? "warn" : "good"} icon="alert" label={t("rep.k.overdue")} unit={currencyCode()} value={etb(overdue)} sub={`${pct(total ? overdue / total : 0)} ${t("rep.k.ofOutstanding")}`} />
+      <Kpi tone={d.totals.d90plus ? "bad" : "good"} icon="alert" label={t("rep.k.over90")} unit={currencyCode()} value={etb(d.totals.d90plus)} sub={`${pct(total ? d.totals.d90plus / total : 0)} ${t("rep.k.ofOutstanding")}`} />
+      <Kpi icon="renters" label={t("rep.k.largest")} unit={currencyCode()} value={etb(Math.max(0, ...d.rows.map((r) => cols.reduce((a, c) => a + r[c], 0))))} sub={[...d.rows].sort((x, y) => cols.reduce((a, c) => a + y[c], 0) - cols.reduce((a, c) => a + x[c], 0))[0]?.renterName} />
     </Strip>}
     {d && total > 0 && <Charts>
       <Card title={t("rep.c.ageing")}><StackBar parts={cols.map((c, i) => ({ label: t(c), value: d.totals[c], color: colors[i] }))} /></Card>
@@ -116,10 +116,10 @@ function Revenue({ b }: { b?: Id<"buildings"> }) {
   const rows = d?.rows ?? [];
   return <>
     {!d ? <Loading /> : <Strip>
-      <Kpi tone="info" icon="reports" label={t("rep.k.billed")} unit="ETB" value={etb(d.totals.billed)} sub={`${rows.length} ${t("rep.k.months")}`} />
-      <Kpi tone="good" icon="payments" label={t("rep.collected")} unit="ETB" value={etb(d.totals.collected)} sub={`${pct(d.totals.billed ? d.totals.collected / d.totals.billed : 0)} ${t("rep.k.ofBilled")}`} />
-      <Kpi tone={d.totals.outstanding ? "bad" : "good"} icon="bills" label={t("outstanding")} unit="ETB" value={etb(d.totals.outstanding)} sub={`${pct(d.totals.billed ? d.totals.outstanding / d.totals.billed : 0)} ${t("rep.k.ofBilled")}`} />
-      <Kpi icon="reports" label={t("rep.k.bestMonth")} unit="ETB" value={etb(Math.max(0, ...rows.map((x) => x.collected)))} sub={rows.length ? periodText([...rows].sort((x, y) => y.collected - x.collected)[0]!.period, t) : undefined} />
+      <Kpi tone="info" icon="reports" label={t("rep.k.billed")} unit={currencyCode()} value={etb(d.totals.billed)} sub={`${rows.length} ${t("rep.k.months")}`} />
+      <Kpi tone="good" icon="payments" label={t("rep.collected")} unit={currencyCode()} value={etb(d.totals.collected)} sub={`${pct(d.totals.billed ? d.totals.collected / d.totals.billed : 0)} ${t("rep.k.ofBilled")}`} />
+      <Kpi tone={d.totals.outstanding ? "bad" : "good"} icon="bills" label={t("outstanding")} unit={currencyCode()} value={etb(d.totals.outstanding)} sub={`${pct(d.totals.billed ? d.totals.outstanding / d.totals.billed : 0)} ${t("rep.k.ofBilled")}`} />
+      <Kpi icon="reports" label={t("rep.k.bestMonth")} unit={currencyCode()} value={etb(Math.max(0, ...rows.map((x) => x.collected)))} sub={rows.length ? periodText([...rows].sort((x, y) => y.collected - x.collected)[0]!.period, t) : undefined} />
     </Strip>}
     {d && rows.length > 0 && <Charts>
       <Card title={t("rep.c.trend")}><BarChart data={rows.map((x) => ({ label: x.period.slice(2), a: x.billed, b: x.collected }))} labelA={t("rep.k.billed")} labelB={t("rep.collected")} /></Card>
@@ -144,9 +144,9 @@ function Ledger() {
   return (<>
     {renterId && d && d.length > 0 && <>
       <Strip>
-        <Kpi tone={last && last.balance > 0 ? "bad" : "good"} icon="bills" label={t("bill.due")} unit="ETB" value={etb(last?.balance ?? 0)} sub={name} />
-        <Kpi tone="info" icon="reports" label={t("rep.k.charged")} unit="ETB" value={etb(sum(d, (x) => x.debit))} sub={`${d.filter((x) => x.debit).length} ${t("rep.k.entries")}`} />
-        <Kpi tone="good" icon="payments" label={t("rep.k.paid")} unit="ETB" value={etb(sum(d, (x) => x.credit))} sub={`${d.filter((x) => x.credit).length} ${t("rep.k.entries")}`} />
+        <Kpi tone={last && last.balance > 0 ? "bad" : "good"} icon="bills" label={t("bill.due")} unit={currencyCode()} value={etb(last?.balance ?? 0)} sub={name} />
+        <Kpi tone="info" icon="reports" label={t("rep.k.charged")} unit={currencyCode()} value={etb(sum(d, (x) => x.debit))} sub={`${d.filter((x) => x.debit).length} ${t("rep.k.entries")}`} />
+        <Kpi tone="good" icon="payments" label={t("rep.k.paid")} unit={currencyCode()} value={etb(sum(d, (x) => x.credit))} sub={`${d.filter((x) => x.credit).length} ${t("rep.k.entries")}`} />
         <Kpi icon="reports" label={t("rep.k.settled")} value={pct(sum(d, (x) => x.debit) ? Math.min(1, sum(d, (x) => x.credit) / sum(d, (x) => x.debit)) : 0)} sub={t("rep.k.ofCharged")} />
       </Strip>
       <Card title={t("rep.c.balanceOverTime")}><Trend points={d.map((x) => ({ label: new Date(x.at).toISOString().slice(0, 10), value: x.balance }))} /></Card>
@@ -174,8 +174,8 @@ function Expiry({ b }: { b?: Id<"buildings"> }) {
   return <>
     {!d ? <Loading /> : <Strip>
       <Kpi tone="info" icon="agreements" label={t("rep.k.leasesEnding")} value={d.totals.leases} sub={t("rep.withinDays").replace("{n}", days)} />
-      <Kpi tone="warn" icon="payments" label={t("rep.rentAtStake")} unit="ETB" value={etb(d.totals.rent)} sub={`${t("rep.k.yearly")}: ${compact(d.totals.rent * 12)}`} />
-      <Kpi icon="bills" label={t("rep.depositHeld")} unit="ETB" value={etb(sum(rows, (r) => r.deposit))} />
+      <Kpi tone="warn" icon="payments" label={t("rep.rentAtStake")} unit={currencyCode()} value={etb(d.totals.rent)} sub={`${t("rep.k.yearly")}: ${compact(d.totals.rent * 12)}`} />
+      <Kpi icon="bills" label={t("rep.depositHeld")} unit={currencyCode()} value={etb(sum(rows, (r) => r.deposit))} />
       <Kpi tone={d.totals.overdue ? "bad" : "good"} icon="alert" label={t("rep.pastEndTitle")} value={d.totals.overdue} sub={d.totals.overdue ? t("rep.k.needsAction") : t("rep.k.none")} />
     </Strip>}
     {d && rows.length > 0 && <Charts>
@@ -200,10 +200,10 @@ function Deposits({ b }: { b?: Id<"buildings"> }) {
   const rows = d?.rows ?? [];
   return <>
     {!d ? <Loading /> : <Strip>
-      <Kpi tone="info" icon="bills" label={t("rep.stillHeld")} unit="ETB" value={etb(d.totals.held)} sub={`${rows.length} ${t("rep.leases")}`} />
-      <Kpi tone={d.totals.toReturn ? "warn" : "good"} icon="payments" label={t("rep.toReturn")} unit="ETB" value={etb(d.totals.toReturn)} sub={`${rows.filter((r) => r.refundDue).length} ${t("rep.k.refundsDue")}`} />
-      <Kpi tone={d.totals.shortfall ? "bad" : "good"} icon="alert" label={t("rep.shortfall")} unit="ETB" value={etb(d.totals.shortfall)} sub={t("rep.k.shortfallNote")} />
-      <Kpi icon="reports" label={t("rep.k.required")} unit="ETB" value={etb(sum(rows, (r) => r.required))} sub={`${pct(sum(rows, (r) => r.required) ? Math.min(1, sum(rows, (r) => r.available) / sum(rows, (r) => r.required)) : 0)} ${t("rep.k.covered")}`} />
+      <Kpi tone="info" icon="bills" label={t("rep.stillHeld")} unit={currencyCode()} value={etb(d.totals.held)} sub={`${rows.length} ${t("rep.leases")}`} />
+      <Kpi tone={d.totals.toReturn ? "warn" : "good"} icon="payments" label={t("rep.toReturn")} unit={currencyCode()} value={etb(d.totals.toReturn)} sub={`${rows.filter((r) => r.refundDue).length} ${t("rep.k.refundsDue")}`} />
+      <Kpi tone={d.totals.shortfall ? "bad" : "good"} icon="alert" label={t("rep.shortfall")} unit={currencyCode()} value={etb(d.totals.shortfall)} sub={t("rep.k.shortfallNote")} />
+      <Kpi icon="reports" label={t("rep.k.required")} unit={currencyCode()} value={etb(sum(rows, (r) => r.required))} sub={`${pct(sum(rows, (r) => r.required) ? Math.min(1, sum(rows, (r) => r.available) / sum(rows, (r) => r.required)) : 0)} ${t("rep.k.covered")}`} />
     </Strip>}
     {d && rows.length > 0 && <Charts>
       <Card title={t("rep.c.depositMix")}><Ring caption={t("rep.k.received")} center={compact(sum(rows, (r) => r.held))} format={compact} parts={[{ label: t("dep.available"), value: sum(rows, (r) => r.available), color: SERIES[0] }, { label: t("rep.deducted"), value: sum(rows, (r) => r.deducted), color: SERIES[2] }, { label: t("dep.refunded"), value: sum(rows, (r) => r.refunded), color: SERIES[1] }]} /></Card>

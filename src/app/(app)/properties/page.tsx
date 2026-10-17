@@ -9,7 +9,7 @@ import { ArrowUpDown, Briefcase, Circle, CircleCheck, Home, LayoutGrid, Layers, 
 import { Icon } from "@/components/icons";
 import { HBars, Columns, Ring, SERIES, compact } from "@/components/charts";
 import { Kpi } from "@/components/ui";
-import { pct } from "@/lib/format";
+import { pct, currencyCode } from "@/lib/format";
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useRouter } from "next/navigation";
@@ -102,7 +102,7 @@ export default function Properties() {
           { head: t("prop.unitNumber"), cell: (u) => <strong>{u.number}</strong>, sort: (u) => u.number },
           { head: t("prop.category"), cell: (u) => t(u.category) },
           { head: t("prop.area"), cell: (u) => u.areaM2, right: true, sort: (u) => u.areaM2 },
-          { head: t("prop.rate").replace(" (ETB)", ""), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
+          { head: t("prop.rate").replace(/ \([A-Z]{3}\)/, ""), cell: (u) => <Money v={u.ratePerM2} />, right: true, money: true },
           { head: t("status"), cell: (u) => <StatusBadge status={u.status} />, sort: (u) => u.status },
           { head: "", cell: (u) => can("propertyManager") ? (
             <div className="row">
@@ -186,8 +186,8 @@ function UnitInsights({ units, buildings, building }: { units?: InsightUnit[]; b
   return <>
     <div className="kpis kpis-4">
       <Kpi tone="good" icon="buildings" label={t("dash.occupancy")} value={pct(occ.length / units.length)} sub={`${occ.length} / ${units.length} ${t("rep.k.units")}`} />
-      <Kpi tone="info" icon="payments" label={t("prop.k.fullRent")} unit="ETB" value={Math.round(rent(units) / 100).toLocaleString()} sub={t("prop.k.fullRentNote")} />
-      <Kpi tone={vac.length ? "warn" : "good"} icon="buildings" label={t("rep.k.vacantUnits")} value={vac.length} sub={`${compact(rent(vac))} ETB ${t("prop.k.perMonth")}`} />
+      <Kpi tone="info" icon="payments" label={t("prop.k.fullRent")} unit={currencyCode()} value={Math.round(rent(units) / 100).toLocaleString()} sub={t("prop.k.fullRentNote")} />
+      <Kpi tone={vac.length ? "warn" : "good"} icon="buildings" label={t("rep.k.vacantUnits")} value={vac.length} sub={`${compact(rent(vac))} ${currencyCode()} ${t("prop.k.perMonth")}`} />
       <Kpi icon="reports" label={t("prop.k.totalArea")} value={`${Math.round(area(units)).toLocaleString()} m²`} sub={`${Math.round(area(vac)).toLocaleString()} m² ${t("rep.k.notLet")}`} />
     </div>
     <div className="cols-2">

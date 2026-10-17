@@ -7,7 +7,7 @@ import { Icon } from "@/components/icons";
 import { OrgHeader } from "@/components/OrgHeader";
 import { etbInWords } from "@/lib/words";
 import { Card, DateText, Money, PageHeader, Skeleton, StatusBadge } from "@/components/ui";
-import { periodText } from "@/lib/format";
+import { periodText, currencyCode } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 
 export default function Receipt() {
@@ -39,11 +39,11 @@ export default function Receipt() {
         </dl>
         {d.lines.length > 0 && (
           <table className="paper-table">
-            <thead><tr><th>{t("bill.number")}</th><th>{t("ag.unit")}</th><th>{t("period")}</th><th className="r">{t("amount")} (ETB)</th></tr></thead>
+            <thead><tr><th>{t("bill.number")}</th><th>{t("ag.unit")}</th><th>{t("period")}</th><th className="r">{t("amount")} ({currencyCode()})</th></tr></thead>
             <tbody>{d.lines.map((l, i) => <tr key={i}><td>{l.invoiceNumber}</td><td>{l.unitNumber}</td><td>{periodText(l.period, t)}</td><td className="r num">{(l.amount / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>)}</tbody>
           </table>
         )}
-        {d.credit > 0 && <p className="paper-note">{t("receipt.credit")}: <b className="num">{(d.credit / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })} ETB</b></p>}
+        {d.credit > 0 && <p className="paper-note">{t("receipt.credit")}: <b className="num">{(d.credit / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })} {currencyCode()}</b></p>}
         <footer className="paper-f"><div><span className="muted">{t("receipt.receivedBy")}</span><div className="sign" /><b>{d.confirmedByName}</b></div><div><span className="muted">{t("receipt.payerSign")}</span><div className="sign" /></div></footer>
       </article>
     </div>

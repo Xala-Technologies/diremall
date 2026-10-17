@@ -68,7 +68,7 @@ export function smsDate(ms: number, lang: Lang): string {
   if (lang === "am") { const e = gregorianToEthiopian(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); return `${e.day} ${ETH_MONTHS_AM[e.month - 1]} ${e.year}`; }
   return `${d.getUTCDate()} ${MONTHS_EN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
-export const smsMoney = (santim: number) => `ETB ${(santim / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const smsMoney = (santim: number, currency = "ETB") => `${currency} ${(santim / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** What a preview uses so staff see a realistic message while editing. */
 export function sampleVars(kind: TemplateKind | "custom", lang: Lang, org: string): Record<string, string> {

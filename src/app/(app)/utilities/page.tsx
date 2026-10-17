@@ -6,7 +6,7 @@ import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { BuildingSelect, Card, DateField, DateText, Field, Kpi, Message, Modal, Money, MoneyInput, PageHeader, PeriodPicker, StatusBadge, Table, Tabs , SelectField } from "@/components/ui";
-import { currentPeriod } from "@/lib/format";
+import { currentPeriod, currencyCode } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useMe } from "@/lib/useMe";
 import { usePeriod } from "@/lib/usePeriod";
@@ -141,7 +141,7 @@ function Shared() {
       <p className="muted">{t("util.sharedHint")}</p>
       {building && can("financeOfficer") && <Card title={t("util.newShared")}><div className="row">
         <FilterSelect label={t("util.shared")} value={kind} onChange={(v) => setKind(v as typeof kind)} options={(["generator", "security", "cleaning"] as const).map((k) => ({ value: k, label: t(k) }))} />
-        <MoneyInput value={total} onChange={setTotal} placeholder={`${t("amount")} (ETB)`} />
+        <MoneyInput value={total} onChange={setTotal} placeholder={`${t("amount")} (${currencyCode()})`} />
         <button className="btn primary" disabled={!total} onClick={() => void run(() => create({ buildingId: building as Id<"buildings">, kind, period, total: total! }), t("saved"))}>{t("create")}</button></div></Card>}
       <Message error={error} notice={notice} />
       <Card flush><Table rows={costs} empty={building ? t("util.noShared") : t("util.pickBuilding")} onRow={(c) => setOpen(c._id)} cols={[

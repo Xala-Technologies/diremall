@@ -1,4 +1,5 @@
 "use client";
+import { currencyCode } from "@/lib/format";
 import { useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { useState } from "react";
@@ -21,8 +22,8 @@ export function Billing() {
       <Card title={t("tariffs")}>
         <div className="form">
           <p className="muted wide">{t("set.tariffHint")}</p>
-          <Field label={`${t("electricity")} / kWh (ETB)`} hint={`${t("set.current")}: ${now("tariff.electricity", 600)}`}><MoneyInput value={el} onChange={setEl} /></Field>
-          <Field label={`${t("water")} / m³ (ETB)`} hint={`${t("set.current")}: ${now("tariff.water", 0)}`}><MoneyInput value={wa} onChange={setWa} /></Field>
+          <Field label={`${t("electricity")} / kWh (${currencyCode()})`} hint={`${t("set.current")}: ${now("tariff.electricity", 600)}`}><MoneyInput value={el} onChange={setEl} /></Field>
+          <Field label={`${t("water")} / m³ (${currencyCode()})`} hint={`${t("set.current")}: ${now("tariff.water", 0)}`}><MoneyInput value={wa} onChange={setWa} /></Field>
           {edit && <div className="wide"><button className="btn primary" disabled={busy || (el == null && wa == null)} onClick={() => void run(async () => { if (el != null) await set({ key: "tariff.electricity", value: el }); if (wa != null) await set({ key: "tariff.water", value: wa }); setEl(null); setWa(null); }, t("saved"))}>{t("save")}</button></div>}
         </div>
       </Card>

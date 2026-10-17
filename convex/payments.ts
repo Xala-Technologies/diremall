@@ -150,7 +150,7 @@ export const apply = mutation({
     // Receipt acknowledgment by SMS (once per payment), in the renter's language, unless receipts are switched off in Settings.
     if ((await smsRules(ctx, u.orgId)).receipts) {
       const renter = await ctx.db.get(p.renterId);
-      await queueTemplated(ctx, { orgId: u.orgId, renterId: p.renterId, template: "paymentReceived", dedupeKey: `ack:${paymentId}`, renter, vars: { amount: smsMoney(p.amount), receipt: receiptNumber } });
+      await queueTemplated(ctx, { orgId: u.orgId, renterId: p.renterId, template: "paymentReceived", dedupeKey: `ack:${paymentId}`, renter, vars: { amount: smsMoney(p.amount, u.org.currency), receipt: receiptNumber } });
     }
     return { applied: p.amount - credit, credit };
   },

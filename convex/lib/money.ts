@@ -3,6 +3,14 @@ export type Santim = number;
 
 export const etb = (birr: number): Santim => Math.round(birr * 100);
 
+/** An amount with its currency code, to two decimals: "ETB 1,234.50". The currency is the company's. */
+export function formatMoney(s: Santim, currency = "ETB"): string {
+  const neg = s < 0;
+  const abs = Math.abs(s);
+  const major = Math.floor(abs / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${neg ? "-" : ""}${currency} ${major}.${(abs % 100).toString().padStart(2, "0")}`;
+}
+
 export function formatEtb(s: Santim): string {
   const neg = s < 0;
   const abs = Math.abs(s);
