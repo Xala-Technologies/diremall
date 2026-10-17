@@ -53,11 +53,11 @@ describe("importing agreements", () => {
   it("names every problem by row and refuses the whole file", async () => {
     const w = await setup();
     await w.ap.mutation(w.api.imports.commitAgreements, { rows: [ag(2)] });
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Annex" }));
-    const fl = await w.t.run((c) => c.db.insert("floors", { buildingId: other, label: "G" }));
-    await w.t.run((c) => c.db.insert("units", { buildingId: other, floorId: fl, number: "A-101", areaM2: 10, category: "retail", ratePerM2: 1, status: "vacant" }));
-    await w.t.run((c) => c.db.insert("renters", { kind: "company", name: "Twin", phone: "+251911000001", tin: "9999999991" }));
-    await w.t.run((c) => c.db.insert("renters", { kind: "company", name: "Twin", phone: "+251911000002", tin: "9999999992" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Annex" }));
+    const fl = await w.t.run((c) => c.db.insert("floors", { orgId: w.orgId, buildingId: other, label: "G" }));
+    await w.t.run((c) => c.db.insert("units", { orgId: w.orgId, buildingId: other, floorId: fl, number: "A-101", areaM2: 10, category: "retail", ratePerM2: 1, status: "vacant" }));
+    await w.t.run((c) => c.db.insert("renters", { orgId: w.orgId, kind: "company", name: "Twin", phone: "+251911000001", tin: "9999999991" }));
+    await w.t.run((c) => c.db.insert("renters", { orgId: w.orgId, kind: "company", name: "Twin", phone: "+251911000002", tin: "9999999992" }));
     const rows = [
       ag(2, { building: "Dire Mall" }), // the same lease again
       ag(3, { building: "Dire Mall", unit: "A-101", renter: "Selam", startsAt: utc(2026, 1), endsAt: utc(2026, 6) }), // overlaps Abebe's lease
@@ -85,7 +85,7 @@ describe("importing agreements", () => {
     const w = await setup();
     await w.ap.mutation(w.api.imports.commitAgreements, { rows: [ag(2)] });
     expect((await w.pm.query(w.api.imports.checkAgreements, { rows: [ag(2)] })).issues).toEqual([{ row: 2, field: "unit", code: "already_exists" }]);
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("limpm", ["propertyManager"], [other]));
     expect((await lim.query(w.api.imports.checkAgreements, { rows: [ag(2, { startsAt: utc(2020, 1), endsAt: utc(2021, 1) })] })).issues[0]).toMatchObject({ code: "forbidden_building" });
   });
@@ -144,7 +144,7 @@ describe("importing opening balances", () => {
 
   it("refuses what it cannot place, and a file run twice adds nothing", async () => {
     const w = await withLeases();
-    await w.t.run((c) => c.db.insert("renters", { kind: "company", name: "NoLease", phone: "+251911000009", tin: "9999999999" }));
+    await w.t.run((c) => c.db.insert("renters", { orgId: w.orgId, kind: "company", name: "NoLease", phone: "+251911000009", tin: "9999999999" }));
     const rows = [op(2, { renter: "Nobody" }), op(3, { renter: "NoLease" }), op(4, { amount: 0 }), op(5, { unit: "A-102" }), op(6, { unit: "A-101" }), op(7, { unit: "A-101" })];
     const { issues } = await w.fin.query(w.api.imports.checkOpening, { rows });
     const by = (row: number) => issues.filter((i) => i.row === row).map((i) => i.code);
@@ -163,7 +163,7 @@ describe("importing opening balances", () => {
     await w.ap.mutation(w.api.imports.commitAgreements, { rows: [ag(2), ag(3, { unit: "A-102", renter: "Abebe" })] });
     expect((await w.fin.query(w.api.imports.checkOpening, { rows: [op(2)] })).issues).toEqual([{ row: 2, field: "unit", code: "unit_needed" }]);
     expect((await w.fin.query(w.api.imports.checkOpening, { rows: [op(2, { unit: "A-102" })] })).issues).toEqual([]);
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("limfin", ["financeOfficer"], [other]));
     expect((await lim.query(w.api.imports.checkOpening, { rows: [op(2, { unit: "A-102" })] })).issues[0]).toMatchObject({ code: "forbidden_building" });
   });

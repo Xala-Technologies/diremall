@@ -18,7 +18,7 @@ async function withBill() {
   return { ...w, unitId, renterId, invoiceId: d!._id };
 }
 const messages = (w: Awaited<ReturnType<typeof withBill>>) => w.t.run((c) => c.db.query("smsMessages").collect());
-const daily = (w: Awaited<ReturnType<typeof withBill>>) => w.t.mutation(internal.smsQueue.queueDueReminders, {});
+const daily = (w: Awaited<ReturnType<typeof withBill>>) => w.t.mutation(internal.smsQueue.queueDueReminders, { orgId: w.orgId });
 
 describe("the reminder schedule", () => {
   it("reminds before the due date, then chases on the configured days, one message per step", async () => {
@@ -129,8 +129,8 @@ describe("who is messaged and in what language", () => {
 });
 
 describe("sending politely", () => {
-  const claim = (w: Awaited<ReturnType<typeof withBill>>) => w.t.mutation(internal.smsQueue.claimQueued, {});
-  const queue = (w: Awaited<ReturnType<typeof withBill>>, extra: object = {}) => w.t.run((c) => c.db.insert("smsMessages", { renterId: w.renterId, kind: "custom", body: "Hello", status: "queued", ...extra } as never));
+  const claim = (w: Awaited<ReturnType<typeof withBill>>) => w.t.mutation(internal.smsQueue.claimQueued, { orgId: w.orgId });
+  const queue = (w: Awaited<ReturnType<typeof withBill>>, extra: object = {}) => w.t.run((c) => c.db.insert("smsMessages", { orgId: w.orgId, renterId: w.renterId, kind: "custom", body: "Hello", status: "queued", ...extra } as never));
 
   it("holds messages during quiet hours (Ethiopian time) and sends them in the morning; tests go straight out", async () => {
     const w = await withBill();
@@ -143,7 +143,7 @@ describe("sending politely", () => {
 
   it("limits automatic messages per renter per day, but not announcements", async () => {
     const w = await withBill();
-    const sent = (status: string) => w.t.run((c) => c.db.insert("smsMessages", { renterId: w.renterId, kind: "dueReminder", body: "old", status, sentAt: Date.now() - 3_600_000 } as never));
+    const sent = (status: string) => w.t.run((c) => c.db.insert("smsMessages", { orgId: w.orgId, renterId: w.renterId, kind: "dueReminder", body: "old", status, sentAt: Date.now() - 3_600_000 } as never));
     at("2026-10-16T08:00:00Z");
     await sent("delivered"); await sent("accepted"); // two already today: the default limit
     await queue(w, { kind: "dueReminder" }); await queue(w, { kind: "custom" });
@@ -231,7 +231,7 @@ describe("announcements and the gateway test", () => {
     expect((await w.pm.query(w.api.smsQueue.audiencePreview, { audience: { kind: "building", buildingId: w.buildingId } })).count).toBe(1);
     await expect(w.pm.mutation(w.api.smsQueue.sendBroadcast, { audience: { kind: "activeLeases" }, body: "Hi {receipt}" })).rejects.toThrow(/template_unknown_placeholder/);
     await expect(w.pm.mutation(w.api.smsQueue.sendBroadcast, { audience: { kind: "activeLeases" }, body: "" })).rejects.toThrow(/template_empty/);
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("lim", ["propertyManager"], [other]));
     expect((await lim.query(w.api.smsQueue.audiencePreview, { audience: { kind: "activeLeases" } })).count).toBe(0);
     await expect(lim.query(w.api.smsQueue.audiencePreview, { audience: { kind: "building", buildingId: w.buildingId } })).rejects.toThrow(/forbidden_building/);

@@ -13,11 +13,23 @@ export const etb = (n: number) => Math.round(n * 100);
 export const utc = (y: number, m: number, d = 1) => Date.UTC(y, m - 1, d);
 
 type Role = "superAdmin" | "propertyManager" | "financeOfficer" | "approver" | "auditor" | "accessAdmin";
+export const newTest = () => convexTest(schema, modules);
+export type T = ReturnType<typeof newTest>;
 
-export async function world() {
-  const t = convexTest(schema, modules);
-  const mk = (name: string, roles: Role[], scope: "all" | Id<"buildings">[] = "all") =>
-    t.run((ctx) => ctx.db.insert("users", { name, email: `${name}@x.et`, roles, buildingScope: scope, active: true, lang: "en" }));
+/**
+ * A company with its staff and one building. Pass an existing `t` to put several companies in the same database, which is how the
+ * isolation tests work. `mk` makes a person who belongs to this company with the roles (and buildings) given.
+ */
+export async function world(opts: { t?: T; slug?: string; name?: string; limits?: { units: number; seats: number; smsPerMonth: number }; status?: "trial" | "active" | "suspended" | "past_due" | "cancelled" } = {}) {
+  const t = opts.t ?? newTest();
+  const slug = opts.slug ?? "dire-mall";
+  const orgId = await t.run((ctx) => ctx.db.insert("organizations", { name: opts.name ?? "Dire Mall", slug, status: opts.status ?? "active", plan: "enterprise", limits: opts.limits ?? { units: 0, seats: 0, smsPerMonth: 0 }, currency: "ETB", tzOffsetHours: 3, defaultLang: "en", defaultCalendar: "gregorian" }));
+  let n = 0;
+  const mk = async (name: string, roles: Role[], scope: "all" | Id<"buildings">[] = "all") => {
+    const userId = await t.run((ctx) => ctx.db.insert("users", { name, email: `${name}${n++}@${slug}.et`, active: true, lang: "en", activeOrgId: orgId }));
+    await t.run((ctx) => ctx.db.insert("memberships", { orgId, userId, roles, buildingScope: scope, status: "active" }));
+    return userId;
+  };
   const as = (id: Id<"users">) => t.withIdentity({ subject: `${id}|session` });
 
   const pmId = await mk("pm", ["propertyManager"]);
@@ -26,10 +38,10 @@ export async function world() {
   const pm = as(pmId), fin = as(finId), ap = as(apId);
 
   const api = (await import("../convex/_generated/api")).api;
-  const buildingId = await pm.mutation(api.properties.createBuilding, { name: "Dire Mall" });
+  const buildingId = await pm.mutation(api.properties.createBuilding, { name: opts.name ? `${opts.name} Main` : "Dire Mall" });
   const floorId = await pm.mutation(api.properties.addFloor, { buildingId, label: "Ground" });
   const unit = (number: string, areaM2: number) => pm.mutation(api.properties.createUnit, { buildingId, floorId, number, areaM2, category: "retail", ratePerM2: etb(2300) });
-  let tinSeq = 1000000000;
+  let tinSeq = 1000000000 + (slug.length + slug.charCodeAt(0)) * 1000;
   const renter = (name: string) => pm.mutation(api.renters.create, { kind: "company", name, tin: String(tinSeq++), phone: "+251911000000" });
 
   /** Draft → signed → review → approved agreement running Sep 2026 – Aug 2027. */
@@ -41,5 +53,6 @@ export async function world() {
     await ap.mutation(api.agreements.approve, { agreementId });
     return agreementId;
   }
-  return { t, api, mk, as, pm, fin, ap, pmId, finId, apId, buildingId, floorId, unit, renter, activeAgreement };
+  const member = (userId: Id<"users">) => t.run(async (ctx) => (await ctx.db.query("memberships").withIndex("by_org_user", (q) => q.eq("orgId", orgId).eq("userId", userId)).unique())!._id);
+  return { t, api, orgId, member, mk, as, pm, fin, ap, pmId, finId, apId, buildingId, floorId, unit, renter, activeAgreement };
 }

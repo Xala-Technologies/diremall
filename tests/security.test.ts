@@ -19,12 +19,12 @@ describe("csv export", () => {
 
 describe("first super admin", () => {
   it("only the named address, and only while no super admin exists", () => {
-    expect(shouldBootstrap({ only: "boss@x.et", email: "boss@x.et", userCount: 5, hasSuperAdmin: false })).toBe(true); // others signed up first
-    expect(shouldBootstrap({ only: "boss@x.et", email: "Boss@X.et ", userCount: 1, hasSuperAdmin: false })).toBe(true);
-    expect(shouldBootstrap({ only: "boss@x.et", email: "intruder@x.et", userCount: 1, hasSuperAdmin: false })).toBe(false);
-    expect(shouldBootstrap({ only: "boss@x.et", email: "boss@x.et", userCount: 2, hasSuperAdmin: true })).toBe(false);
-    expect(shouldBootstrap({ email: "a@x.et", userCount: 1, hasSuperAdmin: false })).toBe(true); // dev: very first account
-    expect(shouldBootstrap({ email: "b@x.et", userCount: 2, hasSuperAdmin: false })).toBe(false);
+    expect(shouldBootstrap({ only: "boss@x.et", email: "boss@x.et", userCount: 5, hasPlatformAdmin: false })).toBe(true); // others signed up first
+    expect(shouldBootstrap({ only: "boss@x.et", email: "Boss@X.et ", userCount: 1, hasPlatformAdmin: false })).toBe(true);
+    expect(shouldBootstrap({ only: "boss@x.et", email: "intruder@x.et", userCount: 1, hasPlatformAdmin: false })).toBe(false);
+    expect(shouldBootstrap({ only: "boss@x.et", email: "boss@x.et", userCount: 2, hasPlatformAdmin: true })).toBe(false);
+    expect(shouldBootstrap({ email: "a@x.et", userCount: 1, hasPlatformAdmin: false })).toBe(true); // dev: very first account
+    expect(shouldBootstrap({ email: "b@x.et", userCount: 2, hasPlatformAdmin: false })).toBe(false);
   });
 });
 

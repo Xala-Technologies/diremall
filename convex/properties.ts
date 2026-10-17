@@ -113,7 +113,7 @@ export const updateFloor = mutation({
       if (siblings.some((f) => f._id !== floorId && sameName(f.label, l))) fail("floor_label_exists");
       patch.label = l;
     }
-    if (planFileId) { await assertUploadOk(ctx, planFileId); patch.planFileId = planFileId; }
+    if (planFileId) { await assertUploadOk(ctx, u.orgId, planFileId); patch.planFileId = planFileId; }
     await ctx.db.patch(floorId, patch);
     await audit(ctx, u, "floor.update", "floors", floorId, JSON.stringify({ label: patch.label, plan: !!planFileId }));
   },
@@ -128,7 +128,7 @@ export const addFloor = mutation({
     if (!label) fail("name_required");
     const siblings = await ctx.db.query("floors").withIndex("by_building", (q) => q.eq("buildingId", a.buildingId)).collect();
     if (siblings.some((f) => sameName(f.label, label))) fail("floor_label_exists");
-    if (a.planFileId) await assertUploadOk(ctx, a.planFileId);
+    if (a.planFileId) await assertUploadOk(ctx, u.orgId, a.planFileId);
     const id = await ctx.db.insert("floors", { orgId: u.orgId, ...a, label });
     await audit(ctx, u, "floor.create", "floors", id, a.label);
     return id;

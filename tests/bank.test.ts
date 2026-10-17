@@ -84,7 +84,7 @@ describe("bank statements", () => {
   it("property staff cannot import or match; building-limited finance staff are refused", async () => {
     const w = await world();
     await expect(w.pm.mutation(w.api.bank.importStatement, { batch: "b", entries: [line(1, "X")] })).rejects.toThrow(/forbidden/);
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("limfin", ["financeOfficer"], [other]));
     await expect(lim.mutation(w.api.bank.importStatement, { batch: "b", entries: [line(1, "X")] })).rejects.toThrow(/forbidden_building/);
   });

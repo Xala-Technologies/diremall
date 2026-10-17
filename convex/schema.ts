@@ -244,6 +244,9 @@ export default defineSchema({
     usedAt: v.optional(v.number()),
   }).index("by_email", ["email"]).index("by_org", ["orgId"]),
 
+  // Which company a stored file belongs to. The first company to attach a file owns it; no other company can attach the same file.
+  fileOwners: defineTable({ orgId: v.id("organizations"), storageId: v.id("_storage") }).index("by_storage", ["storageId"]).index("by_org", ["orgId"]),
+
   // A document link is created only after a role and building check, and works for two minutes.
   fileTickets: defineTable({ tokenHash: v.string(), storageId: v.id("_storage"), contentType: v.string(), userId: v.id("users"), expiresAt: v.number() })
     .index("by_hash", ["tokenHash"]).index("by_expiry", ["expiresAt"]),

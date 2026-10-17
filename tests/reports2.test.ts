@@ -7,7 +7,7 @@ async function leases() {
   const mk = async (unit: string, name: string, endsInDays: number, rent: number, deposit: number) => {
     const unitId = await w.unit(unit, 100), renterId = await w.renter(name);
     const id = await w.pm.mutation(w.api.agreements.createDraft, { unitId, renterId, startsAt: Date.now() - 300 * DAY, endsAt: Date.now() + endsInDays * DAY, rent: { kind: "fixed", amount: etb(rent) }, dueDay: 5, depositAmount: etb(deposit) });
-    await w.t.run(async (c) => { await c.db.patch(id, { status: "active", approvedBy: w.apId }); await c.db.insert("deposits", { agreementId: id, required: etb(deposit), held: etb(deposit), deductions: [], refunded: 0 }); });
+    await w.t.run(async (c) => { await c.db.patch(id, { status: "active", approvedBy: w.apId }); await c.db.insert("deposits", { orgId: w.orgId, agreementId: id, required: etb(deposit), held: etb(deposit), deductions: [], refunded: 0 }); });
     return id;
   };
   return { ...w, soon: await mk("A-1", "Soon", 20, 10000, 20000), mid: await mk("A-2", "Mid", 75, 20000, 40000), late: await mk("A-3", "Late", 400, 30000, 60000), gone: await mk("A-4", "Gone", -5, 5000, 10000) };
@@ -26,7 +26,7 @@ describe("lease expiry report", () => {
   });
   it("only shows buildings the user may see", async () => {
     const w = await leases();
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("lim", ["financeOfficer"], [other]));
     expect((await lim.query(w.api.reports.leaseExpiry, { withinDays: 365 })).rows).toEqual([]);
     await expect(lim.query(w.api.reports.leaseExpiry, { withinDays: 365, buildingId: w.buildingId })).rejects.toThrow(/forbidden/);

@@ -34,8 +34,8 @@ describe("buildings and floors", () => {
   });
 
   it("a user limited to another building cannot edit this one", async () => {
-    const { t, api, mk, as, buildingId, floorId } = await world();
-    const other = await t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const { t, api, mk, as, buildingId, floorId, orgId } = await world();
+    const other = await t.run((c) => c.db.insert("buildings", { orgId, name: "Other" }));
     const lim = as(await mk("lim", ["propertyManager"], [other]));
     await expect(lim.mutation(api.properties.updateBuilding, { buildingId, name: "Hacked" })).rejects.toThrow(/forbidden/);
     await expect(lim.mutation(api.properties.updateFloor, { floorId, label: "Hacked" })).rejects.toThrow(/forbidden/);

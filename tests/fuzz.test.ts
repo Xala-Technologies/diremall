@@ -46,7 +46,7 @@ async function play(seed: number, steps: number) {
     else if (op === 10) await ok("adjust", async () => { const all = await w.fin.query(w.api.billing.list, { openOnly: true }); const a = pick(all); const id = await w.fin.mutation(w.api.billing.requestAdjustment, { invoiceId: a._id, delta: (r() < 0.6 ? -1 : 1) * etb(1 + Math.floor(r() * 100000)), reason: "fuzz" }); if (r() < 0.8) await w.ap.mutation(w.api.billing.approveAdjustment, { adjustmentId: id }); });
     else if (op === 11) await ok("void", () => w.ap.mutation(w.api.payments.voidPayment, { paymentId: pick(pays), reason: "fuzz" }));
     else if (op === 12) await ok("terminate", () => w.ap.mutation(w.api.agreements.terminate, { agreementId: pick(ags), reason: "fuzz", effectiveAt: utc(2026, 1 + Math.floor(r() * 10), 1 + Math.floor(r() * 27)) }));
-    else if (op === 13) await ok("expire", () => w.t.mutation(internal.smsQueue.expireAgreements, {}));
+    else if (op === 13) await ok("expire", () => w.t.mutation(internal.smsQueue.expireAgreements, { orgId: w.orgId }));
     else if (op === 14) await ok("depositReceive", () => w.fin.mutation(w.api.deposits.receive, { agreementId: pick(ags), amount: etb(1000 + Math.floor(r() * 20000)), method: "cash", reference: `D${refSeq++}` }));
     else if (op === 15) await ok("deduct", async () => { const id = pick(ags); await w.fin.mutation(w.api.deposits.requestDeduction, { agreementId: id, amount: etb(500), reason: "fuzz" }); await w.ap.mutation(w.api.deposits.approveDeduction, { agreementId: id, index: 0 }); });
     else if (op === 16) await ok("refund", () => w.ap.mutation(w.api.deposits.refund, { agreementId: pick(ags), amount: etb(100) }));
@@ -59,7 +59,7 @@ async function play(seed: number, steps: number) {
     else if (op === 23) await ok("renew", async () => { const id = pick(ags); const ag = (await w.t.run((c) => c.db.get(id as never))) as any; await w.ap.mutation(w.api.agreements.addTerm, { agreementId: id, effectiveFrom: ag.startsAt + (30 + Math.floor(r() * 200)) * 86_400_000, rent: { kind: "fixed", amount: etb(1000 + Math.floor(r() * 90000)) }, dueDay: 1 + Math.floor(r() * 27), depositAmount: etb(Math.floor(r() * 5) * 10000), ...(r() < 0.5 ? { newEndsAt: ag.endsAt + 200 * 86_400_000 } : {}) }); });
     else if (op === 24) await ok("depositToBill", async () => { const id = pick(ags); const ag = (await w.t.run((c) => c.db.get(id as never))) as any; const open = await w.fin.query(w.api.payments.openBills, { renterId: ag.renterId }); const b = open[0]; if (!b) return; await w.fin.mutation(w.api.deposits.requestDeduction, { agreementId: id, amount: Math.max(1, Math.floor(b.due * r())), reason: "fuzz", invoiceId: b.invoiceId }); const dep = (await w.fin.query(w.api.deposits.get, { agreementId: id })); await w.ap.mutation(w.api.deposits.approveDeduction, { agreementId: id, index: dep.deductions.length - 1 }); });
     // the books must agree with themselves after every single step
-    const res = await w.t.run((c) => scan(c as never));
+    const res = await w.t.run((c) => scan(c as never, w.orgId));
     // the reports must add up to the same figures as the records they are built from
     const open = await w.fin.query(w.api.billing.list, { openOnly: true });
     const aging = await w.fin.query(w.api.reports.aging, {});

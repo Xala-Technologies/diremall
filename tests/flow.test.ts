@@ -130,8 +130,8 @@ describe("controls", () => {
     const w = await world();
     const admin = await w.mk("admin", ["accessAdmin"]);
     const victim = await w.mk("victim", ["propertyManager"]);
-    await w.as(admin).mutation(w.api.users.setAccess, { userId: victim, roles: ["propertyManager"], buildingScope: "all", active: false });
-    await expect(w.as(victim).query(w.api.properties.listBuildings, {})).rejects.toThrow(/inactive/);
+    await w.as(admin).mutation(w.api.users.setAccess, { membershipId: await w.member(victim), roles: ["propertyManager"], buildingScope: "all", active: false });
+    await expect(w.as(victim).query(w.api.properties.listBuildings, {})).rejects.toThrow(/no_company/);
     await expect(w.t.query(w.api.properties.listBuildings, {})).rejects.toThrow(/unauthenticated/);
     // access admin has no financial powers by default
     await expect(w.as(admin).mutation(w.api.billing.generate, { period: "2026-09" })).rejects.toThrow(/forbidden/);

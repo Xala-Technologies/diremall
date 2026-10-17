@@ -62,7 +62,7 @@ describe("payment details and trail", () => {
     expect(all).toMatchObject({ recorded: { n: 2, amount: etb(5000) }, confirmed: { n: 1, amount: etb(2000) }, applied: { n: 0 }, voided: { n: 0 } });
     const oct = await w.fin.query(w.api.payments.summary, { from: utc(2026, 10), to: utc(2026, 11) });
     expect(oct).toMatchObject({ recorded: { n: 1, amount: etb(1000) }, confirmed: { n: 1 } });
-    const other = await w.t.run((ctx) => ctx.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((ctx) => ctx.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("lim", ["financeOfficer"], [other]));
     expect(await lim.query(w.api.payments.summary, {})).toMatchObject({ recorded: { n: 0 }, confirmed: { n: 0 } });
     await expect(lim.query(w.api.payments.openBills, { renterId: w.renterId })).rejects.toThrow(/forbidden/);

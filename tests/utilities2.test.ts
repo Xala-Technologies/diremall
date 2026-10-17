@@ -50,7 +50,7 @@ describe("meter register", () => {
     const reg = await w.fin.query(w.api.utilities.register, { period: "2026-09" });
     expect(reg.rows.find((x) => x.serial === "E-1")!.status).toBe("flagged");
     expect(reg.summary.withoutMeter).toBe(0); // A-101 is occupied and has a meter; A-103 is vacant
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("lim", ["financeOfficer"], [other]));
     expect((await lim.query(w.api.utilities.register, { period: "2026-09" })).rows).toEqual([]);
     await expect(lim.query(w.api.utilities.register, { period: "2026-09", buildingId: w.buildingId })).rejects.toThrow(/forbidden/);

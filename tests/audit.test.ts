@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { scan } from "../convex/integrity";
 import { etb, storePdf, utc, world } from "./helpers";
 
-const healthy = async (w: Awaited<ReturnType<typeof world>>) => expect((await w.t.run((c) => scan(c as never))).findings).toEqual([]);
+const healthy = async (w: Awaited<ReturnType<typeof world>>) => expect((await w.t.run((c) => scan(c as never, w.orgId))).findings).toEqual([]);
 
 describe("rent maths against an independent calculation", () => {
   it("bills a full month, a part month at both ends, and a yearly increase, to the santim", async () => {

@@ -22,7 +22,7 @@ export const record = mutation({
     const u = await requireRole(ctx, "financeOfficer");
     await assertRenterVisible(ctx, u, a.renterId);
     assertSantim(a.amount);
-    if (a.evidenceFileId) await assertUploadOk(ctx, a.evidenceFileId);
+    if (a.evidenceFileId) await assertUploadOk(ctx, u.orgId, a.evidenceFileId);
     if (!a.reference.trim()) fail("reference_required");
     // A bank or Telebirr reference identifies one transfer in the whole mall, whichever renter it is booked to.
     const dupe = (await ctx.db.query("payments").withIndex("by_reference", (q) => q.eq("orgId", u.orgId).eq("method", a.method).eq("reference", a.reference)).collect())

@@ -131,7 +131,7 @@ export const addDocument = mutation({
   handler: async (ctx, a) => {
     const u = await requireRole(ctx, "propertyManager", "financeOfficer");
     await assertRenterVisible(ctx, u, a.renterId);
-    await assertUploadOk(ctx, a.fileId);
+    await assertUploadOk(ctx, u.orgId, a.fileId);
     const id = await ctx.db.insert("renterDocuments", { orgId: u.orgId, ...a, uploadedBy: u._id });
     await audit(ctx, u, "renter.document", "renters", a.renterId, a.kind);
     return id;

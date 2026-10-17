@@ -49,7 +49,7 @@ describe("payment reminders", () => {
     const w = await withBill();
     await w.fin.mutation(w.api.billing.issue, { invoiceIds: [w.draftId] });
     await expect(w.pm.mutation(w.api.billing.sendReminders, { invoiceIds: [w.draftId] })).rejects.toThrow(/forbidden/);
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const lim = w.as(await w.mk("lim", ["financeOfficer"], [other]));
     await expect(lim.mutation(w.api.billing.sendReminders, { invoiceIds: [w.draftId] })).rejects.toThrow(/forbidden/);
   });

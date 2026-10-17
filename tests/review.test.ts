@@ -111,11 +111,11 @@ describe("review fixes: access", () => {
     const w = await world();
     const admin = await w.mk("admin", ["accessAdmin"]); const boss = await w.mk("boss", ["superAdmin"]);
     const a = w.as(admin);
-    await expect(a.mutation(w.api.users.setAccess, { userId: admin, roles: ["accessAdmin", "financeOfficer", "approver"], buildingScope: "all", active: true })).rejects.toThrow(/cannot_change_own_access/);
-    await expect(a.mutation(w.api.users.setAccess, { userId: boss, roles: [], buildingScope: "all", active: true })).rejects.toThrow(/forbidden/);
-    await expect(w.as(boss).mutation(w.api.users.setAccess, { userId: boss, roles: ["propertyManager"], buildingScope: "all", active: true })).rejects.toThrow(/last_super_admin/);
+    await expect(a.mutation(w.api.users.setAccess, { membershipId: await w.member(admin), roles: ["accessAdmin", "financeOfficer", "approver"], buildingScope: "all", active: true })).rejects.toThrow(/cannot_change_own_access/);
+    await expect(a.mutation(w.api.users.setAccess, { membershipId: await w.member(boss), roles: [], buildingScope: "all", active: true })).rejects.toThrow(/forbidden/);
+    await expect(w.as(boss).mutation(w.api.users.setAccess, { membershipId: await w.member(boss), roles: ["propertyManager"], buildingScope: "all", active: true })).rejects.toThrow(/last_super_admin/);
     const pmId = w.pmId;
-    await a.mutation(w.api.users.setAccess, { userId: pmId, roles: ["propertyManager", "financeOfficer"], buildingScope: "all", active: true }); // normal job still works
+    await a.mutation(w.api.users.setAccess, { membershipId: await w.member(pmId), roles: ["propertyManager", "financeOfficer"], buildingScope: "all", active: true }); // normal job still works
   });
 
   it("a building-limited user cannot see another building's bills via a shared renter", async () => {

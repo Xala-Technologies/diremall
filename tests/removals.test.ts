@@ -9,14 +9,14 @@ describe("deleting things that were added by mistake", () => {
     const b = await w.pm.mutation(w.api.properties.createBuilding, { name: "Mistake", floors: ["Ground"] });
     const f = (await w.pm.query(w.api.properties.listFloors, { buildingId: b }))[0]!._id;
     await w.pm.mutation(w.api.properties.createUnit, { buildingId: b, floorId: f, number: "M-1", areaM2: 10, category: "retail", ratePerM2: etb(100) });
-    const staff = await w.t.run((c) => c.db.insert("users", { name: "scoped", email: "s@x.et", roles: ["propertyManager"], buildingScope: [b, w.buildingId], active: true, lang: "en" }));
+    const staff = await w.mk("scoped", ["propertyManager"], [b, w.buildingId]);
     expect((await w.pm.query(w.api.properties.buildingOverview, {})).find((x) => x._id === b)!.deletable).toBe(true);
 
     await expect(w.fin.mutation(w.api.removals.deleteBuilding, { buildingId: b })).rejects.toThrow(/forbidden/);
     expect(await w.pm.mutation(w.api.removals.deleteBuilding, { buildingId: b })).toEqual({ units: 1 });
     expect((await w.pm.query(w.api.properties.listBuildings, { includeArchived: true })).some((x) => x._id === b)).toBe(false);
     expect(await w.t.run((c) => c.db.query("units").collect().then((u) => u.filter((x) => x.buildingId === b).length))).toBe(0);
-    expect((await w.t.run((c) => c.db.get(staff)))!.buildingScope).toEqual([w.buildingId]);
+    expect((await w.t.run((c) => c.db.query("memberships").withIndex("by_org_user", (q) => q.eq("orgId", w.orgId).eq("userId", staff)).unique()))!.buildingScope).toEqual([w.buildingId]);
     expect((await w.t.run((c) => c.db.query("auditLog").collect())).some((a) => a.action === "building.delete")).toBe(true);
   });
 

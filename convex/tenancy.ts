@@ -19,6 +19,8 @@ export const TENANT_TABLES = [
 
 /** Everything a company's export contains, and everything deleting a company removes. */
 export const EXPORT_TABLES = [...TENANT_TABLES, "memberships", "accessRequests", "smsConfig"] as const;
+/** What deleting a company removes besides the exported tables. */
+const PURGE_EXTRA = ["fileOwners"] as const;
 
 export const createCompany = internalMutation({
   args: { name: v.string(), slug: v.string() },
@@ -92,7 +94,7 @@ export const moveIntoCompany = internalAction({
 export const purgePage = internalMutation({
   args: { orgId: v.id("organizations"), table: v.string() },
   handler: async (ctx, { orgId, table }) => {
-    if (!(EXPORT_TABLES as readonly string[]).includes(table)) return 0;
+    if (!(EXPORT_TABLES as readonly string[]).includes(table) && !(PURGE_EXTRA as readonly string[]).includes(table)) return 0;
     const rows = await (ctx.db.query(table as never) as any).withIndex("by_org", (q: any) => q.eq("orgId", orgId)).take(200) as Record<string, any>[];
     for (const r of rows) {
       for (const f of ["fileId", "signedFileId", "evidenceFileId", "planFileId"]) if (r[f]) await ctx.storage.delete(r[f]).catch(() => undefined);
@@ -116,7 +118,7 @@ export const purge = internalAction({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, { orgId }): Promise<number> => {
     let total = 0;
-    for (const table of EXPORT_TABLES) { for (let i = 0; i < 500; i++) { const n: number = await ctx.runMutation(internal.tenancy.purgePage, { orgId, table }); total += n; if (n === 0) break; } }
+    for (const table of [...EXPORT_TABLES, ...PURGE_EXTRA]) { for (let i = 0; i < 500; i++) { const n: number = await ctx.runMutation(internal.tenancy.purgePage, { orgId, table }); total += n; if (n === 0) break; } }
     await ctx.runMutation(internal.tenancy.purgeFinish, { orgId });
     return total;
   },

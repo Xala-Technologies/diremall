@@ -35,7 +35,7 @@ describe("document downloads", () => {
 
   it("is refused outside the user's buildings, for records without a file, and for signed-out callers", async () => {
     const w = await withSignedAgreement();
-    const other = await w.t.run((c) => c.db.insert("buildings", { name: "Other" }));
+    const other = await w.t.run((c) => c.db.insert("buildings", { orgId: w.orgId, name: "Other" }));
     const limitedId = await w.mk("limited", ["propertyManager"], [other]);
     await expect(w.as(limitedId).mutation(w.api.files.ticket, { kind: "signed", id: w.agreementId })).rejects.toThrow(/forbidden/);
     const noFile = await w.t.run(async (c) => { const a = await c.db.get(w.agreementId); const { _id, _creationTime, signedFileId, ...rest } = a!; void signedFileId; return c.db.insert("agreements", rest as never); });

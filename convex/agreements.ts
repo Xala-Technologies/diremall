@@ -62,7 +62,7 @@ export const attachSignedCopy = mutation({
     // (a lease brought in from the old records has no scan yet; it may be attached once, without reopening the lease)
     const scanLater = !!ag.importedAt && !ag.signedFileId;
     if (ag.status !== "draft" && ag.status !== "inReview" && !scanLater) fail("signed_copy_locked");
-    await assertUploadOk(ctx, fileId);
+    await assertUploadOk(ctx, u.orgId, fileId);
     await ctx.db.patch(agreementId, { signedFileId: fileId });
     await audit(ctx, u, "agreement.signedCopy", "agreements", agreementId);
   },
